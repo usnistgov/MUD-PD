@@ -26,6 +26,10 @@ VALUES
     "Initial setup of Ecobee thermostat onto testLinksys-IoTMUD network using iPhone 6, attempting to use wifi");
 
 /* Queue of things to add to the Database */
+INSERT INTO device_state
+	(fileMD5Hash, mac_addr, fw_ver, ipv4_addr, ipv6_addr)
+VALUES
+	("8b9c2749049c3e9909f95aca8c39e9ab", "20:EE:28:99:E6:FA", "iOS9?", "");
 
 SELECT * FROM device;
 

@@ -20,7 +20,7 @@ CREATE TABLE device (
     mfr TEXT,
     model TEXT,
     mac_addr VARCHAR(17) UNIQUE,
-    internalName TEXT,
+    internalName VARCHAR(20) UNIQUE,
     deviceCategory TEXT,
     mudCapable BOOL DEFAULT FALSE,
     wifi BOOL DEFAULT FALSE,
@@ -35,8 +35,9 @@ CREATE TABLE device_state (
     id INT AUTO_INCREMENT KEY,
     fileMD5Hash BINARY(32),
     mac_addr VARCHAR(17),
+    internalName VARCHAR(20),
     fw_ver TEXT,
-    ipv4_addr TEXT,
+    ipv4_addr VARCHAR(15),
     ipv6_addr TEXT
 );
 

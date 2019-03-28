@@ -1,3 +1,4 @@
+USE DeviceCaptures;
 /**
 DROP TABLE capture;
 DROP TABLE device;
@@ -25,6 +26,8 @@ CREATE TABLE device (
     mudCapable BOOL DEFAULT FALSE,
     wifi BOOL DEFAULT FALSE,
     bluetooth BOOL DEFAULT FALSE,
+    4G BOOL DEFAULT FALSE,
+    5G BOOL DEFAULT FALSE,
     zigbee BOOL DEFAULT FALSE,
     zwave BOOL DEFAULT FALSE,
     otherProtocols TEXT,

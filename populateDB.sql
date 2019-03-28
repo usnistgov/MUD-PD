@@ -7,10 +7,10 @@ VALUES
     "testLinksys-IoTMUD Network Router (MUD-enabled)");
 
 INSERT INTO device
-	(mfr, model, internalName, mac_addr, deviceCategory, wifi, bluetooth, otherProtocols)
+	(mfr, model, internalName, mac_addr, deviceCategory, 4G, wifi, bluetooth, otherProtocols)
 VALUES
-    ("Apple", "iPhone 6", "iphone", "20:EE:28:99:E6:FA", "Smartphone", TRUE, TRUE, "3G/4G"),
-    ("Samsung", "Galaxy S8", "android", "B8:D7:AF:A9:59:5F", "Smartphone", TRUE, TRUE, "3G/4G");
+    ("Apple", "iPhone 6", "iphone", "20:EE:28:99:E6:FA", "Smartphone", TRUE, TRUE, TRUE, "3G/4G"),
+    ("Samsung", "Galaxy S8", "android", "B8:D7:AF:A9:59:5F", "Smartphone", TRUE, TRUE, TRUE, "3G/4G");
 
 INSERT INTO capture
 	(fileName, fileLoc, fileMD5Hash, capDate, activity, details)
@@ -29,7 +29,7 @@ VALUES
 INSERT INTO device_state
 	(fileMD5Hash, mac_addr, fw_ver, ipv4_addr, ipv6_addr)
 VALUES
-	("8b9c2749049c3e9909f95aca8c39e9ab", "20:EE:28:99:E6:FA", "iOS9?", "");
+	("8b9c2749049c3e9909f95aca8c39e9ab", "20:EE:28:99:E6:FA", "iOS 12.1.4", "", "");
 
 SELECT * FROM device;
 

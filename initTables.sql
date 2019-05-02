@@ -1,6 +1,7 @@
 USE DeviceCaptures;
 /**
 DROP TABLE capture;
+DROP TABLE device_in_capture;
 DROP TABLE device;
 DROP TABLE device_state;
 DROP TABLE protocol;
@@ -10,10 +11,20 @@ CREATE TABLE capture (
     id INT PRIMARY KEY AUTO_INCREMENT,
     fileName TEXT,
     fileLoc TEXT,
-    fileMD5Hash BINARY(32) UNIQUE,
+	/*fileMD5Hash BINARY(32) UNIQUE,*/
+    fileHash VARCHAR(32) UNIQUE,
+    /*fileMD5Hash VARCHAR(32) UNIQUE,*/
     capDate DATETIME,
     activity TEXT,
     details TEXT
+);
+
+CREATE TABLE device_in_capture (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	fileName TEXT,
+	fileHash VARCHAR(32),
+    /*device_mac VARCHAR(17) UNIQUE*/
+    mac_addr VARCHAR(17)
 );
 
 CREATE TABLE device (
@@ -26,6 +37,7 @@ CREATE TABLE device (
     mudCapable BOOL DEFAULT FALSE,
     wifi BOOL DEFAULT FALSE,
     bluetooth BOOL DEFAULT FALSE,
+    3G BOOL DEFAULT FALSE,
     4G BOOL DEFAULT FALSE,
     5G BOOL DEFAULT FALSE,
     zigbee BOOL DEFAULT FALSE,
@@ -36,7 +48,9 @@ CREATE TABLE device (
 
 CREATE TABLE device_state (
     id INT AUTO_INCREMENT KEY,
-    fileMD5Hash BINARY(32),
+	/*fileMD5Hash BINARY(32),*/
+    fileHash VARCHAR(32),
+    /*fileMD5Hash VARCHAR(32),*/
     mac_addr VARCHAR(17),
     internalName VARCHAR(20),
     fw_ver TEXT,
@@ -46,7 +60,9 @@ CREATE TABLE device_state (
 
 CREATE TABLE protocol (
 	id INT AUTO_INCREMENT KEY,
-    fileMD5Hash BINARY(32),
+	/*fileMD5Hash BINARY(32),*/
+    fileHash VARCHAR(32),
+	/*fileMD5Hash VARCHAR(32),*/
     mac_addr VARCHAR(17),
     protocol TEXT,
     src_port INT,

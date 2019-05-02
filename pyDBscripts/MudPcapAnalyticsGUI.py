@@ -16,8 +16,13 @@ from tkinter.filedialog import askopenfilename
 from tkinter import *
 from tkinter.filedialog import askopenfilename
 '''
-#from tkinter import messagebox
 
+field2db = BiDict({'File':'fileName', 'Activity':'activity', 'Details':'details',
+                   'Date of Capture':'capDate', 'Time of Capture':'capTime',
+                   'Manufacturer':'mfr' ,'Model':'model', 'Internal Name':'internalName',
+                   'Category':'deviceCategory', 'Notes':'notes',
+                   'MUD':'mudCapable', 'WiFi':'wifi', 'Bluetooth':'bluetooth', 'Zigbee':'zigbee',
+                   'ZWave':'zwave', '3G':'G3', '4G':'G4', '5G':'G5', 'Other':'otherProtocols'})
 dbFields = 'host', 'database', 'user', 'passwd'
 #dbField2Var = {'Host' : 'host', 'Database' : 'database', 'Username' : 'user', 'Password' : 'passwd'}
 captureFields = 'File', 'Activity', 'Details'
@@ -32,6 +37,8 @@ deviceOptions = 'MUD', 'WiFi', 'Bluetooth', 'Zigbee', 'ZWave', '3G', '4G', '5G',
 deviceStateFields = 'Firmware Version' #maybe include this with device fields entry and note that it will be associated with the capture only
 
 #fields = 'Last Name', 'First Name', 'Job', 'Country'
+
+
 
 '''
 class popupWindow(object):

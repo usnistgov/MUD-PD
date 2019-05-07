@@ -106,6 +106,8 @@ to change width of column drag boundary
     def get(self, item):
         return self.tree.item(item)["values"]
 
+    def get_selected_row(self):
+        return self.get( self.selection()[0] )
 
     def focus(self, index):
         idx = self.tree.get_children()[index]

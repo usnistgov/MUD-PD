@@ -50,9 +50,174 @@ VALUES
 	("8b9c2749049c3e9909f95aca8c39e9ab", "20:EE:28:99:E6:FA", "iOS 12.1.4", "", "");
 
 SELECT * FROM device;
-
+SELECT * FROM device_in_capture;
+SELECT * FROM device_state;
 SELECT * FROM capture;
 /*INSERT INTO capture(capDate, capFileLoc, capFileHash, activity, details) VALUES();*/
+
+SELECT ds.internalName, ds.fw_ver, c.capDate
+FROM
+	device_state as ds
+		INNER JOIN
+	capture as c on ds.fileHash = c.fileHash
+WHERE
+	ds.mac_addr = '20:EE:28:99:E6:FA' AND
+	c.capDate < '2018-12-05';
+
+INSERT INTO device_state
+	(fileHash, mac_addr, fw_ver, ipv4_addr, ipv6_addr)
+VALUES
+	('9e87ca573940b2017fd0d338a9baee85', "20:EE:28:99:E6:FA", "iOS 19.9.9", "192.168.10.2", "");
+SELECT
+	q1.mac as MAC, q1.fwv as Firmware_Version, MAX(q1.cd) as most_recent_to_capture
+FROM
+	(SELECT
+		ds.fw_ver as fwv, c.capDate as cd, ds.mac_addr as mac
+	FROM
+		device_state as ds
+			INNER JOIN
+		capture as c on ds.fileHash = c.fileHash
+	WHERE
+		ds.mac_addr = '20:EE:28:99:E6:FA' AND
+		c.capDate < '2018-12-05') as q1
+GROUP BY q1.mac;
+
+/*Part 1*/
+SELECT
+		ds.id as id, ds.fw_ver as fwv, c.capDate as cd, ds.mac_addr as mac
+	FROM
+		device_state as ds
+			INNER JOIN
+		capture as c on ds.fileHash = c.fileHash
+	WHERE
+		ds.mac_addr = '20:EE:28:99:E6:FA' AND
+		c.capDate < '2018-12-05';
+
+SELECT
+		MAX(c.capDate) as cd
+	FROM
+		device_state as ds
+			INNER JOIN
+		capture as c on ds.fileHash = c.fileHash
+	WHERE
+		ds.mac_addr = '20:EE:28:99:E6:FA' AND
+		c.capDate < '2018-12-05';
+
+
+/*Part 2*/
+SELECT MAX(q1.cd) as capDate
+FROM (
+SELECT
+		ds.id as id, ds.fw_ver as fwv, c.capDate as cd, ds.mac_addr as mac
+	FROM
+		device_state as ds
+			INNER JOIN
+		capture as c on ds.fileHash = c.fileHash
+	WHERE
+		ds.mac_addr = '20:EE:28:99:E6:FA' AND
+		c.capDate < '2018-12-05'
+) AS q1
+GROUP BY q1.mac;        
+
+/*Part 3*/
+SELECT
+	capture.fileHash as fileHash
+FROM 
+	capture
+		INNER JOIN
+	(SELECT
+		MAX(q1.cd) as capDate
+	FROM
+		(SELECT
+			ds.id as id, ds.fw_ver as fwv, c.capDate as cd, ds.mac_addr as mac
+		FROM
+			device_state as ds
+				INNER JOIN
+			capture as c on ds.fileHash = c.fileHash
+		WHERE
+			ds.mac_addr = '20:EE:28:99:E6:FA' AND
+			c.capDate < '2018-12-05') AS q1
+	GROUP BY q1.mac) AS q2
+ON capture.capDate=q2.capDate;
+
+/*Part 4*/
+SELECT
+	ds.fw_ver
+FROM
+	device_state AS ds
+		INNER JOIN
+	(SELECT
+		capture.fileHash as fileHash
+	FROM 
+		capture
+			INNER JOIN
+		(SELECT
+			MAX(q1.cd) as capDate
+		FROM
+			(SELECT
+				ds.id as id, ds.fw_ver as fwv, c.capDate as cd, ds.mac_addr as mac
+			FROM
+				device_state as ds
+					INNER JOIN
+				capture as c on ds.fileHash = c.fileHash
+			WHERE
+				ds.mac_addr = '20:EE:28:99:E6:FA' AND
+				c.capDate < '2018-12-05') AS q1
+		GROUP BY q1.mac) AS q2
+		ON capture.capDate=q2.capDate) AS q3
+    ON ds.fileHash=q3.fileHash
+WHERE
+	ds.mac_addr = '20:EE:28:99:E6:FA';
+
+/*Part 3 as Part 4*/
+SELECT
+	ds.fw_ver
+FROM
+	device_state AS ds
+		INNER JOIN
+	(SELECT
+		capture.fileHash as fileHash
+	FROM 
+		capture
+			INNER JOIN
+		(SELECT
+			MAX(c.capDate) as capDate
+		FROM
+			device_state as ds
+				INNER JOIN
+			capture as c on ds.fileHash = c.fileHash
+		WHERE
+			ds.mac_addr = '26:f5:a2:b2:63:06' AND /*'20:EE:28:99:E6:FA' AND*/
+			c.capDate <= '2018-10-25 17:02:34'
+		) AS q1 ON capture.capDate=q1.capDate) AS q2
+    ON ds.fileHash=q2.fileHash
+WHERE
+	ds.mac_addr = '26:f5:a2:b2:63:06';/*'20:EE:28:99:E6:FA';*/
+
+SELECT capDate FROM capture WHERE fileHash='9e87ca573940b2017fd0d338a9baee85';
+
+
+
+
+
+
+SELECT q2.id, ds.fw_ver as Firmware_Version
+FROM device_state ds
+INNER JOIN (
+SELECT
+	q1.id as id, q1.mac as MAC, MAX(q1.cd) as most_recent_to_capture
+FROM
+	(SELECT
+		ds.id as id, ds.fw_ver as fwv, c.capDate as cd, ds.mac_addr as mac
+	FROM
+		device_state as ds
+			INNER JOIN
+		capture as c on ds.fileHash=c.fileHash
+	WHERE
+		ds.mac_addr = '20:EE:28:99:E6:FA' AND
+		c.capDate <= '2018-12-05') as q1
+GROUP BY q1.mac) q2 ON q2.id=ds.id;
+
 
 /*SELECT HEX(fileMD5Hash) from capture;
 SELECT fileMD5Hash from capture;*/
@@ -74,3 +239,21 @@ WHERE
 SELECT * FROM device_in_capture WHERE fileHash="8b9c2749049c3e9909f95aca8c39e9ab";
 
 SELECT * FROM capture;
+
+/*
+DELETE FROM device WHERE id=7;
+DELETE FROM device_in_capture WHERE id=12;
+*/
+
+SELECT * FROM device_in_capture WHERE fileHash="8b9c2749049c3e9909f95aca8c39e9ab";
+DELETE FROM device_state WHERE id=6;
+
+SELECT * FROM device_state;
+
+
+
+
+
+
+
+

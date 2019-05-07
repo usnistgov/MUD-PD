@@ -120,16 +120,7 @@ to change width of column drag boundary
     def append(self, item):
         self.tree.insert('', 'end', values=item)
         # adjust column's width if necessary to fit each value
-        
         self._adjust_width(item)
-        '''
-        for ix, val in enumerate(item):
-            col_w = tkFont.Font().measure(val)
-            print("col_w = ", col_w)
-            if self.tree.column(self.header[ix],width=None)<col_w:
-                self.tree.column(self.header[ix], width=col_w)
-        '''
-        #self._adjust_width()
 
     def append_unique(self, item):
         children = self.tree.get_children()

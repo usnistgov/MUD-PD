@@ -20,11 +20,16 @@ class CaptureDatabase:
                         #"VALUES (%s, %s, %s, %s, %s, %s);")
                         "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(details)s);")
 
+    add_device_in_capture = ("INSERT INTO device_in_capture "
+                             # TEXT      VARCHAR   VARCHAR
+                             "(fileName, fileHash, mac_addr) "
+                             "VALUES (%(fileName)s, %(fileHash)s, %(mac_addr)s);")
+
     add_device = ("INSERT INTO device "
-                       # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL        BOOL BOOL BOOL BOOL  BOOL       BOOL    BOOL   TEXT            TEXT
-                       "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, 4G, 5G,  wifi, bluetooth, zigbee, zwave, otherProtocols, notes) "
+                       # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT
+                       "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes) "
                        #"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
-                       "VALUES (%p(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, %(4G)s, %(5G)s, %(wifi)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s)")
+                       "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s)")
 
     add_device_state = ("INSERT INTO device_state "
                              # BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
@@ -49,6 +54,26 @@ class CaptureDatabase:
                                  "(SELECT mac_addr FROM device_in_capture WHERE"
                                  #" fileHash=%s);"
                                  " fileName=%s);")
+
+    #query_known_devices_from_capture = ("SELECT * FROM device_in_capture "
+    #                                    "WHERE fileHash = %s AND mac_addr = %s;")
+    query_known_devices_from_capture = ("SELECT mac_addr FROM device_in_capture "
+                                        "WHERE fileHash = %s;")
+
+    query_most_recent_fw_ver = ("SELECT ds.fw_ver FROM device_state AS ds "
+                                "INNER JOIN "
+                                "    (SELECT capture.fileHash as fileHash "
+                                "     FROM capture "
+                                "     INNER JOIN "
+                                "         (SELECT MAX(c.capDate) as capDate "
+                                "          FROM device_state as ds "
+                                "          INNER JOIN "
+                                "              capture as c on ds.fileHash = c.fileHash "
+                                "          WHERE ds.mac_addr = %(mac_addr)s AND "
+                                "                c.capDate <= %(capDate)s "
+                                "         ) AS q1 ON capture.capDate=q1.capDate "
+                                "     ) AS q2 ON ds.fileHash=q2.fileHash "
+                                " WHERE ds.mac_addr = %(mac_addr)s;")
 
     query_devices =  ("SELECT * FROM device;")
 
@@ -91,6 +116,10 @@ class CaptureDatabase:
         self.cursor.execute(self.add_device, data_device)
         self.cnx.commit()
 
+    def insert_device_in_capture(self, data_device_in_capture):
+        self.cursor.execute(self.add_device_in_capture, data_device_in_capture)
+        self.cnx.commit()
+
     def insert_device_state(self, data_device_state):
         self.cursor.execute(self.add_device_state, data_device_state)
         self.cnx.commit()
@@ -107,9 +136,14 @@ class CaptureDatabase:
         self.cursor.execute(self.query_imported_capture)
 
     def select_devices_from_cap(self, capture):
-        #print("select_devices_from_cap will eventually do something")
-        print(capture)
+        #print(capture)
         self.cursor.execute(self.query_device_from_capture, (capture,))
+
+    def select_known_devices_from_cap(self, fileHash):
+        self.cursor.execute(self.query_known_devices_from_capture, (fileHash,))
+
+    def select_most_recent_fw_ver(self, macdatemac):
+        self.cursor.execute(self.query_most_recent_fw_ver, macdatemac)
 
     def select_devices(self):
         self.cursor.execute(self.query_devices)

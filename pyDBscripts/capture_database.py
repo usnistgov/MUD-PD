@@ -82,6 +82,11 @@ class CaptureDatabase:
     query_device_macs = ("SELECT mac_addr FROM device;")
 
     query_device_state = ("SELECT * FROM device_state WHERE fileHash=%s AND mac_addr=%s;")
+
+    query_device_state_exact = ("SELECT * FROM device_state WHERE "
+                                " fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s AND "
+                                " internalName=%(internalName)s AND fw_ver=%(fw_ver)s AND "
+                                " ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
     
     query_device_communication = ("SELECT * FROM protocol WHERE device=%s;")
 
@@ -153,6 +158,9 @@ class CaptureDatabase:
 
     def select_device_state(self, hash, mac):
         self.cursor.execute(self.query_device_state, (hash, mac))
+
+    def select_device_state_exact(self, device_state_data):
+        self.cursor.execute(self.query_device_state_exact, device_state_data)
 
     def select_device_macs(self):
         self.cursor.execute(self.query_device_macs)                                                                                

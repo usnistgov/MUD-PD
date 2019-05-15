@@ -115,6 +115,9 @@ class  MudCaptureApplication(tk.Frame):
         self.parent = parent
         self.parent.title("MUDdy Networks") #MUDdy Airwaves
 
+        self.window_stack = []
+        self.yield_focus(self.parent)
+
         # Main menu bar
         self.fileMenu = tk.Menu(self.parent)
         self.parent.config(menu=self.fileMenu)
@@ -302,28 +305,42 @@ class  MudCaptureApplication(tk.Frame):
         self.parent.grid_columnconfigure(1, weight=3)
 
 
+    def yield_focus(self, window = None):
+        if len(self.window_stack) == 0:
+            if window == None:
+                print("Error with yielding focus")
+            else:
+                self.window_stack.append(window)
+                self.yield_focus()
+        elif window == None:
+            self.window_stack[-1].grab_set()
+            self.window_stack[-1].lift()
+            self.window_stack[-1].attributes('-topmost',True)
+        elif self.window_stack[-1] != window:
+            # Previously top window yield status
+            self.window_stack[-1].attributes('-topmost',False)
+
+            # Push new window to the top of the stack
+            self.window_stack.append(window)
+            self.yield_focus()
+
+            # Wait for window to close before yielding focus to next in stack
+            self.window_stack[-2].wait_window(self.window_stack[-1])
+            self.window_stack.pop()
+            self.yield_focus()
+
     def popup_connect2database(self):
-        #self.w = popupWindow(self.parent)
-        #self.w = tk.Toplevel(self.parent)
+        #self.w_db = tk.Toplevel(self.parent)
         self.w_db = tk.Toplevel()
         self.w_db.wm_title("Connect to Database")
-        #self.parent.wait_window(self.w_db)
-        #self.parent.wait_window(self.w)
 
         self.ents = self.make_form_database(dbFields)
 
-        #self.bind('<Return>', (lambda event, e=ents: self.fetch(e)))   
-        #self.bind('<Return>', (lambda event, e=self.ents: self.database_connect(e)))   
         self.bind('<Return>', (lambda event, e=self.ents: self.connect_and_close(e)))   
-        #self.bind('<Return>', (lambda event, e=self.ents: self.db_handler.db_connect(e)))   
 
         self.b_connect = tk.Button(self.w_db, text='Connect',
-                         #command=(lambda e=ents: self.fetch(e)))
-                                   #command=(lambda e=self.ents: self.database_connect(e)))
                                    command=(lambda e=self.ents: self.connect_and_close(e)))
-                                   #command=(lambda e=self.ents: self.db_handler.db_connect(e)))
-        #self.b_quit = tk.Button(self.w, text='Quit', command=self.__exit__)#self.parent.quit)
-        self.b_cancel = tk.Button(self.w_db, text='Cancel', command=self.w_db.destroy)#self.parent.quit)
+        self.b_cancel = tk.Button(self.w_db, text='Cancel', command=self.w_db.destroy)
 
         if sys.platform == "win32":
             self.b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
@@ -332,32 +349,26 @@ class  MudCaptureApplication(tk.Frame):
             self.b_connect.pack(side=tk.RIGHT, padx=5, pady=5)
             self.b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
 
+        #self.parent.wait_window(self.w_db)
+        #self.w_db.wait_window(self.w_db)
+        self.yield_focus(self.w_db)
+
+
     #def make_form_database(self, window, fields):
     def make_form_database(self, fields):
 #        self.winfo_toplevel().title("MUD Capture - Connect to Database")
-
-        self.db_handler = DatabaseHandler()
+        db_handler_temp = DatabaseHandler()
 
         entries = []
 
-        '''
-        try:
-            db_config = read_db_config()
-        except:
-            db_config = {"host": "", "database" : "", "user" : "", "passwd" : ""}
-        '''
-
         for field in fields:
-            #row = tk.Frame(self)
             row = tk.Frame(self.w_db)
-            #row = Frame(root)
             lab = tk.Label(row, width=15, text=field, anchor='w')
             if field == "passwd":
                 ent = tk.Entry(row, show="\u2022", width=15)
             else:
                 ent = tk.Entry(row)
-            #ent.insert( 10, db_config.get(field,"none") )
-            ent.insert( 10, self.db_handler.config.get(field,"none") )
+            ent.insert( 10, db_handler_temp.config.get(field,"none") )
 
             row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
             lab.pack(side=tk.LEFT)
@@ -367,15 +378,16 @@ class  MudCaptureApplication(tk.Frame):
         return entries
 
     def connect_and_close(self, entries):
-        self.db_handler.db_connect(entries)
+        db_handler_temp = DatabaseHandler()
 
-        if self.db_handler.connected:
+        db_handler_temp.db_connect(entries)
 
+        if db_handler_temp.connected:
+            self.db_handler = db_handler_temp
             self.status_var.set("Connected to " + self.db_handler.config.get("database","none"))
-            #self.status = tk.Label(self.parent, text="Connected to " + self.db_handler.config.get("database","none"), bd=1, relief=tk.SUNKEN, anchor=tk.W)
-            #self.status.pack(side=tk.BOTTOM, fill=tk.X)
             self.populate_capture_list()
             self.w_db.destroy()
+            
         else:
             tk.Tk().withdraw()
             messagebox.showerror("Error", "Problem connecting to database")
@@ -384,6 +396,8 @@ class  MudCaptureApplication(tk.Frame):
         self.w_cap = tk.Toplevel()
         self.w_cap.wm_title("Import Packet Capture")
         #self.parent.wait_window(self.w)
+        #self.yield_focus(self.w_cap)
+        #self.w_cap.grab_set()
 
         self.ents = self.make_form_capture(captureFields)
 
@@ -400,6 +414,8 @@ class  MudCaptureApplication(tk.Frame):
         else:
             self.b_import.pack(side=tk.RIGHT, padx=5, pady=5)
             self.b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+
+        self.yield_focus(self.w_cap)
 
     def openFileCallBack(self, entry):
         tk.Tk().withdraw() # we don't want a full GUI, so keep the root window from appearing
@@ -450,9 +466,9 @@ class  MudCaptureApplication(tk.Frame):
             data_capture = {
                 "fileName" : self.cap.fname,
                 "fileLoc" : self.cap.fdir,
-                "fileHash" : self.cap.filehash,
+                "fileHash" : self.cap.fileHash,
                 
-                "capDate" : epoch2datetime(float(self.cap.capDate)),
+                "capDate" : epoch2datetime(float(self.cap.capTimeStamp)),#epoch2datetime(float(self.cap.capDate)),
                 "activity" : entries[1][1].get(),
                 "details" : entries[2][1].get()
                 }
@@ -466,7 +482,7 @@ class  MudCaptureApplication(tk.Frame):
 
             # Import Devices
             #self.popup_import_capture_devices(self.cap)
-            self.popup_import_device()
+            #self.popup_import_device()
             '''
             for device in self.cap.uniqueMAC:
                 self.db_handler.db.insert_device(device)
@@ -481,6 +497,8 @@ class  MudCaptureApplication(tk.Frame):
             self.cap = cap
         #self.w_cap_dev.wm_title(cap.fname)
         self.w_cap_dev.wm_title(self.cap.fname)
+        #self.yield_focus(self.w_cap_dev)
+        #self.w_cap_dev.grab_set()
 
         self.topDevFrame = tk.Frame(self.w_cap_dev, width=600, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
         ents = self.make_form_capture_devices(captureInfoFields, self.cap.capDate, self.cap.capTime)
@@ -501,6 +519,7 @@ class  MudCaptureApplication(tk.Frame):
         self.unknown_dev_list = MultiColumnListbox(parent=self.unknownDevFrame,
                                                    header=self.unknown_dev_header,
                                                    list=list(), selectmode="browse")
+        self.unknown_dev_list.bind("<<TreeviewSelect>>", self.update_unknown_list_selection)
 
         ## Right (Known) Dev Frame
         self.knownDevFrame = tk.Frame(self.botDevFrame, width=300)#, bd=1, bg="#dfdfdf")
@@ -514,6 +533,7 @@ class  MudCaptureApplication(tk.Frame):
         self.known_dev_list = MultiColumnListbox(parent=self.knownDevFrame,
                                                  header=self.known_dev_header,
                                                  list=list(), selectmode="browse")
+        self.known_dev_list.bind("<<TreeviewSelect>>", self.update_known_list_selection)
 
 
         self.refresh_unknown_known_lists()
@@ -577,20 +597,35 @@ class  MudCaptureApplication(tk.Frame):
         #b_close = tk.Button(self.unknownDevFrame, text='Close', command=self.w_cap_dev.destroy)
         b_close = tk.Button(self.unknownDevFrame, text='Close', command=(lambda c=self.cap.fname : self.close_w_cap_dev(c)))
         b_import = tk.Button(self.unknownDevFrame, text='Import Device',
-                                  command=(lambda e=0, d={'fileName':self.cap.fname,'fileHash':self.cap.fileHash,
-                                                          'mac_addr':self.unknown_dev_list.get_selected_row()[1]}:
-                                               self.popup_import_device(self.unknown_dev_list.get_selected_row()[e],d)))
-
+                             command=(lambda f={'fileName':self.cap.fname,'fileHash':self.cap.fileHash}:
+                                          self.popup_import_device(f)))
+                                  #command=(lambda e=0, d={'fileName':self.cap.fname,'fileHash':self.cap.fileHash,
+                                  #                        'mac_addr':self.unknown_dev_list.get_selected_row()[1]}:
+                                  #             self.popup_import_device(self.unknown_dev_list.get_selected_row()[e],d)))
+                             
         b_modify = tk.Button(self.knownDevFrame, text='Modify State',
-                                  command=(lambda d=self.known_dev_list.selection(): self.prep_popup_update_device_state(d)))
+                             #command=(lambda d=self.known_dev_list.selection(): self.prep_popup_update_device_state(d)))
+                             command=(lambda d=self.known_dev_list.get_selected_row(): self.prep_popup_update_device_state(d)))
 
         b_close.pack(side=tk.LEFT, padx=5, pady=5)
         b_import.pack(side=tk.RIGHT, padx=5, pady=5)
         b_modify.pack(side=tk.RIGHT, padx=5, pady=5)
 
+        self.yield_focus(self.w_cap_dev)
+
+    def update_unknown_list_selection(self, event):
+        self.unknown_dev_list_sel = self.unknown_dev_list.get( self.unknown_dev_list.selection() )
+        print("self.known_dev_list_sel = ", self.unknown_dev_list_sel)
+
+    def update_known_list_selection(self, event):
+        self.known_dev_list_sel = self.known_dev_list.get( self.known_dev_list.selection() )
+        print("self.known_dev_list_sel = ", self.known_dev_list_sel)
+
     def prep_popup_update_device_state(self, d):
-        print(self.known_dev_list.get(d))
-        mac = self.known_dev_list.get(d)[4]
+        d = self.known_dev_list_sel
+        print("d = ",d)
+        #mac = self.known_dev_list.get(d)[4]
+        mac = d[4]
         self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
                                                       #'capDate'  : self.cap.capTimeStamp})
                                                       'capDate'  : self.cap.capDate + " " + self.cap.capTime})
@@ -603,8 +638,9 @@ class  MudCaptureApplication(tk.Frame):
             fw_ver = temp[0]
 
         device_state_data = {'fileHash'     : self.cap.fileHash,
-                             'mac_addr'     : mac,
-                             'internalName' : self.known_dev_list.get(d)[2],
+                             'mac_addr'     : mac.upper(),
+                             #'internalName' : self.known_dev_list.get(d)[2],
+                             'internalName' : d[2],
                              'fw_ver'       : fw_ver,
                              'ipv4_addr'    : self.cap.findIP(mac),
                              'ipv6_addr'    : self.cap.findIP(mac, v6=True)}
@@ -624,14 +660,19 @@ class  MudCaptureApplication(tk.Frame):
         # Sort devices from Capture into either known or unknown device lists
         self.db_handler.db.select_device_macs()
         macsInDb = self.db_handler.db.cursor.fetchall()
-
+        print("macsInDb: ", macsInDb)
+        print()
         self.db_handler.db.select_known_devices_from_cap(self.cap.fileHash)
         knownMacsInDb = self.db_handler.db.cursor.fetchall()
+        print("knownMacsInDb: ", knownMacsInDb)
+        print()
 
         #print(macsInDb)
         #print([x for (x,) in macsInDb])
         for mac in self.cap.uniqueMAC:
-            print(mac)
+            print("In for mac in self.cap.uniqueMAC")
+            print("\tmac", mac)
+            print("\tmfr = ", lookup_mac(mac))
             if mac.upper() in [x.upper() for (x,) in macsInDb]:
                 # Get device info
                 self.db_handler.db.select_device(mac)
@@ -652,10 +693,13 @@ class  MudCaptureApplication(tk.Frame):
                 # Check if the mac address is in the device_in_capture table and update if necessary
                 if mac.upper() not in [x.upper() for (x,) in knownMacsInDb]:
                     self.db_handler.db.insert_device_in_capture({'fileName':self.cap.fname,'fileHash':self.cap.fileHash,
-                                                                   'mac_addr':mac_addr})
+                                                                   'mac_addr':mac_addr.upper()})
 
                 self.known_dev_list.append((mfr, model, internalName, category, mac, ip, ipv6))
             else:
+                print("Not in macsInDb")
+                print("\tmac", mac)
+                print("\tmfr = ", lookup_mac(mac))
                 self.unknown_dev_list.append((lookup_mac(mac), mac, self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
 
 
@@ -691,13 +735,22 @@ class  MudCaptureApplication(tk.Frame):
                 lab.pack(side=tk.BOTTOM)
             '''
 
-    def popup_import_device(self, mfr, dev_in_cap_data):
+    #def popup_import_device(self, mfr, dev_in_cap_data):
+    def popup_import_device(self, fname):
         self.w_dev = tk.Toplevel()
         self.w_dev.wm_title("Import Devices")
+        #self.yield_focus(self.w_dev)
+        #self.w_dev.grab_set()
 
+        mfr = self.unknown_dev_list_sel[0]
+        mac = self.unknown_dev_list_sel[1].upper()
         print(mfr)
 
-        ents = self.make_form_device(deviceFields, deviceOptions, mfr, dev_in_cap_data['mac_addr'])
+        #ents = self.make_form_device(deviceFields, deviceOptions, mfr, dev_in_cap_data['mac_addr'])
+        ents = self.make_form_device(deviceFields, deviceOptions, mfr, mac)
+
+        dev_in_cap_data = fname
+        dev_in_cap_data['mac_addr'] = mac
 
         #self.w_dev.bind('<Return>', (lambda event, e=ents, d=dev_in_cap_data: self.import_dev_and_close(e,d)))
         
@@ -714,6 +767,9 @@ class  MudCaptureApplication(tk.Frame):
             b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
 
         b_import.pack(side=tk.RIGHT, padx=5, pady=5)
+
+        self.yield_focus(self.w_dev)
+
 
     def make_form_device(self, fields, options, mfr, mac_addr):
         entries = []
@@ -786,19 +842,31 @@ class  MudCaptureApplication(tk.Frame):
         self.db_handler.db.insert_device_in_capture(dev_in_cap_data)
         self.refresh_unknown_known_lists()
 
-        mac = device_in_cap_data['mac_addr']
+        #mac = device_in_cap_data['mac_addr']
+        mac = dev_in_cap_data['mac_addr']
         self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
                                                       #'capDate'  : self.cap.capTimeStamp})
                                                       'capDate'  : self.cap.capDate + " " + self.cap.capTime})
-        (fw_ver,) = self.db_handler.db.cursor.fetchone()
-        device_state_data = {'fileHash'     : device_in_cap_data['fileHash'],
+        try:
+            (fw_ver,) = self.db_handler.db.cursor.fetchone()
+        except TypeError as te:
+            fw_ver = ''
+            
+        #device_state_data = {'fileHash'     : device_in_cap_data['fileHash'],
+        device_state_data = {'fileHash'     : dev_in_cap_data['fileHash'],
                              'mac_addr'     : mac,
                              'internalName' : device_data['internalName'],
                              'fw_ver'       : fw_ver,
                              'ipv4_addr'    : self.cap.findIP(mac),
                              'ipv6_addr'    : self.cap.findIP(mac, v6=True)}
 
-        self.popup_update_device_state(device_state_data)
+        #asdf
+        try:
+            self.popup_update_device_state(device_state_data)
+        except _mysql_connector.MySQLInterfaceError as msqle:
+            tk.Tk().withdraw()
+            messagebox.showerror("Error", "Please create a unique Internal Name")
+
         #self.popup_update_device_state(device_in_cap_data['fileHash'], device_in_cap_data['mac_addr'])
         self.w_dev.destroy()
 
@@ -806,6 +874,8 @@ class  MudCaptureApplication(tk.Frame):
     def popup_update_device_state(self, device_state_data):
         self.w_dev_state = tk.Toplevel()
         self.w_dev_state.wm_title(device_state_data['internalName'])
+        #self.yield_focus(self.w_dev_state)
+        #self.w_dev_state.grab_set()
 
 
         ents = self.make_form_device_state(device_state_data)
@@ -823,6 +893,8 @@ class  MudCaptureApplication(tk.Frame):
         else:
             b_update.pack(side=tk.RIGHT, padx=5, pady=5)
             b_close.pack(side=tk.RIGHT, padx=5, pady=5)
+
+        self.yield_focus(self.w_dev_state)
 
 
     def make_form_device_state(self, device_state_data):
@@ -856,7 +928,13 @@ class  MudCaptureApplication(tk.Frame):
         #device_state_data['fw_ver'] = entries[str(field2db.inverse['fw_ver']).replace('[','').replace(']','').replace("'",'')]
         print(entries['fw_ver'].get())
         device_state_data['fw_ver'] = str(entries['fw_ver'].get())
-        self.db_handler.db.insert_device_state(device_state_data)
+        
+        # Check if there is already an entry for this data:
+        self.db_handler.db.select_device_state_exact(device_state_data)
+        temp = self.db_handler.db.cursor.fetchone()
+        print(temp)
+        if temp == None:
+            self.db_handler.db.insert_device_state(device_state_data)
         self.w_dev_state.destroy()
 
     def fetch(self,entries):
@@ -1084,6 +1162,8 @@ class  MudCaptureApplication(tk.Frame):
         w_about = tk.Toplevel()
         w_about.wm_title("About")
         #self.parent.wait_window(self.w)
+        #self.yield_focus(self.w_about)
+        #self.w_about.grab_set()
 
         summaryFrame = tk.Frame(w_about)
         summary = tk.Message(summaryFrame,
@@ -1109,6 +1189,7 @@ class  MudCaptureApplication(tk.Frame):
         closeFrame.pack(side="top", fill="x", padx=5, pady=2, expand=True)
         b_close.pack(side="bottom", padx=5, pady=5)
 
+        self.yield_focus(self.w_about)
 
     def __exit__(self):
         try:

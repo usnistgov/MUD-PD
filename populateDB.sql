@@ -239,16 +239,45 @@ WHERE
 SELECT * FROM device_in_capture WHERE fileHash="8b9c2749049c3e9909f95aca8c39e9ab";
 
 SELECT * FROM capture;
-
+DELETE FROM capture WHERE id=8;
 /*
-DELETE FROM device WHERE id=7;
-DELETE FROM device_in_capture WHERE id=12;
+SELECT * FROM device_in_capture;
+DELETE FROM device WHERE id=9;
+DELETE FROM device_in_capture WHERE id=19;
 */
 
 SELECT * FROM device_in_capture WHERE fileHash="8b9c2749049c3e9909f95aca8c39e9ab";
-DELETE FROM device_state WHERE id=6;
+DELETE FROM device_state WHERE id=10 or id=13;
 
 SELECT * FROM device_state;
+
+UPDATE device_state
+SET fw_ver = "iOS 18.8.8"
+WHERE mac_addr='20:EE:28:99:E6:FA' AND fileHash='9e87ca573940b2017fd0d338a9baee85';
+
+SELECT * from device;
+DELETE FROM device WHERE id=20;
+SELECT * from device_state;
+SELECT * from device_in_capture;
+DELETE FROM device_in_capture WHERE id=37;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

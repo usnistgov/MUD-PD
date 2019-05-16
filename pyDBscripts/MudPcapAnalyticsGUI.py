@@ -177,7 +177,7 @@ class  MudCaptureApplication(tk.Frame):
 
         # capture list
         self.cap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
-        self.cap_list = MultiColumnListbox(self.capFrame, self.cap_header, list())
+        self.cap_list = MultiColumnListbox(self.capFrame, self.cap_header, list(), keep1st=True)
         #self.cap_list.bind("<<ListboxSelect>>", self.update_dev_list)
         self.cap_list.bind("<<TreeviewSelect>>", self.update_dev_list)
         '''
@@ -249,7 +249,7 @@ class  MudCaptureApplication(tk.Frame):
         # device list
         #self.dev_list = tk.Listbox(self.devFrame, yscrollcommand = self.dev_scrollbar.set, selectmode="extended", exportselection=0, bd=0)
         self.dev_header = ["Manufacturer", "Model", "Internal Name", "MAC", "Category"]
-        self.dev_list = MultiColumnListbox(self.devFrame, self.dev_header, list())
+        self.dev_list = MultiColumnListbox(self.devFrame, self.dev_header, list(), keep1st=True)
         self.dev_list.bind("<<ListboxSelect>>", self.update_comm_list)
 
         '''
@@ -967,7 +967,7 @@ class  MudCaptureApplication(tk.Frame):
     def populate_capture_list(self):
         # clear previous list
         self.cap_list.clear()
-        self.cap_list.append((" All...",))
+        self.cap_list.append(("All...",))
 
         # Get and insert all captures currently added to database
         self.db_handler.db.select_imported_captures()
@@ -1020,7 +1020,7 @@ class  MudCaptureApplication(tk.Frame):
             cap_details = self.cap_list.get(cap)
             cap_date = cap_details[0]
 
-            if cap_date == " All...":
+            if cap_date == "All...":
                 self.populate_device_list()
                 break
             else:
@@ -1033,7 +1033,7 @@ class  MudCaptureApplication(tk.Frame):
         # clear previous list
         if not append:
             self.dev_list.delete(0,tk.END)
-            self.dev_list.insert(tk.END, " All...")
+            self.dev_list.insert(tk.END, "All...")
 
         # Get and insert all captures currently added to database
         if capture == None:
@@ -1067,7 +1067,7 @@ class  MudCaptureApplication(tk.Frame):
         # clear previous list
         if not append:
             self.dev_list.clear()
-            self.dev_list.append((" All...",))
+            self.dev_list.append(("All...",))
 
         # Get and insert all captures currently added to database
         if capture == None:
@@ -1100,7 +1100,7 @@ class  MudCaptureApplication(tk.Frame):
                 print("dev = " + dev_name)
             else:
                 print("dev = " + str(dev_name(0)))
-            if dev_name == " All...":
+            if dev_name == "All...":
                 #self.db_handler.db.select_imported_captures()
                 print("Processing \'All...\'")
                 #for device in self.dev_list()

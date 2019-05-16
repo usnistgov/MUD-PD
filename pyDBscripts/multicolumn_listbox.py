@@ -17,13 +17,14 @@ PAD_X = 5
 class MultiColumnListbox(object):
     """use a ttk.TreeView as a multicolumn ListBox"""
 
-    def __init__(self, parent, header, list, selectmode="extended"):
+    def __init__(self, parent, header, list, selectmode="extended", keep1st=False):
         self.parent = parent
         self.header = header
 
         self.tree = None
         self._setup_widgets(selectmode)
         self._build_tree(list)
+        self.keep1st = keep1st
         #self._setup_widgets(header, selectmode)
         #self._build_tree(header, list)
 
@@ -83,8 +84,15 @@ to change width of column drag boundary
         # if the data to be sorted is numeric change to float
         #data =  change_numeric(data)
         # now sort the data in place
+        if self.keep1st:
+            first = data.pop(0)
         data.sort(reverse=descending)
+        if self.keep1st:
+            data.insert(0, first)
+
         for ix, item in enumerate(data):
+            if self.keep1st and ix == 0:
+                continue
             self.tree.move(item[1], '', ix)
         # switch the heading so it will sort in the opposite direction
         self.tree.heading(col, command=lambda col=col: self._sortby(col, int(not descending)))

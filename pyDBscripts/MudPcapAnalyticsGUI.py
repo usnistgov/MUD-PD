@@ -285,20 +285,26 @@ class  MudCaptureApplication(tk.Frame):
         self.w_db = tk.Toplevel()
         self.w_db.wm_title("Connect to Database")
 
-        self.ents = self.make_form_database(dbFields)
+        ents = self.make_form_database(dbFields)
 
-        self.bind('<Return>', (lambda event, e=self.ents: self.connect_and_close(e)))   
+        self.bind('<Return>', (lambda event, e=ents: self.connect_and_close(e)))   
 
-        self.b_connect = tk.Button(self.w_db, text='Connect',
-                                   command=(lambda e=self.ents: self.connect_and_close(e)))
-        self.b_cancel = tk.Button(self.w_db, text='Cancel', command=self.w_db.destroy)
+        b_connect = tk.Button(self.w_db, text='Connect',
+                                   command=(lambda e=ents: self.connect_and_close(e)))
+        b_cancel = tk.Button(self.w_db, text='Cancel', command=self.w_db.destroy)
 
         if sys.platform == "win32":
-            self.b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
-            self.b_connect.pack(side=tk.RIGHT, padx=5, pady=5)
+            b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+            b_connect.pack(side=tk.RIGHT, padx=5, pady=5)
         else:
-            self.b_connect.pack(side=tk.RIGHT, padx=5, pady=5)
-            self.b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+            b_connect.pack(side=tk.RIGHT, padx=5, pady=5)
+            b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+
+        # Save checkbutton
+        checkvar = tk.IntVar()
+        ckb_save = tk.Checkbutton(self.w_db, text="Save", width=7, justify=tk.LEFT, variable=checkvar)
+        ckb_save.pack(side=tk.LEFT, anchor=tk.W, padx=5)
+        ents.append(("Save", checkvar))
 
         self.yield_focus(self.w_db)
 
@@ -309,7 +315,7 @@ class  MudCaptureApplication(tk.Frame):
 
         for field in fields:
             row = tk.Frame(self.w_db)
-            lab = tk.Label(row, width=15, text=field, anchor='w')
+            lab = tk.Label(row, width=12, text=field, anchor='w')
             if field == "passwd":
                 ent = tk.Entry(row, show="\u2022", width=15)
             else:
@@ -325,17 +331,34 @@ class  MudCaptureApplication(tk.Frame):
 
     def connect_and_close(self, entries):
         db_handler_temp = DatabaseHandler()
+        (save_name, save_var) = entries.pop()
+        save_val = save_var.get()
+        print(save_name, " = ", save_var, " = ", save_val)
+
         db_handler_temp.db_connect(entries)
 
         if db_handler_temp.connected:
             self.db_handler = db_handler_temp
             self.status_var.set("Connected to " + self.db_handler.config.get("database","none"))
             self.populate_capture_list()
+            if save_val:
+                self.popup_confirm_save()
             self.w_db.destroy()
             
         else:
+            tk.messagebox.showerror("Error", "Problem connecting to database")
+            entries.append((save_name, save_var))
+            '''
             tk.Tk().withdraw()
             messagebox.showerror("Error", "Problem connecting to database")
+            '''
+
+    def popup_confirm_save(self):
+        confirm = tk.messagebox.askyesno("MUDdy Networks", "Are you sure you want to save this configuration?\n\nAny existing configuration will be OVERWRITTEN.")
+        save_pwd = tk.messagebox.askyesno("WARNING", "Password will be saved in plaintext.\n\nSave password anyway?")
+        print(confirm)
+        if confirm:
+            self.db_handler.save_db_config(save_pwd=save_pwd)
 
     def popup_import_capture(self):
         self.w_cap = tk.Toplevel()
@@ -1050,23 +1073,30 @@ class DatabaseHandler:
 
         return db
 
-    def save_db_config(self, filename='config.ini', section='mysql'):
+    def save_db_config(self, filename='config.ini', section='mysql', save_pwd=False):
         f = open(filename, "w")
-        f.write("[{%s}]", section)
-        for key,val in self.db_config:
-            f.write("\n{%s} = {%s}", key, val)
+        f.write("[%s]" % section)
+
+        for key in self.db_config:
+            if save_pwd or key != "passwd":
+                f.write("\n%s = %s" % (key, self.db_config[key]))
+            else:
+                f.write("\n%s = " % key)
+
+        f.write("\n")
         f.close()
         
     def db_connect(self, entries):
-        db_config = {}
+        self.db_config = {}
 
         for entry in entries:
             field = entry[0]
             text  = entry[1].get()
-            db_config[field] = text
+            print(field, " = ", text)
+            self.db_config[field] = text
 
         try:
-            self.db = CaptureDatabase(db_config)
+            self.db = CaptureDatabase(self.db_config)
         except:
             self.connected = False
         else:

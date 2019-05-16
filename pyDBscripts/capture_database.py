@@ -231,7 +231,7 @@ class DatabaseHandler:
 class CaptureDigest:
 
 
-    def __init__(self, fpath):
+    def __init__(self, fpath):#, gui=False):
         self.fdir, self.fname = os.path.split(fpath)
         self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
         self.cap = pyshark.FileCapture(fpath)

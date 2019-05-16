@@ -178,13 +178,14 @@ class  MudCaptureApplication(tk.Frame):
                               #                                 : self.cap_list.selection(x)[idx].get(self.cap_header[hd0]) +
                               #                                   self.cap_list.selection(x)[idx].get(self.cap_header[hd1])))
                               #         : self.popup_import_capture_devices(c)))
-                              
+                              command=self.pre_popup_import_capture_devices)
+        '''
                               command=(lambda hd0=4, hd1=1 :
                                            self.popup_import_capture_devices(
                     CaptureDigest(
                         self.cap_list.get_selected_row()[hd0] + "/" +
                         self.cap_list.get_selected_row()[hd1]))))
-
+        '''
         b_inspect.pack(side="right")
         self.cap = None
 
@@ -426,11 +427,25 @@ class  MudCaptureApplication(tk.Frame):
             self.w_cap.destroy()
 
 
+    def pre_popup_import_capture_devices(self):
+        sel_cap_path = self.cap_list.get_selected_row()[4] + "/" + self.cap_list.get_selected_row()[1]
+
+        if self.cap == None or (self.cap.fdir + "/" + self.cap.fname) != sel_cap_path:
+            #self.popup_import_capture_devices( CaptureDigest(sel_cap_path, gui=True) )
+            self.popup_import_capture_devices( CaptureDigest(sel_cap_path) )
+        else:
+            self.popup_import_capture_devices()
+
     #def popup_import_capture_devices(self, cap):
-    def popup_import_capture_devices(self, cap):
+    def popup_import_capture_devices(self, cap=None):
         self.w_cap_dev = tk.Toplevel()
-        if self.cap == None or self.cap != cap:
-            self.cap = cap
+
+        if cap == None:
+            if self.cap == None:# or self.cap != cap:
+                print("Error: If no previous capture imported, a capture file must be provided.")
+        elif self.cap == None:
+                self.cap = cap
+
         self.w_cap_dev.wm_title(self.cap.fname)
 
         self.topDevFrame = tk.Frame(self.w_cap_dev, width=600, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
@@ -966,9 +981,6 @@ class  MudCaptureApplication(tk.Frame):
     def popup_about(self):
         w_about = tk.Toplevel()
         w_about.wm_title("About")
-        #self.parent.wait_window(self.w)
-        #self.yield_focus(self.w_about)
-        #self.w_about.grab_set()
 
         summaryFrame = tk.Frame(w_about)
         summary = tk.Message(summaryFrame,
@@ -1052,7 +1064,6 @@ class DatabaseHandler:
             field = entry[0]
             text  = entry[1].get()
             db_config[field] = text
-            #print('%s: "%s"' % (field, text)) 
 
         try:
             self.db = CaptureDatabase(db_config)

@@ -4,12 +4,21 @@ from bidict import BiDict
 from capture_database import CaptureDatabase
 #from capture_database import DatabaseHandler
 from capture_database import CaptureDigest
+from datetime import datetime
 import hashlib
 from lookup import lookup_mac, lookup_hostname
+import math
 from multicolumn_listbox import MultiColumnListbox
+#from multiprocessing import Process, Queue
+import multiprocessing
+import pyshark
+import subprocess
 import sys
+import time
+import concurrent
 
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename
 '''
@@ -113,7 +122,8 @@ class  MudCaptureApplication(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
-        self.parent.title("MUDdy Networks") #MUDdy Airwaves
+        #self.parent.title("MUDdy Networks") #MUDdy Airwaves
+        self.parent.title("MUDPI - MUD Profiling for IoT") #MUDdy Airwaves
 
         self.window_stack = []
         self.yield_focus(self.parent)
@@ -148,7 +158,8 @@ class  MudCaptureApplication(tk.Frame):
         b_import.pack(side="left")
 
 
-        b_y = tk.Button(self.menuFrame, text="Generate MUD File", fg="gray", highlightbackground="#dfdfdf", wraplength=80)#, anchor=tk.N+tk.W)
+        #b_y = tk.Button(self.menuFrame, state="disabled", text="Generate MUD File", highlightbackground="#dfdfdf", wraplength=80)#, anchor=tk.N+tk.W)
+        b_y = tk.Button(self.menuFrame, state="disabled", text="Generate MUD File", wraplength=80)#, anchor=tk.N+tk.W)
         b_y.pack(side="left")
 
         ### Left (capture) frame ###
@@ -225,14 +236,27 @@ class  MudCaptureApplication(tk.Frame):
         self.comm_scrollbar.pack(side="right", fill="both")
 
         # communication list
+        self.comm_header = ["Time", "MAC", "IPver", "Source", "Destination", "Protocol", "Transport Protocol", "Source Port",
+                            #"Destination Port", "Length", "Direction", "Raw"] #Direction being NS or EW
+                            "Destination Port", "Length", "Raw"] #Direction being NS or EW
+        self.comm_list = MultiColumnListbox(self.commFrame, self.comm_header, list())#, keep1st=True)
+        #self.comm_list.bind("<<ListboxSelect>>", self.update_comm_list)
+
+        '''
         self.comm_list = tk.Listbox(self.commFrame, yscrollcommand = self.comm_scrollbar.set, selectmode="extended", exportselection=0, bd=0)
-        # dummy data
-        '''
-        for line in range(10):
-            self.comm_list.insert(tk.END, "This is line number " + str(line))
-        '''
+
         self.comm_list.pack(side="left", fill="both", expand=True)
         self.comm_scrollbar.config( command = self.comm_list.yview )
+        '''
+
+        self.comm_state = "any"
+        self.b_ns = tk.Button(self.commFrame, text="N/S", command=(lambda b="ns" : self.modify_comm_state(b)))
+        self.b_ew = tk.Button(self.commFrame, text="E/W", command=(lambda b="ew" : self.modify_comm_state(b)))
+        self.b_internal = tk.Button(self.commFrame, text="Subnets", command=self.popup_internal_addr_list)
+
+        self.b_ns.pack(side="left")
+        self.b_ew.pack(side="left")
+        self.b_internal.pack(side="right")
 
         self.commFrame.pack(side="top", fill="both", expand=True)
 
@@ -265,12 +289,18 @@ class  MudCaptureApplication(tk.Frame):
                 self.window_stack.append(window)
                 self.yield_focus()
         elif window == None:
+            self.window_stack[-1].focus_set()
             self.window_stack[-1].grab_set()
+            if self.window_stack[-1] != self.parent:
+                self.window_stack[-1].transient(self.parent)
             self.window_stack[-1].lift()
             self.window_stack[-1].attributes('-topmost',True)
+            self.window_stack[-1].attributes('-topmost',False)
         elif self.window_stack[-1] != window:
             # Previously top window yield status
             self.window_stack[-1].attributes('-topmost',False)
+            #self.window_stack[-1].focus_release()
+            self.window_stack[-1].grab_release()
 
             # Push new window to the top of the stack
             self.window_stack.append(window)
@@ -278,8 +308,21 @@ class  MudCaptureApplication(tk.Frame):
 
             # Wait for window to close before yielding focus to next in stack
             self.window_stack[-2].wait_window(self.window_stack[-1])
+            #self.window_stack[-1].focus_release()
+            self.window_stack[-1].grab_release()
             self.window_stack.pop()
             self.yield_focus()
+        #else:
+            # Remove the current top window from the stack and destroy
+            '''
+            self.window_stack[-1].attributes('-topmost',False)
+            w = self.window_stack.pop()
+            w.destroy()
+            self.yield_focus()
+            '''
+        #    self.window_stack[-1].destroy()
+
+
 
     def popup_connect2database(self):
         self.w_db = tk.Toplevel()
@@ -354,7 +397,7 @@ class  MudCaptureApplication(tk.Frame):
             '''
 
     def popup_confirm_save(self):
-        confirm = tk.messagebox.askyesno("MUDdy Networks", "Are you sure you want to save this configuration?\n\nAny existing configuration will be OVERWRITTEN.")
+        confirm = tk.messagebox.askyesno("MUDPI - Profiling IoT", "Are you sure you want to save this configuration?\n\nAny existing configuration will be OVERWRITTEN.")
         save_pwd = tk.messagebox.askyesno("WARNING", "Password will be saved in plaintext.\n\nSave password anyway?")
         print(confirm)
         if confirm:
@@ -417,19 +460,185 @@ class  MudCaptureApplication(tk.Frame):
         return entries
 
 
+    def import_with_progbar(self, cap=None):
+        #tk.Tk().withdraw()
+        self.w_import_progress = tk.Toplevel()
+        self.w_import_progress.wm_title("Capture Import")
+        self.w_import_progress.geometry("200x50")
+        if cap != None:
+            self.cap = cap
+        #self.cap = cap
+
+        tk.Label(self.w_import_progress, text="Import progress", width=20).grid(row=0, column=0)
+
+        progress_var = tk.IntVar()
+        progress_bar = ttk.Progressbar(self.w_import_progress, variable=progress_var, maximum=self.cap.fsize)
+        progress_bar.grid(row=1, column=0)
+        self.w_import_progress.pack_slaves()
+
+        progress_var.set(self.cap.progress)
+        self.w_import_progress.update()
+        
+        #start = datetime.now()
+        def update_progress():
+            for i, pkt in enumerate(self.cap.cap):
+                if i % 4095 == 0:
+                    progress_var.set(self.cap.progress)
+                    self.w_import_progress.update()
+                self.cap.append_pkt(pkt)
+
+            progress_var.set(self.cap.progress)
+            self.w_import_progress.update()
+            self.w_import_progress.destroy()
+
+            self.cap.id_unique_addrs()
+
+        def try_multiple_operations(pkt):
+            try:
+                self.cap.append_pkt(pkt)
+            except:
+                print("error with item")
+
+        def digest_segment(file, results, status, proc):
+            print(file, results, status, proc)
+            cap = pyshark.FileCapture(file)
+            for pkt in cap:
+                results[proc].append(pkt)
+                #status += 1
+
+            print("number of packets", len(results[proc]))
+            '''
+            if proc:
+                for pkt in pyshark.FileCapture(file):
+                    results.append(pkt)
+                    status += 1
+            else:
+                for i, pkt in enumerate(pyshark.FileCapture(file)):
+                    results.append(pkt)
+                    status += 1
+                    if i % 1024 == 0:
+                        progress_var.set(sum(self.stat))
+                        self.w_import_progress.update()
+                        
+                progress_var.set(sum(self.stat))
+                self.w_import_progress.update()
+                self.w_import_progress.destroy()
+            ''' 
+
+        #executor = concurrent.futures.ProcessPoolExecutor(10)
+        #futures = [executor.submit(try_multiple_operations, group) for group in grouper(5, self.cap.cap)]
+        #self.w_import_progress.after(0, futures = [executor.submit(try_multiple_operations, pkt) for pkt in self.cap.cap])
+        #self.w_import_progress.after(0, concurrent.futures.wait(futures))
+
+        #num_pkts = int(cln.sub('', str(subprocess.check_output("capinfos -c " + fname, stderr=subprocess.STDOUT, shell=True).split()[-1])))
+        start = datetime.now()
+
+        try:
+            #num_pkts = subprocess.check_output("capinfos -c -M " + self.cap.fpath, stderr=subprocess.STDOUT, shell=True).decode('ascii').split()[-1].replace(',', '')
+            #num_pkts = int(subprocess.check_output("capinfos -c -M " + self.cap.fpath, stderr=subprocess.STDOUT, shell=True).decode('ascii').split()[-1])
+            num_pkts = int(subprocess.check_output("capinfos -c -M " + self.cap.fpath, stderr=subprocess.PIPE, shell=True).decode('ascii').split()[-1])
+        except Exception as e:
+            output = e.output
+            print(str(output))
+            num_pkts = int(output.decode('ascii').split()[-1])
+
+        print("num_pkts", num_pkts)
+        num_threads = multiprocessing.cpu_count()
+        num_threads = 2
+        temp = "./.temp/"
+        #;lkj
+        # Packets per process
+        ppp = math.ceil(num_pkts / num_threads)
+        print("packets per process =", ppp)
+        #subprocess.call("rm -f ./.temp/*", stderr=subprocess.STDOUT, shell=True))
+        #subprocess.call(["rm", temp+"*"], stderr=subprocess.STDOUT, shell=True)
+        subprocess.call("rm " + temp+"*", stderr=subprocess.PIPE, shell=True)
+        
+        #subprocess.call(["editcap", "-c", str(ppp), fname, " ./.temp/split.pcap"], stderr=subprocess.STDOUT, shell=True) 
+        #subprocess.call(["editcap", "-c", str(ppp), self.cap.fpath, temp+"split.pcap"], stderr=subprocess.STDOUT, shell=True) 
+        subprocess.call(["editcap", "-c", str(ppp), self.cap.fpath, temp+"split.pcap"], stderr=subprocess.PIPE, shell=True) 
+
+        files = subprocess.check_output(["ls", temp]).decode('ascii').split()
+        jobs = []
+        self.res = [[]]*num_threads
+        self.stat = [0]*num_threads
+
+        for i, f in enumerate(files):
+            proc = multiprocessing.Process(target=digest_segment, args=(temp+f, self.res, self.stat[i], i))
+            jobs.append(proc)
+
+        for j in jobs:
+            #j.start()
+            self.w_import_progress.after(0, j.start)
+
+        for i,j in enumerate(jobs):
+            j.join()
+            print("job", i, "complete")
+            print(len(self.res[i]))
+
+        #self.w_import_progress.after(0, update_progress)
+
+        self.cap.pkt = [y for x in self.res for y in x]
+
+        stop = datetime.now()
+        print("time to process = ", (stop-start).total_seconds())
+
+        print("number of packets = ", len(self.cap.pkt))
+        #self.w_import_progress.after(10, self.cap.import_pkts())
+
+        self.yield_focus(self.w_import_progress)
+        #print("yielded focus")
+
+        '''
+        #while self.cap.progress < self.cap.fsize:
+        for pkt in self.cap.cap:
+            progress_var.set(self.cap.progress)
+            self.w_import_progress.update()
+            self.cap.append_pkt(pkt)
+            #time.sleep(5)
+        #p.join()
+        '''
+        #stop = datetime.now()
+        #print("time to import = ", (stop-start).total_seconds())
+        #return
+        #self.w_import_progress.destroy()
+
     def import_and_close(self, entries):
 
         #Check if capture is already in database (using md5hash)
         filehash = hashlib.md5(open(entries[0][1].get(),'rb').read()).hexdigest()
         self.db_handler.db.select_unique_captures()
 
-        if any(filehash in hash for hash in self.db_handler.db.cursor):
+        captures = self.db_handler.db.cursor.fetchall()
+        #print(type(captures))
+        #print(captures)
+
+        #if any(filehash in hash for hash in self.db_handler.db.cursor):
+        if any(filehash in hash for hash in captures):
             tk.Tk().withdraw()
             messagebox.showerror("Error", "Capture file already imported into database")
         else:
-            tk.Tk().withdraw()
-            messagebox.showinfo("Importing", "Please wait for the capture file to be processed")
+            #tk.Tk().withdraw()
+            #self.cap = CaptureDigest(entries[0][1].get())
+            #self.import_progress()
+            #self.cap.import_pkts()
+
             self.cap = CaptureDigest(entries[0][1].get())
+            #:LKJ
+            '''
+            if self.cap.fsize > 512000:
+                self.import_with_progbar()
+            else:
+                self.import_with_progbar()
+            '''
+                #self.cap.import_pkts()
+            #:LKJ
+            self.cap.import_pkts()
+
+            #self.import_with_progbar(CaptureDigest(entries[0][1].get()))
+            
+            print("finished importing")
+            #messagebox.showinfo("Importing", "Please wait for the capture file to be processed")
 
             data_capture = {
                 "fileName" : self.cap.fname,
@@ -441,11 +650,19 @@ class  MudCaptureApplication(tk.Frame):
                 "details" : entries[2][1].get()
                 }
 
+
             # Popup window
+            #self.yield_focus(self.w_cap)
+            print("(A) popup_import_capture_devices")
             self.popup_import_capture_devices(self.cap)
 
+            print("(B) db_handler.db.insert_capture")
             self.db_handler.db.insert_capture(data_capture)
+            print("(C) populate_capture_list")
             self.populate_capture_list()
+
+            print("(D) import_packets")
+            self.import_packets(self.cap)
 
             self.w_cap.destroy()
 
@@ -455,7 +672,28 @@ class  MudCaptureApplication(tk.Frame):
 
         if self.cap == None or (self.cap.fdir + "/" + self.cap.fname) != sel_cap_path:
             #self.popup_import_capture_devices( CaptureDigest(sel_cap_path, gui=True) )
-            self.popup_import_capture_devices( CaptureDigest(sel_cap_path) )
+            start = datetime.now()
+            self.cap = CaptureDigest(sel_cap_path)
+
+
+            #:LKJ
+            '''
+            if self.cap.fsize > 512000:
+                self.import_with_progbar()
+            else:
+                self.import_with_progbar()
+                #self.cap.import_pkts()
+            '''
+            #:LKJ
+            self.cap.import_pkts()
+
+
+            #self.import_with_progbar( CaptureDigest(sel_cap_path) )
+            stop = datetime.now()
+            print("time to import = ", (stop-start).total_seconds())
+            #self.popup_import_capture_devices( cap=self.cap )
+            self.popup_import_capture_devices()
+            #self.popup_import_capture_devices( CaptureDigest(sel_cap_path) )
         else:
             self.popup_import_capture_devices()
 
@@ -467,7 +705,7 @@ class  MudCaptureApplication(tk.Frame):
             if self.cap == None:# or self.cap != cap:
                 print("Error: If no previous capture imported, a capture file must be provided.")
         elif self.cap == None:
-                self.cap = cap
+            self.cap = cap
 
         self.w_cap_dev.wm_title(self.cap.fname)
 
@@ -507,8 +745,6 @@ class  MudCaptureApplication(tk.Frame):
         self.known_dev_list.bind("<<TreeviewSelect>>", self.update_known_list_selection)
 
 
-        self.refresh_unknown_known_lists()
-
         # Grid placements #
         self.topDevFrame.grid(row=0, column=0, sticky="new")
         self.botDevFrame.grid(row=1, column=0, sticky="nsew")
@@ -524,28 +760,52 @@ class  MudCaptureApplication(tk.Frame):
         self.w_cap_dev.grid_rowconfigure(1, weight=1)
         self.w_cap_dev.grid_columnconfigure(0, weight=1)
 
+        '''
         # Select first element of each list
+        # Try becuase the list might be empty
         self.unknown_dev_list.focus(0)
         self.unknown_dev_list.selection_set(0)
         self.known_dev_list.focus(0)
         self.known_dev_list.selection_set(0)
 
+        try:
+            self.unknown_dev_list.focus(0)
+            self.unknown_dev_list.selection_set(0)
+        except:
+            pass
+
+        try:
+            self.known_dev_list.focus(0)
+            self.known_dev_list.selection_set(0)
+        except:
+            pass
+        '''
+
         # Buttons #
-        b_close = tk.Button(self.unknownDevFrame, text='Close', command=(lambda c=self.cap.fname : self.close_w_cap_dev(c)))
-        b_import = tk.Button(self.unknownDevFrame, text='Import Device',
+        self.b_cap_dev_close = tk.Button(self.unknownDevFrame, text='Close', command=(lambda c=self.cap.fname : self.close_w_cap_dev(c)))
+        self.b_cap_dev_import = tk.Button(self.unknownDevFrame, text='Import Device', state='disabled',
                              command=(lambda f={'fileName':self.cap.fname,'fileHash':self.cap.fileHash}:
                                           self.popup_import_device(f)))
                                   #command=(lambda e=0, d={'fileName':self.cap.fname,'fileHash':self.cap.fileHash,
                                   #                        'mac_addr':self.unknown_dev_list.get_selected_row()[1]}:
                                   #             self.popup_import_device(self.unknown_dev_list.get_selected_row()[e],d)))
                              
-        b_modify = tk.Button(self.knownDevFrame, text='Modify State',
+        self.b_cap_dev_modify = tk.Button(self.knownDevFrame, text='Modify State', state='disabled',
                              #command=(lambda d=self.known_dev_list.selection(): self.prep_popup_update_device_state(d)))
                              command=(lambda d=self.known_dev_list.get_selected_row(): self.prep_popup_update_device_state(d)))
 
-        b_close.pack(side=tk.LEFT, padx=5, pady=5)
-        b_import.pack(side=tk.RIGHT, padx=5, pady=5)
-        b_modify.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.b_cap_dev_close.pack(side=tk.LEFT, padx=5, pady=5)
+        self.b_cap_dev_import.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.b_cap_dev_modify.pack(side=tk.RIGHT, padx=5, pady=5)
+
+        # Update unknown, known lists and try to select the first element
+        self.refresh_unknown_known_lists()
+        # Select first element of each list
+        # Try becuase the list might be empty
+        self.unknown_dev_list.focus(0)
+        self.unknown_dev_list.selection_set(0)
+        self.known_dev_list.focus(0)
+        self.known_dev_list.selection_set(0)
 
         self.yield_focus(self.w_cap_dev)
 
@@ -559,13 +819,14 @@ class  MudCaptureApplication(tk.Frame):
 
     def prep_popup_update_device_state(self, d):
         d = self.known_dev_list_sel
-        print("d = ",d)
+        #print("d = ",d)
         mac = d[4]
         self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
                                                       #'capDate'  : self.cap.capTimeStamp})
                                                       'capDate'  : self.cap.capDate + " " + self.cap.capTime})
         print(self.cap.capTimeStamp)
         temp = self.db_handler.db.cursor.fetchone()
+        print("temp: ", temp)
 
         if temp == None:
             fw_ver = ''
@@ -576,9 +837,14 @@ class  MudCaptureApplication(tk.Frame):
                              'mac_addr'     : mac.upper(),
                              'internalName' : d[2],
                              'fw_ver'       : fw_ver,
-                             'ipv4_addr'    : self.cap.findIP(mac),
-                             'ipv6_addr'    : self.cap.findIP(mac, v6=True)}
+                             #'ipv4_addr'    : self.cap.findIP(mac),
+                             #'ipv6_addr'    : self.cap.findIP(mac, v6=True)}
+                             'ipv4_addr'    : d[5],
+                             'ipv6_addr'    : d[6]}
 
+        print("ipv4:",device_state_data['ipv4_addr'])
+        print("ipv6:",device_state_data['ipv6_addr'])
+        
         self.popup_update_device_state(device_state_data)
 
     def close_w_cap_dev(self, capName):
@@ -593,19 +859,24 @@ class  MudCaptureApplication(tk.Frame):
 
         # Sort devices from Capture into either known or unknown device lists
         self.db_handler.db.select_device_macs()
-        macsInDb = self.db_handler.db.cursor.fetchall()
-        print("macsInDb: ", macsInDb)
-        print()
+        macsInDevTbl = self.db_handler.db.cursor.fetchall()
+        #print("macsInDevTbl: ", macsInDevTbl)
+        #print()
+        #knownMacsInDb = self.db_handler.db.cursor.fetchall()
+        #print("knownMacsInDb: ", knownMacsInDb)
         self.db_handler.db.select_known_devices_from_cap(self.cap.fileHash)
-        knownMacsInDb = self.db_handler.db.cursor.fetchall()
-        print("knownMacsInDb: ", knownMacsInDb)
-        print()
+        #macsInDfCTbl = self.db_handler.db.cursor.fetchall()
+        #print("macsInDfCTbl: ", macsInDfCTbl)
+        devFromCapTbl = self.db_handler.db.cursor.fetchall()
+        #print("devFromCapTbl: ", devFromCapTbl)
+        #print()
 
+        print("num uniqueMacs:", len(self.cap.uniqueMAC))
         for mac in self.cap.uniqueMAC:
-            print("In for mac in self.cap.uniqueMAC")
-            print("\tmac", mac)
-            print("\tmfr = ", lookup_mac(mac))
-            if mac.upper() in [x.upper() for (x,) in macsInDb]:
+            #print("In for mac in self.cap.uniqueMAC")
+            #print("\tmac", mac)
+            #print("\tmfr = ", lookup_mac(mac))
+            if mac.upper() in [x.upper() for (x,) in macsInDevTbl]:
                 # Get device info
                 self.db_handler.db.select_device(mac)
                 (id, mfr, model, mac_addr, internalName, category, mudCapable, wifi, bluetooth, G3, G4, G5, zigbee, zwave, other, notes) = self.db_handler.db.cursor.fetchone()
@@ -619,21 +890,79 @@ class  MudCaptureApplication(tk.Frame):
                     ip = self.cap.findIP(mac)
                 #if ipv6 == None:
                     ipv6 = self.cap.findIP(mac, v6=True)
+
+                    # May want to modify this not to take the previous fw_version
+                    self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
+                                                                  #'capDate'  : self.cap.capTimeStamp})
+                                                                  'capDate'  : self.cap.capDate + " " + self.cap.capTime})
+                    try:
+                        (fw_ver,) = self.db_handler.db.cursor.fetchone()
+                    except TypeError as te:
+                        fw_ver = ''
+
+                    self.db_handler.db.insert_device_state({"fileHash":self.cap.fileHash,
+                                                            "mac_addr":mac.upper(),
+                                                            "internalName":internalName,
+                                                            #"fw_ver":prev_fw_ver,
+                                                            "fw_ver":fw_ver,
+                                                            "ipv4_addr":ip,
+                                                            "ipv6_addr":ipv6})
                 else:
                     print("ERROR, something went horribly wrong with the database")
-
+                    
+                '''
                 # Check if the mac address is in the device_in_capture table and update if necessary
-                if mac.upper() not in [x.upper() for (x,) in knownMacsInDb]:
+                if mac.upper() not in [x.upper() for (id,x) in knownMacsInDb]:
+                    print("mac not found in db")
                     self.db_handler.db.insert_device_in_capture({'fileName':self.cap.fname,'fileHash':self.cap.fileHash,
-                                                                   'mac_addr':mac_addr.upper()})
-
-                self.known_dev_list.append((mfr, model, internalName, category, mac, ip, ipv6))
+                                                                 'mac_addr':mac_addr.upper(), 'imported':True})
+                    #self.db_handkler.db.insert_mac_to_mfr({'mac_prefix':mac_addr.upper()[0:8], 'mfr':mfr})
+                # Update the entry
+                else:
+                    print("mac found in db")
+                    output = [item for item in knownMacsInDb if item[1] == mac_addr.upper() and not item[2]]
+                    print(output)
+                    id = output[0][0]
+                    imported = output[0][2]
+                    if not imported:
+                        print("Id =", id)
+                        print("mac_addr =", mac_addr)
+                        print("imported =", imported)
+                        self.db_handler.db.update_device_in_capture({'id':id, 'fileName':self.cap.fname,'fileHash':self.cap.fileHash,
+                                                                     'mac_addr':mac_addr.upper(), 'imported':True})
+                    #self.db_handler.db.select_mac_to_mfr()
+                    #mac2mfr = self.db_handler.db.cursor.fetchall()
+                    #self.db_handler.db.insert_mac_to_mfr({'mac_prefix':mac_addr.upper()[0:8], 'mfr':mfr})
+                '''
+                self.known_dev_list.append((mfr, model, internalName, category, mac.upper(), ip, ipv6))
             else:
-                print("Not in macsInDb")
-                print("\tmac", mac)
-                print("\tmfr = ", lookup_mac(mac))
-                self.unknown_dev_list.append((lookup_mac(mac), mac, self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
+                #print("Not in macsInDevTbl")
+                #print("\tmac", mac)
+                #print("\tmfr = ", lookup_mac(mac))
+                self.unknown_dev_list.append((lookup_mac(mac), mac.upper(), self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
+                '''
+                self.db_handler.db.insert_device_in_capture({'fileName':self.cap.fname,'fileHash':self.cap.fileHash,
+                                                             #'mac_addr':mac_addr.upper(), 'imported':False})
+                                                             'mac_addr':mac.upper(), 'imported':False})
+                '''
+            # Check if the mac address is in the device_in_capture table and update if necessary
+            if mac.upper() not in [x.upper() for (_,_,_,x) in devFromCapTbl]:
+                #print("mac not found in table for this capture")
+                self.db_handler.db.insert_device_in_capture({'fileName':self.cap.fname,
+                                                             'fileHash':self.cap.fileHash,
+                                                             'mac_addr':mac.upper()})
 
+
+        # Enable / Disable buttons as deemed necessary
+        if self.unknown_dev_list.num_nodes > 0:
+            self.b_cap_dev_import.config(state="normal")
+        else:
+            self.b_cap_dev_import.config(state="disabled")
+
+        if self.known_dev_list.num_nodes > 0:
+            self.b_cap_dev_modify.config(state="normal")
+        else:
+            self.b_cap_dev_modify.config(state="disabled")
 
     def make_form_capture_devices(self, fields, capDate, capTime):
         entries = []
@@ -673,15 +1002,20 @@ class  MudCaptureApplication(tk.Frame):
 
         mfr = self.unknown_dev_list_sel[0]
         mac = self.unknown_dev_list_sel[1].upper()
-        print(mfr)
+        ipv4 = self.unknown_dev_list_sel[2]
+        ipv6 = self.unknown_dev_list_sel[3]
+        #print("ipv4",ipv4)
+        #print("ipv6",ipv6)
+        #print(mfr)
 
         ents = self.make_form_device(deviceFields, deviceOptions, mfr, mac)
 
         dev_in_cap_data = fname
         dev_in_cap_data['mac_addr'] = mac
+        #dev_in_cap_data['imported'] = True
 
         b_import = tk.Button(self.w_dev, text='Import',
-                                  command=(lambda e=ents, d=dev_in_cap_data: self.import_dev_and_close(e,d)))
+                                  command=(lambda e=ents, d=dev_in_cap_data, i=(ipv4, ipv6): self.import_dev_and_close(e,d,i)))
 
         b_cancel = tk.Button(self.w_dev, text='Cancel', command=self.w_dev.destroy)
 
@@ -741,12 +1075,15 @@ class  MudCaptureApplication(tk.Frame):
                 checkvar = tk.IntVar()
                 ckb = tk.Checkbutton(row, text=option, width=15, justify=tk.LEFT, variable=checkvar)
                 ckb.pack(side=tk.LEFT, anchor=tk.W)
-            
+                
+                if option == "wifi" or option == "WiFi":
+                    checkvar.set(True)
+
                 entries.append((option, checkvar))
 
         return entries
 
-    def import_dev_and_close(self, entries, dev_in_cap_data):
+    def import_dev_and_close(self, entries, dev_in_cap_data, ips):
         device_data = {}
         for entry in entries:
             field = entry[0]
@@ -765,9 +1102,23 @@ class  MudCaptureApplication(tk.Frame):
 
         self.db_handler.db.insert_device(device_data)
         self.db_handler.db.insert_device_in_capture(dev_in_cap_data)
-        self.refresh_unknown_known_lists()
 
         mac = dev_in_cap_data['mac_addr']
+        #print("mac:", mac)
+
+        # Check if MAC to Mfr entry exists ;lkj
+        self.db_handler.db.select_mac_to_mfr()
+        mac2mfr = self.db_handler.db.cursor.fetchall()
+        #mac_prefix = dev_in_cap_data['mac_addr'].upper()[0:8]
+        mac_prefix = mac.upper()[0:8]
+        if mac_prefix not in [x for (id, x, mfr) in mac2mfr]:
+            #print(entries[0])
+            self.db_handler.db.insert_mac_to_mfr({'mac_prefix':mac_prefix, 'mfr':entries[0][1].get()})
+
+        self.refresh_unknown_known_lists()
+
+        #mac = dev_in_cap_data['mac_addr']
+
         self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
                                                       #'capDate'  : self.cap.capTimeStamp})
                                                       'capDate'  : self.cap.capDate + " " + self.cap.capTime})
@@ -780,8 +1131,10 @@ class  MudCaptureApplication(tk.Frame):
                              'mac_addr'     : mac,
                              'internalName' : device_data['internalName'],
                              'fw_ver'       : fw_ver,
-                             'ipv4_addr'    : self.cap.findIP(mac),
-                             'ipv6_addr'    : self.cap.findIP(mac, v6=True)}
+                             #'ipv4_addr'    : self.cap.findIP(mac),
+                             #'ipv6_addr'    : self.cap.findIP(mac, v6=True)}
+                             'ipv4_addr'    : ips[0],
+                             'ipv6_addr'    : ips[1]}
 
         try:
             self.popup_update_device_state(device_state_data)
@@ -848,11 +1201,16 @@ class  MudCaptureApplication(tk.Frame):
         device_state_data['fw_ver'] = str(entries['fw_ver'].get())
         
         # Check if there is already an entry for this data:
-        self.db_handler.db.select_device_state_exact(device_state_data)
+        #self.db_handler.db.select_device_state_exact(device_state_data)
+        self.db_handler.db.select_device_state(device_state_data["fileHash"], device_state_data["mac_addr"])
         temp = self.db_handler.db.cursor.fetchone()
         print(temp)
         if temp == None:
             self.db_handler.db.insert_device_state(device_state_data)
+        else:
+            device_state_data["id"] = temp[0]
+            self.db_handler.db.update_device_state(device_state_data)
+
         self.w_dev_state.destroy()
 
 
@@ -898,6 +1256,7 @@ class  MudCaptureApplication(tk.Frame):
                 first=False
         
 
+    '''#;lkj somehow this was here uncommented before
     # Uses Listbox
     def populate_device_list(self, capture=None, append=False):
         # clear previous list
@@ -920,7 +1279,7 @@ class  MudCaptureApplication(tk.Frame):
         # Set focus on the first element
         self.dev_list.focus(0)
         self.dev_list.selection_set(0)
-
+    '''
         
     # Uses Treeview
     def populate_device_list(self, capture=None, append=False):
@@ -960,28 +1319,161 @@ class  MudCaptureApplication(tk.Frame):
                 print("dev = " + str(dev_name(0)))
             if dev_name == "All...":
                 print("Processing \'All...\'")
-                self.populate_comm_list(dev_name)
+                #self.populate_comm_list(dev_name)
+                self.populate_comm_list("*")
                 break
             else:
                 self.populate_comm_list(dev_name, not first)
                 first=False
 
 
+    def import_packets(self, cap):
+        '''
+        for p in cap.pkt:
+            pkt_data = {"fileHash":cap.fileHash,
+                        "mac":a,
+                        "src":b,
+                        "dest":c,
+                        "protocol":d,
+                        "length":e,
+                        "direction":f,
+                        "raw":p}
+            self.db_handler.db.insert_packets(pkt_data)
+
+        '''
+        print("In import_packets")
+        h = {"fileHash" : cap.fileHash}
+        for p in cap.pkt_info:
+            print(p)
+            print(p.update(h))
+            self.db_handler.db.insert_packet( p.update(h) )
+
+        #self.populate_comm_list()
+
+    #;lkj
     def populate_comm_list(self, device, append=False):
         # Clear previous list
         if not append:
             self.comm_list.delete(0,tk.END)
 
+        
         # Get and insert all captures currently added to database
         self.db_handler.db.select_device_communication(device)
         
+        for (id, fileHash, pkt_time, mac_addr, protocol, ip_ver, ip_src, ip_dst,
+             tlp, tlp_srcport, tlp_dstport, pkt_length, raw) in self.db_handler.db.cursor: # might be interesting to include destination URL and NOTES
+            self.comm_list.insert(tk.END, [pkt_time, mac_addr, ip_ver, ip_src, ip_dst, protocol, tlp, tlp_srcport, tlp_dstport, pkt_length, raw])
+        '''
         for (id, fileHash, mac_addr, protocol, src_port, dst_ip_addr, ipv6, dst_url,
              dst_port, notes) in self.db_handler.db.cursor:
             self.comm_list.insert(tk.END, [protocol, src_port, dst_ip_addr, ipv6, dst_url, dst_port, notes])
-
+        '''
         # Set focus on the first element
         self.comm_list.select_set(0)
         self.comm_list.event_generate("<<ListboxSelect>>")
+
+
+    def modify_comm_state(self, button):
+        print("button:",button)
+        # Check current filter
+        if self.comm_state == "any":
+            if button == "ns":
+                self.comm_state = "ns"
+            elif button == "ew":
+                self.comm_state = "ew"
+            else:
+                print("Something went wrong with modifying the communication state")
+        elif self.comm_state == "ns":
+            if button == "ns":
+                self.comm_state = "any"
+            elif button == "ew":
+                self.comm_state = "ew"
+            else:
+                print("Something went wrong with modifying the communication state")
+        elif self.comm_state == "ew":
+            if button == "ns":
+                self.comm_state = "ns"
+            elif button == "ew":
+                self.comm_state = "any"
+            else:
+                print("Something went wrong with modifying the communication state")
+        else:
+            print("Something went wrong with modifying the communication state")
+
+        # Update the filter
+        if self.comm_state == "any":
+            self.b_ns.config(fg = "black")
+            self.b_ew.config(fg = "black")
+            #update communication table view
+        elif self.comm_state == "ns":
+            self.b_ns.config(fg = "green")
+            self.b_ew.config(fg = "red")
+            #update communication table view
+        elif self.comm_state == "ew":
+            self.b_ns.config(fg = "red")
+            self.b_ew.config(fg = "green")
+            #update communication table view
+        else:
+            print("Something went wrong with modifying the communication state")
+
+        print("comm_state:", self.comm_state)
+
+    def popup_internal_addr_list(self):
+        # Currently not functional... Needs to be worked out
+        pass
+    
+        self.w_internal_addr = tk.Toplevel()
+
+        self.w_internal_addr.wm_title("Internal Address Ranges")
+
+        topFrame = tk.Frame(self.w_internal_addr, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
+        subtitle = tk.Label(topFrame, text="Current Address Ranges", bg="#eeeeee", bd=1, relief="flat")
+        subtitle.pack(side="top", fill=tk.X)
+
+        botFrame = tk.Frame(elf.w_internal_addr, width=300, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
+
+        addr_range_list_header = ["Lower Bound", "Upper Bound", "IP Version"]
+        addr_range_list = MultiColumnListbox(parent=botFrame,
+                                                   header=addr_range_list_header,
+                                                   list=list(), selectmode="browse")
+        #To be aded later
+        #self.unknown_dev_list.bind("<<TreeviewSelect>>", self.update_unknown_list_selection)
+
+
+        # Grid placements #
+        #self.topDevFrame.grid(row=0, column=0, sticky="new")
+        #self.botDevFrame.grid(row=1, column=0, sticky="nsew")
+        topFrame.grid(row=0, column=0, sticky="new")
+        botFrame.grid(row=1, column=0, sticky="nsew")
+
+        # Grid configuration #
+        '''
+        self.topFrame.grid_columnconfigure(0, weight=0)
+        self.botDevFrame.grid_rowconfigure(1, weight=1)
+        self.botDevFrame.grid_columnconfigure(0, weight=1)
+        self.botDevFrame.grid_columnconfigure(1, weight=1)
+
+        self.w_cap_dev.grid_rowconfigure(1, weight=1)
+        self.w_cap_dev.grid_columnconfigure(0, weight=1)
+        '''
+
+        # Buttons #
+        self.b_internal_addr_close = tk.Button(botFrame, text='Close', command=self.w_internal_addr.destroy)
+        self.b_internal_addr_new = tk.Button(botFrame, text='+', command=self.popup_internal_addr)
+        #TO BE COMPLETED
+        self.b_internal_addr_modify = tk.Button(botFrame, text='Modify', state='disabled',
+                                                command=(lambda d=self.known_dev_list.get_selected_row(): self.prep_popup_update_device_state(d)))
+
+        self.b_internal_addr_close.pack(side=tk.LEFT, padx=5, pady=5)
+        self.b_internal_addr_new.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.b_internal_addr_modify.pack(side=tk.RIGHT, padx=5, pady=5)
+
+        self.yield_focus(self.w_internal_addr)
+
+
+
+
+
 
     # Not yet implemented
     '''

@@ -10,9 +10,10 @@ import mysql.connector
 from mysql.connector import MySQLConnection, Error
 import os
 import pyshark
+import subprocess
 
 class CaptureDatabase:
-    
+
 
     add_capture = ("INSERT INTO capture "
                         # TEXT      TEXT     BINARY(32)   DATETIME TEXT      TEXT
@@ -24,24 +25,60 @@ class CaptureDatabase:
                              # TEXT      VARCHAR   VARCHAR
                              "(fileName, fileHash, mac_addr) "
                              "VALUES (%(fileName)s, %(fileHash)s, %(mac_addr)s);")
+                             # TEXT      VARCHAR   VARCHAR    BOOL
+                             #"(fileName, fileHash, mac_addr, imported) "
+                             #"VALUES (%(fileName)s, %(fileHash)s, %(mac_addr)s, %(imported)s);")
+
+    change_device_in_capture = ("UPDATE device_in_capture "
+                                "SET imported = %(imported)s "
+                                # TEXT      VARCHAR   VARCHAR
+                                "WHERE id=%(id)s AND fileName=%(fileName)s AND fileHash=%(fileHash)s AND "
+                                #"      mac_addr=%(mac_addr)s AND imported=%(imported)s);")
+                                "      mac_addr=%(mac_addr)s;")
+
+    add_mac_to_mfr = ("INSERT INTO mac_to_mfr "
+                      # VARCHAR     TEXT
+                      "(mac_prefix, mfr) "
+                      "VALUES (%(mac_prefix)s, %(mfr)s);")
 
     add_device = ("INSERT INTO device "
-                       # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT
-                       "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes) "
-                       #"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
-                       "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s)")
+                  # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT
+                  "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes) "
+                  #"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+                  "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s)")
 
     add_device_state = ("INSERT INTO device_state "
-                             # BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
-                             "(fileHash, mac_addr, internalName, fw_ver, ipv4_addr, ipv6_addr) "
-                             #"VALUES (%s, %s, %s, %s, %s, %s);"
-                             "VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+                        # BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
+                        "(fileHash, mac_addr, internalName, fw_ver, ipv4_addr, ipv6_addr) "
+                        #"VALUES (%s, %s, %s, %s, %s, %s);"
+                        "VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+
+    change_device_state = ("UPDATE device_state "
+                           "SET fw_ver = %(fw_ver)s "
+                           "WHERE id=%(id)s AND fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s")
+
+    #;lkj too be completed
+    add_pkt = ("INSERT INTO packet "
+               #VARCHAR     DATETIME  INT     TEXT      INT     TEXT    TEXT    INT          INT          INT          INT          TEXT?
+               #"(fileHash, pkt_time, length, protocol, ip_ver, ip_src, ip_dst, tcp_srcport, tcp_dstport, udp_srcport, udp_dstport, raw) "
+               #"VALUES (%(fileHash)s, %(time)s, %(length)i, %(protocol)s, %(ip_ver)i, %(ip_src)s, %(ip_dst)s, %(tcp_srcport)i, "
+               #"%(tcp_dstport)i, %(udp_srcport)i, %(udp_dstport)i, %(raw)s);")
+               
+               #VARCHAR    DATETIME  VARCHAR   INT     TEXT      INT     TEXT    TEXT    TEXT INT          INT          TEXT?
+
+               #self.comm_list.insert(tk.END, [pkt_time, mac_addr, ip_ver, ip_src, ip_dst, protocol, tlp, tlp_srcport, tlp_dstport, length, raw])
+               "(fileHash, pkt_time, mac_addr, ip_ver, ip_src, ip_dst, ew, protocol, tlp, tlp_srcport, tlp_dstport, length, raw) "
+               #"VALUES (%(fileHash)s, %(pkt_time)s, %(mac_addr)s, %(ip_ver)i, %(ip_src)s, %(ip_dst)s, %(ew)s, %(protocol)s, %(tlp)s, "
+               #"%(tlp_srcport)i, %(tlp_dstport)i, %(length)i, %(raw)s);")
+               "VALUES (%(fileHash)s, %(pkt_time)s, %(mac_addr)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, %(protocol)s, %(tlp)s, "
+               #"%(tlp_srcport)s, %(tlp_dstport)s, %(length)s, %(raw)s);")
+               "%(tlp_srcport)s, %(tlp_dstport)s, %(length)s);")
 
     add_protocol = ("INSERT INTO protocol "
-                         # BINARY       VARCHAR   TEXT      INT       TEXT         BOOL  TEXT     INT       TEXT
-                         "(fileHash, mac_addr, protocol, src_port, dst_ip_addr, ipv6, dst_url, dst_port, notes) "
-                         #"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);")
-                         "VALUES (%(fileHash)s, %(mac_addr)s, %(protocol), %(src_port)s, %(dst_ip_addr)s, %(ipv6)s, %(dst_url)s, %(dst_port)s, %(notes)s);")
+                    # BINARY       VARCHAR   TEXT      INT       TEXT         BOOL  TEXT     INT       TEXT
+                    "(fileHash, mac_addr, protocol, src_port, dst_ip_addr, ipv6, dst_url, dst_port, notes) "
+                    #"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);")
+                    "VALUES (%(fileHash)s, %(mac_addr)s, %(protocol), %(src_port)s, %(dst_ip_addr)s, %(ipv6)s, %(dst_url)s, %(dst_port)s, %(notes)s);")
 
     # Queries
     query_unique_capture = ("SELECT fileHash FROM capture;")
@@ -57,8 +94,10 @@ class CaptureDatabase:
 
     #query_known_devices_from_capture = ("SELECT * FROM device_in_capture "
     #                                    "WHERE fileHash = %s AND mac_addr = %s;")
-    query_known_devices_from_capture = ("SELECT mac_addr FROM device_in_capture "
+    #query_known_devices_from_capture = ("SELECT id, mac_addr, imported FROM device_in_capture "
+    query_known_devices_from_capture = ("SELECT * FROM device_in_capture "
                                         "WHERE fileHash = %s;")
+                                        #"WHERE fileHash = %s AND imported = TRUE;")
 
     query_most_recent_fw_ver = ("SELECT ds.fw_ver FROM device_state AS ds "
                                 "INNER JOIN "
@@ -75,6 +114,8 @@ class CaptureDatabase:
                                 "     ) AS q2 ON ds.fileHash=q2.fileHash "
                                 " WHERE ds.mac_addr = %(mac_addr)s;")
 
+    query_mac_to_mfr = ("SELECT * FROM mac_to_mfr;")
+
     query_devices =  ("SELECT * FROM device;")
 
     query_device_info =  ("SELECT * FROM device WHERE mac_addr=%s;")
@@ -90,8 +131,19 @@ class CaptureDatabase:
     
     query_device_communication = ("SELECT * FROM protocol WHERE device=%s;")
 
+    query_device_communication_by_capture = ("SELECT * FROM protocol WHERE device=%(device)s AND fileHash=%(fileHash)s;")
+
+    query_pkts = ("SELECT * FROM packet;")
+
+    query_pkts_by_capture = ("SELECT * FROM packet WHERE fileHash=%(fileHash)s;")
+
+    #query_pkts_by_capture_and_device = ("SELECT * FROM packet WHERE fileHash=%(fileHash)s AND dev...;")
+
+    #query_pkts_by_device = ("SELECT * FROM packet WEHRE dev...;")
+
     query_device_strings = ("SELECT * FROM strings WHERE device=%s;")
-    
+
+
     def __init__(self, db_config):
         try:
             print("Connecting to MySQL database...")
@@ -125,8 +177,24 @@ class CaptureDatabase:
         self.cursor.execute(self.add_device_in_capture, data_device_in_capture)
         self.cnx.commit()
 
+    def update_device_in_capture(self, data_device_in_capture):
+        self.cursor.execute(self.change_device_in_capture, data_device_in_capture)
+        self.cnx.commit()
+
+    def insert_mac_to_mfr(self, data_mac_and_mfr):
+        self.cursor.execute(self.add_mac_to_mfr, data_mac_and_mfr)
+        self.cnx.commit()
+
     def insert_device_state(self, data_device_state):
         self.cursor.execute(self.add_device_state, data_device_state)
+        self.cnx.commit()
+
+    def update_device_state(self, data_device_state):
+        self.cursor.execute(self.change_device_state, data_device_state)
+        self.cnx.commit()
+
+    def insert_packet(self, data_pkt):
+        self.cursor.execute(self.add_pkt, data_pkt)
         self.cnx.commit()
 
     def insert_protocol(self, data_protocol):
@@ -149,6 +217,9 @@ class CaptureDatabase:
 
     def select_most_recent_fw_ver(self, macdatemac):
         self.cursor.execute(self.query_most_recent_fw_ver, macdatemac)
+
+    def select_mac_to_mfr(self):
+        self.cursor.execute(self.query_mac_to_mfr)
 
     def select_devices(self):
         self.cursor.execute(self.query_devices)
@@ -231,10 +302,35 @@ class DatabaseHandler:
 class CaptureDigest:
 
 
-    def __init__(self, fpath):
+    def __init__(self, fpath):#, gui=False):
+        self.fpath = fpath
         self.fdir, self.fname = os.path.split(fpath)
+        self.fsize = os.path.getsize(fpath)
+        print("file size: ", self.fsize)
+        self.progress = 24 #capture header
         self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
+
+        ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
+        ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
+        ew_ipv6_filter = 'ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8}'
+        ns_ipv6_filter = '!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8}'
+
+        # (ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or (ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})
+        #ew_filter = ['(', ew_ip_filter, ') or (', ew_ipv6_filter, ')']
+        ew_filter = '(ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or (ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})'
+        # (!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) and (!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8})
+        ns_filter = ['(', ns_ip_filter, ') and (', ns_ipv6_filter, ')']
+
+        #start = datetime.now()
         self.cap = pyshark.FileCapture(fpath)
+
+        self.ew_index = []
+        self.cap_ew = pyshark.FileCapture(fpath, display_filter=ew_filter)
+        for p in self.cap_ew:
+            self.ew_index += p.number
+        #stop = datetime.now()
+        #print("time to open capture with pyshark = %f seconds" % (stop-start).total_seconds())
+
         self.capTimeStamp = self.cap[0].sniff_timestamp
         #self.capDate = self.cap[0].sniff_timestamp
         #(self.capDate, self.capTime) = self.cap[0].sniff_timestamp.split()
@@ -252,8 +348,109 @@ class CaptureDigest:
         self.uniqueIP_dst = []
         self.uniqueIPv6_dst = []
 
+        # str(first[len(first.__dict__['layers'])-1]).split()[1].strip(":")
+        self.protocol = []
+
+        self.num_pkts = 0
+        self.pkt = [] 
+
+        self.pkt_info = [] #needs to be a list of dictionary
+
+        #Fastest way to get the number of packets in capture, but still slow to do
+        '''
+        start = datetime.now()
+        self.cap.apply_on_packets(self.count)
+        stop = datetime.now()
+        print("time to get pkt count = %f seconds" % (stop-start).total_seconds())
+        print("count = ", self.num_pkts)
+        '''
+        
+        #trying to use subprocess
+        #self.num_pkts = subprocess.check_output(["tcpdump -r " + fpath])
+
+
+
+
+
+        '''
+        start = datetime.now()
+        #self.cap.apply_on_packets(self.import_pkts)
+        self.cap.apply_on_packets(self.append_pkt)
+        stop = datetime.now()
+        print("time to import_packets = %f seconds" % (stop-start).total_seconds())
+        '''
+
+        #start = datetime.now()
+        #self.import_pkts()
+        #stop = datetime.now()
+        #print("time to import_packets = %f seconds" % (stop-start).total_seconds())
+
+
+
+
+
+        #print("cap length = ", len(self.pkt))
+
+        '''
+        start = datetime.now()
         self.cap.apply_on_packets(self.id_unique_addrs)
+        stop = datetime.now()
+        print("time to process_packets from object: %f seconds" % (stop-start).total_seconds())
+
+        '''
+        
+        #Much faster than running "self.cap.apply_on_packets(self.id_unique_addrs)", but requires slower up front processing
+        #start = datetime.now()
+
+
+
+
+
+
+        '''
+        for i, p in enumerate(self.pkt):
+            if i < 2:
+                print(p)
+            self.id_unique_addrs(p)
+        '''
+
+
+
+
+
+        #stop = datetime.now()
+        #print("time to process_packets from list: %f seconds" % (stop-start).total_seconds())
+
         #self.id_unique_addrs()
+
+    '''
+    def count(self, *args):
+        self.num_pkts += 1;
+    '''
+
+    def import_pkts(self):
+        print("in import_pkts")
+        self.cap.apply_on_packets(self.append_pkt)
+
+
+        #:LKJ
+        self.extract_pkts()
+        self.id_unique_addrs()
+        '''
+        for i, p in enumerate(self.pkt):
+            #if i < 2:
+            #    print(p)
+            #self.id_unique_addrs(p)
+            self.id_addr(p)
+        '''
+
+#    def import_pkts(self, *args):
+    def append_pkt(self, *args):
+        #print("length = ", args[0].length)
+        self.progress += int(args[0].length) + 16 #packet header
+        #print(self.progress, "/", self.fsize)
+        self.pkt.append(args[0])
+        #exit()
         
     def print_init(self):
         print(self.fname)
@@ -278,12 +475,92 @@ class CaptureDigest:
 
         return ip
 
-    def id_unique_addrs(self, pkt):
+    def extract_pkts(self):
+        for p in self.pkt:
+            self.pkt_info.append({"pkt_time":p.sniff_timestamp,
+                                  "length":p.length,
+                                  "protocol":p.layers[-1].layer_name.upper(),
+                                  "mac_addr":'',
+                                  "ew": p.number in self.ew_index})
+                                  #"ew": p.number in self.ew_index,
+                                  #"raw":p})
+            '''
+            self.pkt_info[-1]{"time":p.sniff_timestamp,
+                              "length":p.length,
+                              "protocol":p.layers[-1].layer_name.upper(),
+                              "raw":p}
+            '''
+            for l in p.layers:
+                if l.layer_name == "sll":
+                    self.pkt_info[-1]["mac_addr"] = l.src_eth
+                    #self.pkt_info[-1]["mac"] = l._all_fields["sll.src.eth"]
+                elif l.layer_name == "ip":
+                    #self.pkt_info[-1]["ip_ver"] = l.ip.version
+                    #self.pkt_info[-1]["ip_src"] = l.ip.src
+                    #self.pkt_info[-1]["ip_dst"] = l.ip.dst
+                    self.pkt_info[-1]["ip_ver"] = l.version
+                    self.pkt_info[-1]["ip_src"] = l.src
+                    self.pkt_info[-1]["ip_dst"] = l.dst
+                    #self.pkt_info[-1]["ip_ver"] = l._all_fields["ip.version"]
+                    #self.pkt_info[-1]["ip_src"] = l._all_fields["ip.src"]
+                    #self.pkt_info[-1]["ip_dst"] = l._all_fields["ip.dst"]
+                elif l.layer_name == "ipv6":
+                    self.pkt_info[-1]["ip_ver"] = l.version
+                    self.pkt_info[-1]["ip_src"] = l.src
+                    self.pkt_info[-1]["ip_dst"] = l.dst
+                elif l.layer_name == "tcp":
+                    self.pkt_info[-1]["tlp"] = "tcp"
+                    #self.pkt_info[-1]["tlp_srcport"] = l.tcp.srcport
+                    #self.pkt_info[-1]["tlp_dstport"] = l.tcp.dstport
+                    self.pkt_info[-1]["tlp_srcport"] = l.srcport
+                    self.pkt_info[-1]["tlp_dstport"] = l.dstport
+                    #self.pkt_info[-1]["tcp_srcport"] = l.tcp.srcport
+                    #self.pkt_info[-1]["tcp_dstport"] = l.tcp.dstport
+                    ##self.pkt_info[-1]["tcp_srcport"] = l._all_fields["tcp.srcport"]
+                    ##self.pkt_info[-1]["tcp_dstport"] = l._all_fields["tcp.dstport"]
+                    #self.pkt_info[-1]["udp_srcport"] = ''
+                    #self.pkt_info[-1]["udp_dstport"] = ''
+                elif l.layer_name == "udp":
+                    self.pkt_info[-1]["tlp"] = "udp"
+                    #self.pkt_info[-1]["tlp_srcport"] = l.udp.srcport
+                    #self.pkt_info[-1]["tlp_dstport"] = l.udp.dstport
+                    self.pkt_info[-1]["tlp_srcport"] = l.srcport
+                    self.pkt_info[-1]["tlp_dstport"] = l.dstport
+                    #self.pkt_info[-1]["udp_srcport"] = l.udp.srcport
+                    #self.pkt_info[-1]["udp_dstport"] = l.udp.dstport
+                    ##self.pkt_info[-1]["udp_srcport"] = l._all_fields["udp.srcport"]
+                    ##self.pkt_info[-1]["udp_dstport"] = l._all_fields["udp.dstport"]
+                    #self.pkt_info[-1]["tcp_srcport"] = ''
+                    #self.pkt_info[-1]["tcp_dstport"] = ''
+                elif l.layer_name != p.layers[-1].layer_name:
+                    print("Warning: Unknown/Unsupported layer seen here:", l.layer_name)
+                #could add some sort of check for the direction here, potentially. Maybe add post
+                #self.pkt_info[-1]["direction"] = #n/s or e/w
+
+
+    def id_unique_addrs(self):
+        for p in self.pkt:
+            self.id_addr(p) #;lkj
+            
+            #:LKJ
+            '''
+            self.pkt_info[-1]["time"] = sniff_timestamp
+            #self.pkt_info[-1]["dst"] = p.ip.dst?
+            self.pkt_info[-1]["protocol"] = p.layers[-1].layer_name.upper()
+            self.pkt_info[-1]["length"] = p.length
+            #self.pkt_info[-1]["direction"] = #n/s or e/w
+            self.pkt_info[-1]["raw"] = p
+            '''
+
+    def id_addr(self, pkt):
         # Try to get the MAC address
         try:
             pMAC = pkt.eth.src
         except:
             pMAC = pkt.sll.src_eth
+
+        self.pkt_info.append({})
+        #self.pkt_info[-1]["mac"] = pMAC
 
         if pMAC not in self.uniqueMAC:
             #print(pMAC)
@@ -304,6 +581,9 @@ class CaptureDigest:
                 if pIPv6 not in self.uniqueIPv6:
                     #print(pIPv6)
                     self.uniqueIPv6.append(pIPv6)
+
+                #self.pkt_info[-1]["src_ip"] = pIPv6
+                #self.pkt_info[-1]["ver"] = "v6"
         else:
             if (pMAC, "ipv4") not in self.ip2mac:
                 self.ip2mac[(pMAC, "ipv4")] = pIP
@@ -311,6 +591,9 @@ class CaptureDigest:
             if pIP not in self.uniqueIP:
                 #print(pIP)
                 self.uniqueIP.append(pIP)
+
+            #self.pkt_info[-1]["src_ip"] = pIP
+            #self.pkt_info[-1]["ver"] = "v4"
 
 
         # Try to get destination IP address
@@ -331,6 +614,34 @@ class CaptureDigest:
             if pIP_dst not in self.uniqueIP_dst:
                 #print(pIP)
                 self.uniqueIP_dst.append(pIP_dst)
+
+    #TBD in the future (2019-06-13)
+    def load_from_db(self, fpath):
+        self.fpath = fpath
+        self.fdir, self.fname = os.path.split(fpath)
+        self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
+
+        self.cap = pyshark.FileCapture(fpath)
+
+        self.capTimeStamp = self.cap[0].sniff_timestamp
+        (self.capDate, self.capTime) = datetime.utcfromtimestamp(float(self.capTimeStamp)).strftime('%Y-%m-%d %H:%M:%S').split()
+
+        print(self.capDate)
+        print(self.capTime)
+
+        self.uniqueIP = []
+        self.uniqueIPv6 = []
+        self.uniqueMAC = []
+
+        self.ip2mac = {}
+
+        self.uniqueIP_dst = []
+        self.uniqueIPv6_dst = []
+
+        self.protocol = []
+
+        self.num_pkts = 0
+        self.pkt = [] 
 
     #def __del__(self):
     def __exit__(self):

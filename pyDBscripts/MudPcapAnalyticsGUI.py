@@ -259,6 +259,7 @@ class  MudCaptureApplication(tk.Frame):
         self.b_ns.pack(side="left")
         self.b_ew.pack(side="left")
         #self.b_internal.pack(side="right")
+        
         '''
         self.commFrame.pack(side="top", fill="both", expand=True)
 
@@ -689,6 +690,14 @@ class  MudCaptureApplication(tk.Frame):
             #:LKJ
             self.cap.import_pkts()
 
+            #self.import_with_progbar( CaptureDigest(sel_cap_path) )
+            stop = datetime.now()
+            print("time to import = ", (stop-start).total_seconds())
+            #self.popup_import_capture_devices( cap=self.cap )
+            self.popup_import_capture_devices()
+            #self.popup_import_capture_devices( CaptureDigest(sel_cap_path) )
+        else:
+            self.popup_import_capture_devices()
 
             #self.import_with_progbar( CaptureDigest(sel_cap_path) )
             stop = datetime.now()

@@ -22,6 +22,7 @@ class MultiColumnListbox(object):
         self.header = header
 
         self.tree = None
+        self.num_nodes = 0
         self._setup_widgets(selectmode)
         self._build_tree(list)
         self.keep1st = keep1st
@@ -116,21 +117,37 @@ to change width of column drag boundary
         return self.tree.item(item)["values"]
 
     def get_selected_row(self):
-        print("self.get( self.selection()[0] = ", self.get( self.selection()[0] ))
-        return self.get( self.selection()[0] )
+        #print("self.get( self.selection()[0] = ", self.get( self.selection()[0] ))
+        #return self.get( self.selection()[0] )
+        sel = self.selection()
+        if len(sel) > 0:
+            return self.get( self.selection()[0] )
+        else:
+            return -1
 
     def focus(self, index):
-        idx = self.tree.get_children()[index]
-        self.tree.focus(idx)
+        #children = self.tree.get_children()
+        #if len(children) > 0:
+        #    self.tree.focus( children[index] )
+        if self.num_nodes > 0:
+            self.tree.focus( self.tree.get_children()[index] )
+        #idx = self.tree.get_children()[index]
+        #self.tree.focus(idx)
 
     def selection_set(self, index):
-        idx = self.tree.get_children()[index]
-        self.tree.selection_set(idx)
+        #children = self.tree.get_children()
+        #if len(children) > 0:
+        #    self.tree.selection_set( children[index] )
+        if self.num_nodes > 0:
+            self.tree.selection_set( self.tree.get_children()[index] )
+        #idx = self.tree.get_children()[index]
+        #self.tree.selection_set(idx)
 
     def append(self, item):
         self.tree.insert('', 'end', values=item)
         # adjust column's width if necessary to fit each value
         self._adjust_width(item)
+        self.num_nodes += 1
 
     def append_unique(self, item):
         children = self.tree.get_children()
@@ -148,6 +165,7 @@ to change width of column drag boundary
 
     def clear(self):
         self.tree.delete(*self.tree.get_children())
+        self.num_nodes = 0
 
     def populate(self, item_list):
         for item in item_list:

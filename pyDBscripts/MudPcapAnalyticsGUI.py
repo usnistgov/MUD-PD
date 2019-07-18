@@ -249,6 +249,8 @@ class  MudCaptureApplication(tk.Frame):
         self.comm_scrollbar.config( command = self.comm_list.yview )
         '''
 
+        #:LKJ Commenting this out until the packets table population is configured
+        '''
         self.comm_state = "any"
         self.b_ns = tk.Button(self.commFrame, text="N/S", command=(lambda b="ns" : self.modify_comm_state(b)))
         self.b_ew = tk.Button(self.commFrame, text="E/W", command=(lambda b="ew" : self.modify_comm_state(b)))
@@ -257,7 +259,8 @@ class  MudCaptureApplication(tk.Frame):
         self.b_ns.pack(side="left")
         self.b_ew.pack(side="left")
         self.b_internal.pack(side="right")
-
+        '''
+        
         self.commFrame.pack(side="top", fill="both", expand=True)
 
 

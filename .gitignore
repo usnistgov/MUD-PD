@@ -1,8 +1,0 @@
-*~
-pyDBscripts/config.ini
-config.ini
-.DS_Store
-pyDBscripts/archive/
-pyDBscripts/__pycache__/
-.populateDB.sql
-.gitignore

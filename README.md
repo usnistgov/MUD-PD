@@ -6,17 +6,17 @@ N.B. This tool is still in the development phase
 ## Prerequisite
 1. Python 3.7.2+
 
-  * Check version
-    ```sh
-    shell> python3 --version
-    ```
-  * Install/Update:
-    ```sh
-    shell> brew install python3
-    ```
-    or
+   * Check version
+     ```sh
+shell> python3 --version
+     ```
+   * Install/Update:
+     ```sh
+shell> brew install python3
+     ```
+     or
 
-    Follow instructions at https://www.python.org/downloads/
+     Follow instructions at https://www.python.org/downloads/
 
 2. MySQL
    1. MySQL Workbench (recommended)

@@ -14,7 +14,7 @@ N.B. This tool is still in the development phase
      ```sh
      shell> brew install python3
      ```
-     or
+     ***or***
 
      Follow instructions at https://www.python.org/downloads/
 

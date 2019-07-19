@@ -8,22 +8,22 @@ N.B. This tool is still in the development phase
 
    * Check version
      ```sh
-shell> python3 --version
+     shell> python3 --version
      ```
    * Install/Update:
      ```sh
-shell> brew install python3
+     shell> brew install python3
      ```
      or
 
      Follow instructions at https://www.python.org/downloads/
 
 2. MySQL
-   1. MySQL Workbench (recommended)
+   1. MySQL Workbench [recommended]
 
       Follow directions at https://dev.mysql.com/downloads/workbench/    
 
-   2. If only want MySQL Community Server (untested)
+   2. If only want MySQL Community Server [untested]
 
       Follow directions at https://dev.mysql.com/downloads/mysql/
 
@@ -52,7 +52,7 @@ shell> brew install python3
 
       Follow directions at https://dev.mysql.com/doc/workbench/en/wb-mysql-connections-new.html
 
-      or
+      ***or***
 
    2. MySQL Server:
 

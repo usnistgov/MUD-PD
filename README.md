@@ -18,17 +18,19 @@ or Follow instructions at ```https://www.python.org/downloads/```
 
 2. MySQL
    1. MySQL Workbench (recommended)
-```sh
-   Follow directions at https://dev.mysql.com/downloads/workbench/    
-```
+      Follow directions at https://dev.mysql.com/downloads/workbench/    
+      ```sh
+         Follow directions at https://dev.mysql.com/downloads/workbench/    
+      ```
    2. If only want MySQL Community Server (untested)
-```sh
-   Follow directions at https://dev.mysql.com/downloads/mysql/
-```
+      Follow directiosn at https://dev.mysql.com/downloads/mysql/
+      ```sh
+         Follow directions at https://dev.mysql.com/downloads/mysql/
+      ```
 
 3. LibPcap
-Used for generating packet captures to import into the database and tool 
 
+Used for generating packet captures to import into the database and tool 
 ```sh
     Linux: ``apt-get install tcpdump''
     OSX: readily available by default.
@@ -49,11 +51,11 @@ Create MySQL Database:
 
    Follow directions at [https://dev.mysql.com/doc/workbench/en/wb-mysql-connections-new.html]
 
-or
+   or
 
 2. MySQL Server:
 
-  Follow directions at [https://dev.mysql.com/doc/refman/5.7/en/creating-database.html]
+   Follow directions at [https://dev.mysql.com/doc/refman/5.7/en/creating-database.html]
 
 ```sh
 shell> mysql -u username -p

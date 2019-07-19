@@ -17,11 +17,11 @@ Check version
 or Follow instructions at ```https://www.python.org/downloads/```
 
 2. MySQL
-  1. MySQL Workbench (recommended)
+   1. MySQL Workbench (recommended)
 ```sh
    Follow directions at https://dev.mysql.com/downloads/workbench/    
 ```
-  2. If only want MySQL Community Server (untested)
+   2. If only want MySQL Community Server (untested)
 ```sh
    Follow directions at https://dev.mysql.com/downloads/mysql/
 ```

@@ -250,7 +250,6 @@ class  MudCaptureApplication(tk.Frame):
         '''
 
         #:LKJ To be added once packets have been added to the table
-        '''
         self.comm_state = "any"
         self.b_ns = tk.Button(self.commFrame, text="N/S", command=(lambda b="ns" : self.modify_comm_state(b)))
         self.b_ew = tk.Button(self.commFrame, text="E/W", command=(lambda b="ew" : self.modify_comm_state(b)))
@@ -260,7 +259,7 @@ class  MudCaptureApplication(tk.Frame):
         self.b_ew.pack(side="left")
         #self.b_internal.pack(side="right")
         
-        '''
+
         self.commFrame.pack(side="top", fill="both", expand=True)
 
 

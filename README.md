@@ -5,7 +5,8 @@ N.B. This tool is still in the development phase
 
 # Prerequisite
 1. Python 3.7.2+
-  Check version
+
+Check version
 ```sh
    python3 --version
 ```
@@ -13,19 +14,17 @@ N.B. This tool is still in the development phase
 ```sh
    brew install python3
 ```
-     or
-```sh
-   Follow instructions at https://www.python.org/downloads/
-```
+or Follow instructions at ```sh https://www.python.org/downloads/```
 
 2. MySQL
-  a. MySQL Workbench (recommended)
+
+a. MySQL Workbench (recommended)
 
 ```sh
    Follow directions at https://dev.mysql.com/downloads/workbench/    
 ```
 
-  b. If only want MySQL Community Server (untested)
+b. If only want MySQL Community Server (untested)
 
 ```sh
    Follow directions at https://dev.mysql.com/downloads/mysql/
@@ -51,7 +50,7 @@ MySQL DB:
 ```sh
    Follow directions at https://dev.mysql.com/doc/workbench/en/wb-mysql-connections-new.html
 ```
-     or
+or
 ```sh
   Follow directions at https://dev.mysql.com/doc/refman/5.7/en/creating-database.html
 

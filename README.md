@@ -18,19 +18,34 @@ A tool for Profiling IoT devices particularly for use with MUD
      ```
      ***or***
 
+     ```sh
+     shell> sudo apt-get install python3.7
+     ```
+
+     ***or***
+
      Follow instructions at https://www.python.org/downloads/
 
 2. MySQL
-   1. MySQL Workbench [recommended]
-
-      Follow directions at https://dev.mysql.com/downloads/workbench/    
-
-   2. If only want MySQL Community Server [untested]
+   1. If only want MySQL Community Server
 
       Follow directions at https://dev.mysql.com/downloads/mysql/
 
+   2. MySQL Workbench [recommended]
 
-3. LibPcap
+      Follow directions at https://dev.mysql.com/downloads/workbench/    
+
+3. pip
+   ```sh
+   shell> sudo apt-get install python3-pip
+   ```
+
+4. Tkinter for Python3
+   ```sh
+   shell> sudo apt-get install python3-tk
+   ```
+
+5. LibPcap
 
    Used for generating packet captures to import into the database and tool 
    ```sh
@@ -39,15 +54,6 @@ A tool for Profiling IoT devices particularly for use with MUD
    Windows: follow instructions at: https://nmap.org/npcap/
    ```
 
-4. pip
-   ```sh
-   shell> sudo apt-get install python3-pip
-   ```
-
-5. Tkinter for Python3
-   ```sh
-   shell> sudo apt-get install python3-tk
-   ```
 
 ## Installation
 
@@ -60,13 +66,7 @@ A tool for Profiling IoT devices particularly for use with MUD
 
 1. Create MySQL Database:
 
-   1. MySQL Workbench
-
-      Follow directions at https://dev.mysql.com/doc/workbench/en/wb-mysql-connections-new.html
-
-      ***or***
-
-   2. MySQL Server:
+   1. MySQL Server:
 
       Follow directions at https://dev.mysql.com/doc/refman/5.7/en/creating-database.html
 
@@ -81,6 +81,11 @@ A tool for Profiling IoT devices particularly for use with MUD
       shell> mysql -h host -u user -p <your_db_name>
       Enter password: ********
       ```
+
+   2. MySQL Workbench
+
+      Follow directions at https://dev.mysql.com/doc/workbench/en/wb-mysql-connections-new.html
+
 
 ## Execute
 ```sh

@@ -59,21 +59,44 @@ class CaptureDatabase:
                            "WHERE id=%(id)s AND fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s")
 
     #;lkj too be completed
-    add_pkt = ("INSERT INTO packet "
-               #VARCHAR     DATETIME  INT     TEXT      INT     TEXT    TEXT    INT          INT          INT          INT          TEXT?
-               #"(fileHash, pkt_time, length, protocol, ip_ver, ip_src, ip_dst, tcp_srcport, tcp_dstport, udp_srcport, udp_dstport, raw) "
-               #"VALUES (%(fileHash)s, %(time)s, %(length)i, %(protocol)s, %(ip_ver)i, %(ip_src)s, %(ip_dst)s, %(tcp_srcport)i, "
-               #"%(tcp_dstport)i, %(udp_srcport)i, %(udp_dstport)i, %(raw)s);")
-               
-               #VARCHAR    DATETIME  VARCHAR   INT     TEXT      INT     TEXT    TEXT    TEXT INT          INT          TEXT?
-
-               #self.comm_list.insert(tk.END, [pkt_time, mac_addr, ip_ver, ip_src, ip_dst, protocol, tlp, tlp_srcport, tlp_dstport, length, raw])
-               "(fileHash, pkt_time, mac_addr, ip_ver, ip_src, ip_dst, ew, protocol, tlp, tlp_srcport, tlp_dstport, length, raw) "
-               #"VALUES (%(fileHash)s, %(pkt_time)s, %(mac_addr)s, %(ip_ver)i, %(ip_src)s, %(ip_dst)s, %(ew)s, %(protocol)s, %(tlp)s, "
-               #"%(tlp_srcport)i, %(tlp_dstport)i, %(length)i, %(raw)s);")
-               "VALUES (%(fileHash)s, %(pkt_time)s, %(mac_addr)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, %(protocol)s, %(tlp)s, "
-               #"%(tlp_srcport)s, %(tlp_dstport)s, %(length)s, %(raw)s);")
-               "%(tlp_srcport)s, %(tlp_dstport)s, %(length)s);")
+    add_pkt = (
+        "INSERT INTO packet "
+        "    (fileHash, pkt_datetime, pkt_epochtime, mac_addr, "
+        "     protocol, ip_ver, ip_src, ip_dst, ew, "
+        "     tlp, tlp_srcport, tlp_dstport, length) "
+        "VALUES "
+        "    (%(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
+        "     %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
+        "     %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s);")
+    '''
+    add_pkt = (#"INSERT INTO packet "
+        "INSERT INTO packet "
+        #"    (fileHash, pkt_datetime, pkt_epochtime, mac_addr, "
+        "    (fileHash, pkt_epochtime, mac_addr, "
+        "     protocol, ip_ver, ip_src, ip_dst, ew, "
+        "     tlp, tlp_srcport, tlp_dstport, length) "
+        "VALUES "
+        #"    (%(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
+        "    (%(fileHash)s, %(pkt_timestamp)s, %(mac_addr)s, "
+        "     %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
+        "     %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s);")
+    '''
+    #           #"INSERT INTO packet "
+    #           #VARCHAR     DATETIME  INT     TEXT      INT     TEXT    TEXT    INT          INT          INT          INT          TEXT?
+    #           #"(fileHash, pkt_time, length, protocol, ip_ver, ip_src, ip_dst, tcp_srcport, tcp_dstport, udp_srcport, udp_dstport, raw) "
+    #           #"VALUES (%(fileHash)s, %(time)s, %(length)i, %(protocol)s, %(ip_ver)i, %(ip_src)s, %(ip_dst)s, %(tcp_srcport)i, "
+    #           #"%(tcp_dstport)i, %(udp_srcport)i, %(udp_dstport)i, %(raw)s);")
+    #           
+    #           #VARCHAR    DATETIME  VARCHAR   INT     TEXT      INT     TEXT    TEXT    TEXT INT          INT          TEXT?
+    #
+    #           #self.comm_list.insert(tk.END, [pkt_time, mac_addr, ip_ver, ip_src, ip_dst, protocol, tlp, tlp_srcport, tlp_dstport, length, raw])
+    #           "(fileHash, pkt_datetime, pkt_epochtime, mac_addr, ip_ver, ip_src, ip_dst, ew, protocol, tlp, tlp_srcport, tlp_dstport, length) "
+    #           #"(fileHash, pkt_time, mac_addr, ip_ver, ip_src, ip_dst, ew, protocol, tlp, tlp_srcport, tlp_dstport, length, raw) "
+    #           #"VALUES (%(fileHash)s, %(pkt_time)s, %(mac_addr)s, %(ip_ver)i, %(ip_src)s, %(ip_dst)s, %(ew)s, %(protocol)s, %(tlp)s, "
+    #           #"%(tlp_srcport)i, %(tlp_dstport)i, %(length)i, %(raw)s);")
+    #           "VALUES (%(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, %(protocol)s, %(tlp)s, "
+    #           #"%(tlp_srcport)s, %(tlp_dstport)s, %(length)s, %(raw)s);")
+    #           "%(tlp_srcport)s, %(tlp_dstport)s, %(length)s);")
 
     add_protocol = ("INSERT INTO protocol "
                     # BINARY       VARCHAR   TEXT      INT       TEXT         BOOL  TEXT     INT       TEXT
@@ -478,13 +501,19 @@ class CaptureDigest:
 
     def extract_pkts(self):
         for p in self.pkt:
-            self.pkt_info.append({"pkt_time":p.sniff_timestamp,
-                                  "length":p.length,
-                                  "protocol":p.layers[-1].layer_name.upper(),
+            self.pkt_info.append({"pkt_timestamp":p.sniff_timestamp,
                                   "mac_addr":'',
-                                  "ew": p.number in self.ew_index})
-                                  #"ew": p.number in self.ew_index,
+                                  "protocol":p.layers[-1].layer_name.upper(),
+                                  "ip_ver":'-1',
+                                  "ip_src":'',
+                                  "ip_dst":'',
+                                  "ew": p.number in self.ew_index,
+                                  "tlp":'',
+                                  "tlp_srcport":'-1',
+                                  "tlp_dstport":'-1',
+                                  "length":p.length})
                                   #"raw":p})
+
             '''
             self.pkt_info[-1]{"time":p.sniff_timestamp,
                               "length":p.length,
@@ -495,6 +524,8 @@ class CaptureDigest:
                 if l.layer_name == "sll":
                     self.pkt_info[-1]["mac_addr"] = l.src_eth
                     #self.pkt_info[-1]["mac"] = l._all_fields["sll.src.eth"]
+                elif l.layer_name == "eth":
+                    self.pkt_info[-1]["mac_addr"] = l.addr
                 elif l.layer_name == "ip":
                     #self.pkt_info[-1]["ip_ver"] = l.ip.version
                     #self.pkt_info[-1]["ip_src"] = l.ip.src
@@ -560,7 +591,8 @@ class CaptureDigest:
         except:
             pMAC = pkt.sll.src_eth
 
-        self.pkt_info.append({})
+        #;lkj
+        #self.pkt_info.append({})
         #self.pkt_info[-1]["mac"] = pMAC
 
         if pMAC not in self.uniqueMAC:

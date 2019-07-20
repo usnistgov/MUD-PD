@@ -1354,11 +1354,18 @@ class  MudCaptureApplication(tk.Frame):
         '''
         print("In import_packets")
         h = {"fileHash" : cap.fileHash}
+        cnt = 0
         for p in cap.pkt_info:
-            print(p)
-            print(p.update(h))
-            self.db_handler.db.insert_packet( p.update(h) )
+            if not p:
+                #print("p is empty")
+                cnt += 1
+                continue
+            print("pre update:", p)
+            p.update(h)
+            print("post update:", p)
+            self.db_handler.db.insert_packet( p )
 
+        print(cnt, "empty packets at end of pcap?")
         #self.populate_comm_list()
 
     #;lkj

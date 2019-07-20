@@ -3,7 +3,7 @@
 
 A tool for Profiling IoT devices particularly for use with MUD
 
-*N.B. This tool is still in the development phase*
+*N.B. This tool is still in the development phase, and has only been tested on Linux and macOS.*
 
 ## Prerequisite
 1. Python 3.7.2+
@@ -37,6 +37,16 @@ A tool for Profiling IoT devices particularly for use with MUD
    Linux: ``apt-get install tcpdump''
    OSX: readily available by default.
    Windows: follow instructions at: https://nmap.org/npcap/
+   ```
+
+4. pip
+   ```sh
+   shell> sudo apt-get install python3-pip
+   ```
+
+5. Tkinter for Python3
+   ```sh
+   shell> sudo apt-get install python3-tk
    ```
 
 ## Installation

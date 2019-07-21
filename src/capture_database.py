@@ -64,39 +64,23 @@ class CaptureDatabase:
         "    (fileHash, pkt_datetime, pkt_epochtime, mac_addr, "
         "     protocol, ip_ver, ip_src, ip_dst, ew, "
         "     tlp, tlp_srcport, tlp_dstport, length) "
+        "SELECT "
+        "    %(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
+        "    %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
+        "    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s "
+        "WHERE NOT EXISTS (SELECT * FROM packet "
+        "                  WHERE fileHash=%(fileHash)s AND pkt_epochtime=%(pkt_timestamp)s);")
+
+    '''
+        "INSERT INTO packet "
+        "    (fileHash, pkt_datetime, pkt_epochtime, mac_addr, "
+        "     protocol, ip_ver, ip_src, ip_dst, ew, "
+        "     tlp, tlp_srcport, tlp_dstport, length) "
         "VALUES "
         "    (%(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
         "     %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
         "     %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s);")
     '''
-    add_pkt = (#"INSERT INTO packet "
-        "INSERT INTO packet "
-        #"    (fileHash, pkt_datetime, pkt_epochtime, mac_addr, "
-        "    (fileHash, pkt_epochtime, mac_addr, "
-        "     protocol, ip_ver, ip_src, ip_dst, ew, "
-        "     tlp, tlp_srcport, tlp_dstport, length) "
-        "VALUES "
-        #"    (%(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
-        "    (%(fileHash)s, %(pkt_timestamp)s, %(mac_addr)s, "
-        "     %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
-        "     %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s);")
-    '''
-    #           #"INSERT INTO packet "
-    #           #VARCHAR     DATETIME  INT     TEXT      INT     TEXT    TEXT    INT          INT          INT          INT          TEXT?
-    #           #"(fileHash, pkt_time, length, protocol, ip_ver, ip_src, ip_dst, tcp_srcport, tcp_dstport, udp_srcport, udp_dstport, raw) "
-    #           #"VALUES (%(fileHash)s, %(time)s, %(length)i, %(protocol)s, %(ip_ver)i, %(ip_src)s, %(ip_dst)s, %(tcp_srcport)i, "
-    #           #"%(tcp_dstport)i, %(udp_srcport)i, %(udp_dstport)i, %(raw)s);")
-    #           
-    #           #VARCHAR    DATETIME  VARCHAR   INT     TEXT      INT     TEXT    TEXT    TEXT INT          INT          TEXT?
-    #
-    #           #self.comm_list.insert(tk.END, [pkt_time, mac_addr, ip_ver, ip_src, ip_dst, protocol, tlp, tlp_srcport, tlp_dstport, length, raw])
-    #           "(fileHash, pkt_datetime, pkt_epochtime, mac_addr, ip_ver, ip_src, ip_dst, ew, protocol, tlp, tlp_srcport, tlp_dstport, length) "
-    #           #"(fileHash, pkt_time, mac_addr, ip_ver, ip_src, ip_dst, ew, protocol, tlp, tlp_srcport, tlp_dstport, length, raw) "
-    #           #"VALUES (%(fileHash)s, %(pkt_time)s, %(mac_addr)s, %(ip_ver)i, %(ip_src)s, %(ip_dst)s, %(ew)s, %(protocol)s, %(tlp)s, "
-    #           #"%(tlp_srcport)i, %(tlp_dstport)i, %(length)i, %(raw)s);")
-    #           "VALUES (%(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, %(protocol)s, %(tlp)s, "
-    #           #"%(tlp_srcport)s, %(tlp_dstport)s, %(length)s, %(raw)s);")
-    #           "%(tlp_srcport)s, %(tlp_dstport)s, %(length)s);")
 
     add_protocol = ("INSERT INTO protocol "
                     # BINARY       VARCHAR   TEXT      INT       TEXT         BOOL  TEXT     INT       TEXT
@@ -260,8 +244,23 @@ class CaptureDatabase:
     def select_device_macs(self):
         self.cursor.execute(self.query_device_macs)                                                                                
 
+    # work to be done
+    def select_packets(self):
+        self.cursor.execute(self.query_pkts)
+
+    def select_packets_by_capture(self, pkt_data_capture):
+        self.cursor.execute(self.query_pkt_by_capture, pkt_data_capture)
+
+    def select_packets_by_device(self, pkt_data_device):
+        self.cursor.execute(self.query_pkt_by_device, pkt_data_device)
+
+    def select_packets_by_capture_and_device(self, pkt_data):
+        self.cursor.execute(self.query_pkt_by_capture_and_device, pkt_data)
+
+    '''
     def select_device_communication(self, device):
         self.cursor.execute(self.query_device_communication, device)
+    '''
 
     def select_device_strings(self, device):
         self.cursor.execute(self.query_device_strings, device)

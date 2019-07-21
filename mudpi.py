@@ -236,9 +236,11 @@ class  MudCaptureApplication(tk.Frame):
         self.comm_scrollbar.pack(side="right", fill="both")
 
         # communication list
-        self.comm_header = ["Time", "MAC", "IPver", "Source", "Destination", "Protocol", "Transport Protocol", "Source Port",
+        self.comm_header = ["Time", "MAC", "IPver", "Source", "Destination", "E/W",
+                            "Protocol", "Transport Protocol", "Source Port",
                             #"Destination Port", "Length", "Direction", "Raw"] #Direction being NS or EW
-                            "Destination Port", "Length", "Raw"] #Direction being NS or EW
+                            #"Destination Port", "Length", "Raw"] #Direction being NS or EW
+                            "Destination Port", "Length"] #Direction being NS or EW
         self.comm_list = MultiColumnListbox(self.commFrame, self.comm_header, list())#, keep1st=True)
         #self.comm_list.bind("<<ListboxSelect>>", self.update_comm_list)
 
@@ -654,15 +656,15 @@ class  MudCaptureApplication(tk.Frame):
 
             # Popup window
             #self.yield_focus(self.w_cap)
-            print("(A) popup_import_capture_devices")
+            #print("(A) popup_import_capture_devices")
             self.popup_import_capture_devices(self.cap)
 
-            print("(B) db_handler.db.insert_capture")
+            #print("(B) db_handler.db.insert_capture")
             self.db_handler.db.insert_capture(data_capture)
-            print("(C) populate_capture_list")
+            #print("(C) populate_capture_list")
             self.populate_capture_list()
 
-            print("(D) import_packets")
+            #print("(D) import_packets")
             self.import_packets(self.cap)
 
             self.w_cap.destroy()
@@ -1354,33 +1356,52 @@ class  MudCaptureApplication(tk.Frame):
         '''
         print("In import_packets")
         h = {"fileHash" : cap.fileHash}
-        cnt = 0
         for p in cap.pkt_info:
-            if not p:
-                #print("p is empty")
-                cnt += 1
-                continue
-            print("pre update:", p)
+            #print("pre update:", p)
             p.update(h)
-            print("post update:", p)
+            #print("post update:", p)
             self.db_handler.db.insert_packet( p )
 
-        print(cnt, "empty packets at end of pcap?")
-        #self.populate_comm_list()
+        self.populate_comm_list()
 
     #;lkj
-    def populate_comm_list(self, device, append=False):
+    #def populate_comm_list(self, device, append=False):
+    def populate_comm_list(self, append=False):
         # Clear previous list
         if not append:
-            self.comm_list.delete(0,tk.END)
+            #self.comm_list.delete(0,tk.END)
+            self.comm_list.clear()
 
         
         # Get and insert all captures currently added to database
+        self.db_handler.db.select_packets()
+
+        # might be interesting to include destination URL and NOTES
+        # Limiting version for debugging at least
+        for (i, (id, fileHash, pkt_datetime, pkt_epochtime, mac_addr, protocol, ip_ver, ip_src, ip_dst,
+             ew, tlp, tlp_srcport, tlp_dstport, pkt_length)) in enumerate(self.db_handler.db.cursor): 
+            #self.comm_list.insert(tk.END, [pkt_time, mac_addr, ip_ver, ip_src, ip_dst, ew, 
+            #                               protocol, tlp, tlp_srcport, tlp_dstport, pkt_length])
+            self.comm_list.append_unique((pkt_datetime, mac_addr, ip_ver, ip_src, ip_dst, ew, 
+                                          protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
+            if i > 100: 
+                break
+
+        '''
+        for (id, fileHash, pkt_datetime, pkt_epochtime, mac_addr, protocol, ip_ver, ip_src, ip_dst,
+             ew, tlp, tlp_srcport, tlp_dstport, pkt_length) in self.db_handler.db.cursor: 
+            #self.comm_list.insert(tk.END, [pkt_time, mac_addr, ip_ver, ip_src, ip_dst, ew, 
+            #                               protocol, tlp, tlp_srcport, tlp_dstport, pkt_length])
+            self.comm_list.append_unique((pkt_datetime, mac_addr, ip_ver, ip_src, ip_dst, ew, 
+                                          protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
+        '''
+        '''
         self.db_handler.db.select_device_communication(device)
         
         for (id, fileHash, pkt_time, mac_addr, protocol, ip_ver, ip_src, ip_dst,
              tlp, tlp_srcport, tlp_dstport, pkt_length, raw) in self.db_handler.db.cursor: # might be interesting to include destination URL and NOTES
             self.comm_list.insert(tk.END, [pkt_time, mac_addr, ip_ver, ip_src, ip_dst, protocol, tlp, tlp_srcport, tlp_dstport, pkt_length, raw])
+        '''
         '''
         for (id, fileHash, mac_addr, protocol, src_port, dst_ip_addr, ipv6, dst_url,
              dst_port, notes) in self.db_handler.db.cursor:

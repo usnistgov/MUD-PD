@@ -233,8 +233,10 @@ class  MudCaptureApplication(tk.Frame):
         self.comm_title.pack(fill=tk.X)
 
         # scrollbar
+        '''
         self.comm_scrollbar = tk.Scrollbar(self.commFrame)
         self.comm_scrollbar.pack(side="right", fill="both")
+        '''
 
         # communication list
         self.comm_header = ["Time", "MAC", "IPver", "Source", "Destination", "E/W",

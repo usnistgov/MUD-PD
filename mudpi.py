@@ -1522,7 +1522,7 @@ class  MudCaptureApplication(tk.Frame):
                                                   protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
                     i += 1
 
-            if (i+1) >= self.comm_list_num_pkts: 
+            if i >= self.comm_list_num_pkts: 
                 break
 
         '''
@@ -1631,6 +1631,7 @@ class  MudCaptureApplication(tk.Frame):
 
 
     def modify_comm_dev_restriction(self, r_button):
+        print("comm_dev_restriction: ",self.comm_dev_restriction)
         print("communication device restriction:", r_button)
 
         if self.comm_dev_restriction == "none":
@@ -1639,39 +1640,39 @@ class  MudCaptureApplication(tk.Frame):
             elif r_button == "either":
                 self.comm_dev_restriction = "either"
             else:
-                print("Something went wrong with modifying the communication state")
+                print("Something went wrong with modifying the communication device restriction")
         elif self.comm_dev_restriction == "between":
             if r_button == "between":
                 self.comm_dev_restriction = "none"
             elif r_button == "either":
                 self.comm_dev_restriction = "either"
             else:
-                print("Something went wrong with modifying the communication state")
+                print("Something went wrong with modifying the communication device restriction")
         elif self.comm_dev_restriction == "either":
             if r_button == "between":
                 self.comm_dev_restriction = "between"
             elif r_button == "either":
                 self.comm_dev_restriction = "none"
             else:
-                print("Something went wrong with modifying the communication state")
+                print("Something went wrong with modifying the communication device restriction")
         else:
-            print("Something went wrong with modifying the communication state")
+            print("Something went wrong with modifying the communication device restriction")
 
         # Update the filter
-        if self.comm_dev_restriction == "any":
+        if self.comm_dev_restriction == "none":
             self.b_between.config(fg = "black")
             self.b_either.config(fg = "black")
             #update communication table view
-        elif self.comm_dev_restriction == "ns":
+        elif self.comm_dev_restriction == "between":
             self.b_between.config(fg = "green")
             self.b_either.config(fg = "red")
             #update communication table view
-        elif self.comm_dev_restriction == "ew":
+        elif self.comm_dev_restriction == "either":
             self.b_between.config(fg = "red")
             self.b_either.config(fg = "green")
             #update communication table view
         else:
-            print("Something went wrong with modifying the communication state")
+            print("Something went wrong with modifying the communication device restriction")
 
         print("comm_dev_restriction:", self.comm_dev_restriction)
         self.populate_comm_list()

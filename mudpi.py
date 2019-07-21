@@ -217,7 +217,8 @@ class  MudCaptureApplication(tk.Frame):
         # device list
         self.dev_header = ["Manufacturer", "Model", "Internal Name", "MAC", "Category"]
         self.dev_list = MultiColumnListbox(self.devFrame, self.dev_header, list(), keep1st=True)
-        self.dev_list.bind("<<ListboxSelect>>", self.update_comm_list)
+        #self.dev_list.bind("<<ListboxSelect>>", self.update_comm_list)
+        self.dev_list.bind("<<TreeviewSelect>>", self.update_comm_list)
 
         self.devFrame.pack(side="top", fill="both", expand=True)
 
@@ -253,12 +254,34 @@ class  MudCaptureApplication(tk.Frame):
 
         #:LKJ To be added once packets have been added to the table
         self.comm_state = "any"
-        self.b_ns = tk.Button(self.commFrame, text="N/S", command=(lambda b="ns" : self.modify_comm_state(b)))
-        self.b_ew = tk.Button(self.commFrame, text="E/W", command=(lambda b="ew" : self.modify_comm_state(b)))
+        self.b_ns = tk.Button(self.commFrame, text="N/S", command=(lambda s="ns" : self.modify_comm_state(s)))
+        self.b_ew = tk.Button(self.commFrame, text="E/W", command=(lambda s="ew" : self.modify_comm_state(s)))
+
+        self.comm_dev_restriction = "none"
+        self.b_between = tk.Button(self.commFrame, text="Between", command=(lambda r="between" : self.modify_comm_dev_restriction(r)))
+        self.b_either = tk.Button(self.commFrame, text="Either", command=(lambda r="either" : self.modify_comm_dev_restriction(r)))
+
+        self.b_pkt10    = tk.Button(self.commFrame, text="10",    command=(lambda n=10    : self.modify_comm_num_pkts(n)))
+        self.b_pkt100   = tk.Button(self.commFrame, text="100",   command=(lambda n=100   : self.modify_comm_num_pkts(n)))
+        self.b_pkt1000  = tk.Button(self.commFrame, text="1000",  command=(lambda n=1000  : self.modify_comm_num_pkts(n)))
+        self.b_pkt10000 = tk.Button(self.commFrame, text="10000", command=(lambda n=10000 : self.modify_comm_num_pkts(n)))
         #self.b_internal = tk.Button(self.commFrame, text="Subnets", command=self.popup_internal_addr_list)
 
         self.b_ns.pack(side="left")
         self.b_ew.pack(side="left")
+        self.b_between.pack(side="left")
+        self.b_either.pack(side="left")
+
+        self.b_pkt10000.pack(side="right")
+        self.b_pkt1000.pack(side="right")
+        self.b_pkt100.pack(side="right")
+        self.b_pkt10.pack(side="right")
+
+        self.comm_list_num_pkts = 100
+        self.b_pkt100.config(state='disabled')
+
+        self.comm_list_all_pkts = []
+
         #self.b_internal.pack(side="right")
 
         self.commFrame.pack(side="top", fill="both", expand=True)
@@ -1268,6 +1291,8 @@ class  MudCaptureApplication(tk.Frame):
                 self.populate_device_list( capture=cap_name, append=(not first) )
                 first=False
         
+        #;lkj
+        #self.update_comm_list(None)
 
     '''#;lkj somehow this was here uncommented before
     # Uses Listbox
@@ -1314,29 +1339,34 @@ class  MudCaptureApplication(tk.Frame):
 
         self.dev_list.focus(0)
         self.dev_list.selection_set(0)
-
+        
+        #:LKJ
+        #self.populate_comm_list(None)
 
 
     def update_comm_list(self, event):
         first = True
 
-        for dev in self.dev_list.curselection():
+        #for dev in self.dev_list.curselection():
+        for dev in self.dev_list.selection():
             dev_name = self.dev_list.get(dev)
 
             # To simplify debugging
-            break
+            print("in update_comm_list")
 
             if type(dev_name) is str:
                 print("dev = " + dev_name)
             else:
-                print("dev = " + str(dev_name(0)))
+                print("dev = " + str(dev_name[0]))
             if dev_name == "All...":
                 print("Processing \'All...\'")
                 #self.populate_comm_list(dev_name)
-                self.populate_comm_list("*")
+                #self.populate_comm_list("*")
+                self.populate_comm_list(append=(not first))
                 break
             else:
-                self.populate_comm_list(dev_name, not first)
+                #self.populate_comm_list(dev_name, not first)
+                self.populate_comm_list(append=(not first))
                 first=False
 
 
@@ -1372,19 +1402,127 @@ class  MudCaptureApplication(tk.Frame):
             #self.comm_list.delete(0,tk.END)
             self.comm_list.clear()
 
-        
+        print("Populate Comm List")
+            
+        # Selecting based on cap list
+        first = True
+        for cap in self.cap_list.selection():
+            cap_details = self.cap_list.get(cap)
+            cap_date = cap_details[0]
+
+            if cap_date == "All...":
+                #self.populate_device_list()
+                print("All Captures")
+                break
+            else:
+                cap_name = cap_details[1] #{'fileName':cap_name}
+                print(cap_name)
+                if first:
+                    # Create cap_toi
+                    pass
+                else:
+                    # Update cap_toi
+                    pass
+                #self.populate_device_list( capture=cap_name, append=(not first) )
+                first=False
+            
+
+
+        # Selecting based on dev list
+        first = True
+        for dev in self.dev_list.selection():
+            dev_details = self.dev_list.get(dev)
+
+            print(dev_details)
+
+            print("dev =", dev_details[0])
+            dev_name = dev_details[0]
+
+            if dev_name == "All...":
+                print("No device restrictions")
+                # Create dev_toi
+                break
+            else:
+                print("mac =", dev_details[3])
+                dev_mac = dev_details[3]
+                # Update dev_toi
+                #self.populate_comm_list(dev_name, not first)
+                #self.populate_comm_list(append=(not first))
+                first=False
+
+
+
+        # Selecting based on E/W or N/S
+        '''
+        if self.comm_state == "any":
+            pass
+        elif self.comm_state == "ns":
+            pass
+        elif self.comm_state == "ew":
+            pass
+        '''
+
+        # Selecting based on restriction
+        '''
+        if self.comm_dev_restriction == "none":
+            pass
+        elif self.comm_dev_restriction == "between":
+            pass
+        elif self.comm_dev_restriction == "either":
+            pass
+        '''
+
+        # Get files from tables of interest
+
+
+
         # Get and insert all captures currently added to database
         self.db_handler.db.select_packets()
 
         # might be interesting to include destination URL and NOTES
         # Limiting version for debugging at least
-        for (i, (id, fileHash, pkt_datetime, pkt_epochtime, mac_addr, protocol, ip_ver, ip_src, ip_dst,
-             ew, tlp, tlp_srcport, tlp_dstport, pkt_length)) in enumerate(self.db_handler.db.cursor): 
+        #self.comm_list_num_pkts = 100
+        self.comm_list_all_pkts = self.db_handler.db.cursor
+
+
+        #for (i, (id, fileHash, pkt_datetime, pkt_epochtime, mac_addr, protocol, ip_ver, ip_src, ip_dst,
+        #     ew, tlp, tlp_srcport, tlp_dstport, pkt_length)) in enumerate(self.db_handler.db.cursor): 
+
+
+
+        #for (i, (id, fileHash, pkt_datetime, pkt_epochtime, mac_addr, protocol, ip_ver, ip_src, ip_dst,
+        #    ew, tlp, tlp_srcport, tlp_dstport, pkt_length)) in enumerate(self.comm_list_all_pkts): 
+
+
+
+        i = 0
+        for (id, fileHash, pkt_datetime, pkt_epochtime, mac_addr, protocol, ip_ver, ip_src, ip_dst,
+            ew, tlp, tlp_srcport, tlp_dstport, pkt_length) in self.comm_list_all_pkts: 
             #self.comm_list.insert(tk.END, [pkt_time, mac_addr, ip_ver, ip_src, ip_dst, ew, 
             #                               protocol, tlp, tlp_srcport, tlp_dstport, pkt_length])
+
+            
+            '''
             self.comm_list.append_unique((pkt_datetime, mac_addr, ip_ver, ip_src, ip_dst, ew, 
                                           protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
-            if i > 100: 
+            '''
+            # Temporary solution: ********************
+            if self.comm_state == "any":
+                self.comm_list.append_unique((pkt_datetime, mac_addr, ip_ver, ip_src, ip_dst, ew, 
+                                              protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
+                i += 1
+            elif self.comm_state == "ew":
+                if ew:
+                    self.comm_list.append_unique((pkt_datetime, mac_addr, ip_ver, ip_src, ip_dst, ew, 
+                                                  protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
+                    i += 1
+            elif self.comm_state == "ns":
+                if not ew:
+                    self.comm_list.append_unique((pkt_datetime, mac_addr, ip_ver, ip_src, ip_dst, ew, 
+                                                  protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
+                    i += 1
+
+            if (i+1) >= self.comm_list_num_pkts: 
                 break
 
         '''
@@ -1408,8 +1546,10 @@ class  MudCaptureApplication(tk.Frame):
             self.comm_list.insert(tk.END, [protocol, src_port, dst_ip_addr, ipv6, dst_url, dst_port, notes])
         '''
         # Set focus on the first element
-        self.comm_list.select_set(0)
-        self.comm_list.event_generate("<<ListboxSelect>>")
+        #self.comm_list.select_set(0)
+        #self.comm_list.event_generate("<<ListboxSelect>>")
+        self.comm_list.focus(0)
+        self.comm_list.selection_set(0)
 
 
     def modify_comm_state(self, button):
@@ -1456,6 +1596,85 @@ class  MudCaptureApplication(tk.Frame):
             print("Something went wrong with modifying the communication state")
 
         print("comm_state:", self.comm_state)
+        self.populate_comm_list()
+
+
+    def modify_comm_num_pkts(self, num_pkts):
+        print("number of packets:", num_pkts)
+        self.comm_list_num_pkts = num_pkts
+
+        if num_pkts == 10:
+            self.b_pkt10.config(state='disabled')
+            self.b_pkt100.config(state='normal')
+            self.b_pkt1000.config(state='normal')
+            self.b_pkt10000.config(state='normal')
+        elif num_pkts == 100:
+            self.b_pkt10.config(state='normal')
+            self.b_pkt100.config(state='disabled')
+            self.b_pkt1000.config(state='normal')
+            self.b_pkt10000.config(state='normal')
+            pass
+        elif num_pkts == 1000:
+            self.b_pkt10.config(state='normal')
+            self.b_pkt100.config(state='normal')
+            self.b_pkt1000.config(state='disabled')
+            self.b_pkt10000.config(state='normal')
+        elif num_pkts == 10000:
+            self.b_pkt10.config(state='normal')
+            self.b_pkt100.config(state='normal')
+            self.b_pkt1000.config(state='normal')
+            self.b_pkt10000.config(state='disabled')
+        else:
+            print("unknown value for modify_comm_num_pkts")
+        
+        self.populate_comm_list()
+
+
+    def modify_comm_dev_restriction(self, r_button):
+        print("communication device restriction:", r_button)
+
+        if self.comm_dev_restriction == "none":
+            if r_button == "between":
+                self.comm_dev_restriction = "between"
+            elif r_button == "either":
+                self.comm_dev_restriction = "either"
+            else:
+                print("Something went wrong with modifying the communication state")
+        elif self.comm_dev_restriction == "between":
+            if r_button == "between":
+                self.comm_dev_restriction = "none"
+            elif r_button == "either":
+                self.comm_dev_restriction = "either"
+            else:
+                print("Something went wrong with modifying the communication state")
+        elif self.comm_dev_restriction == "either":
+            if r_button == "between":
+                self.comm_dev_restriction = "between"
+            elif r_button == "either":
+                self.comm_dev_restriction = "none"
+            else:
+                print("Something went wrong with modifying the communication state")
+        else:
+            print("Something went wrong with modifying the communication state")
+
+        # Update the filter
+        if self.comm_dev_restriction == "any":
+            self.b_between.config(fg = "black")
+            self.b_either.config(fg = "black")
+            #update communication table view
+        elif self.comm_dev_restriction == "ns":
+            self.b_between.config(fg = "green")
+            self.b_either.config(fg = "red")
+            #update communication table view
+        elif self.comm_dev_restriction == "ew":
+            self.b_between.config(fg = "red")
+            self.b_either.config(fg = "green")
+            #update communication table view
+        else:
+            print("Something went wrong with modifying the communication state")
+
+        print("comm_dev_restriction:", self.comm_dev_restriction)
+        self.populate_comm_list()
 
     def popup_internal_addr_list(self):
         # Currently not functional... Needs to be worked out

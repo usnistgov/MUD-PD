@@ -16,47 +16,126 @@ import subprocess
 class CaptureDatabase:
 
 
-    add_capture = ("INSERT INTO capture "
-                        # TEXT      TEXT     BINARY(32)   DATETIME TEXT      TEXT
-                        "(fileName, fileLoc, fileHash, capDate, activity, details) "
-                        #"VALUES (%s, %s, %s, %s, %s, %s);")
-                        "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(details)s);")
+    add_capture = (
+        "INSERT INTO capture "
+        # TEXT      TEXT     BINARY(32)   DATETIME TEXT      TEXT
+        "(fileName, fileLoc, fileHash, capDate, activity, details) "
+        #"VALUES (%s, %s, %s, %s, %s, %s);")
+        "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(details)s);")
 
-    add_device_in_capture = ("INSERT INTO device_in_capture "
-                             # TEXT      VARCHAR   VARCHAR
-                             "(fileName, fileHash, mac_addr) "
-                             "VALUES (%(fileName)s, %(fileHash)s, %(mac_addr)s);")
-                             # TEXT      VARCHAR   VARCHAR    BOOL
-                             #"(fileName, fileHash, mac_addr, imported) "
-                             #"VALUES (%(fileName)s, %(fileHash)s, %(mac_addr)s, %(imported)s);")
+    add_device_in_capture = (
+        "INSERT INTO device_in_capture "
+        # TEXT      VARCHAR   VARCHAR
+        "(fileName, fileHash, mac_addr) "
+        "VALUES (%(fileName)s, %(fileHash)s, %(mac_addr)s);")
+        # TEXT      VARCHAR   VARCHAR    BOOL
+        #"(fileName, fileHash, mac_addr, imported) "
+        #"VALUES (%(fileName)s, %(fileHash)s, %(mac_addr)s, %(imported)s);")
 
-    change_device_in_capture = ("UPDATE device_in_capture "
-                                "SET imported = %(imported)s "
-                                # TEXT      VARCHAR   VARCHAR
-                                "WHERE id=%(id)s AND fileName=%(fileName)s AND fileHash=%(fileHash)s AND "
-                                #"      mac_addr=%(mac_addr)s AND imported=%(imported)s);")
-                                "      mac_addr=%(mac_addr)s;")
+    change_device_in_capture = (
+        "UPDATE device_in_capture "
+        "SET imported = %(imported)s "
+        # TEXT      VARCHAR   VARCHAR
+        "WHERE id=%(id)s AND fileName=%(fileName)s AND fileHash=%(fileHash)s AND "
+        #"      mac_addr=%(mac_addr)s AND imported=%(imported)s);")
+        "      mac_addr=%(mac_addr)s;")
 
-    add_mac_to_mfr = ("INSERT INTO mac_to_mfr "
-                      # VARCHAR     TEXT
-                      "(mac_prefix, mfr) "
-                      "VALUES (%(mac_prefix)s, %(mfr)s);")
+    add_mac_to_mfr = (
+        "INSERT INTO mac_to_mfr "
+        # VARCHAR     TEXT
+        "(mac_prefix, mfr) "
+        "VALUES (%(mac_prefix)s, %(mfr)s);")
+    
+    add_device = (
+        "INSERT INTO device "
+        # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT
+        "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes) "
+        #"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+        "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s)")
 
-    add_device = ("INSERT INTO device "
-                  # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT
-                  "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes) "
-                  #"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
-                  "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s)")
+    add_device_state = (
+        "INSERT INTO device_state "
+        # BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
+        "(fileHash, mac_addr, internalName, fw_ver, ipv4_addr, ipv6_addr) "
+        #"VALUES (%s, %s, %s, %s, %s, %s);"
+        "VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
 
-    add_device_state = ("INSERT INTO device_state "
-                        # BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
-                        "(fileHash, mac_addr, internalName, fw_ver, ipv4_addr, ipv6_addr) "
-                        #"VALUES (%s, %s, %s, %s, %s, %s);"
-                        "VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+    change_device_state = (
+        "UPDATE device_state "
+        "SET fw_ver = %(fw_ver)s "
+        "WHERE id=%(id)s AND fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s;")
 
-    change_device_state = ("UPDATE device_state "
-                           "SET fw_ver = %(fw_ver)s "
-                           "WHERE id=%(id)s AND fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s")
+    # Temporary Tables of Interest (toi)
+    # capture toi
+    drop_capture_toi = (
+        "DROP TEMPORARY TABLE IF EXISTS cap_toi;")
+
+    create_capture_toi_all = (
+        "CREATE TEMPORARY TABLE cap_toi "
+        "SELECT DISTINCT(fileHash) "
+        "FROM capture;")
+
+    create_capture_toi = (
+        "CREATE TEMPORARY TABLE cap_toi "
+        "SELECT DISTINCT(fileHash) "
+        "FROM capture "
+        "WHERE fileName=%(fileName)s;" )
+
+    update_capture_toi = (
+        "INSERT INTO cap_toi "
+        "SELECT DISTINCT(fileHash) "
+        "FROM capture "
+        "WHERE fileName=%(fileHash)s;")
+
+    # device toi
+    drop_device_toi = (
+        "DROP TEMPORARY TABLE IF EXISTS dev_toi;")
+
+    create_device_toi_all = (
+        "CREATE TEMPORARY TABLE dev_toi "
+        "SELECT d.fileHash, d.mac_addr, d.ipv4_addr, d.ipv6_addr "
+        "FROM device_state d "
+        "    INNER JOIN cap_toi c ON d.fileHash = c.fileHash;")
+
+    create_device_toi = (
+        "CREATE TEMPORARY TABLE dev_toi "
+        "SELECT d.fileHash, d.mac_addr, d.ipv4_addr, d.ipv6_addr "
+        "FROM device_state d "
+        "    INNER JOIN cap_toi c ON d.fileHash = c.fileHash "
+        "WHERE d.mac_addr=%(mac_addr)s;")
+
+    update_device_toi = (
+        "INSERT INTO dev_toi "
+        "SELECT d.fileHash, d.mac_addr, d.ipv4_addr, d.ipv6_addr "
+        "FROM device_state d "
+        "    INNER JOIN cap_toi c ON d.fileHash = c.fileHash "
+        "WHERE d.mac_addr=%(mac_addr)s;")
+
+    # packet toi
+    query_packet_toi = (
+        "SELECT p.* "
+        "FROM packet p "
+        "    INNER JOIN dev_toi d "
+        "ON (d.fileHash=p.fileHash "
+        "    AND (p.mac_addr=d.mac_addr "
+        "         OR p.ip_src=(d.ipv4_addr OR d.ipv6_addr) "
+        "                OR p.ip_dst=(d.ipv4_addr OR d.ipv6_addr))) "
+        "WHERE p.ew=%(ew)s;")
+
+    drop_packet_toi = (
+        "DROP TEMPORARY TABLE IF EXISTS pkt_toi;")
+
+    create_packet_toi = (
+        "CREATE TEMPORARY TABLE pkt_toi "
+        "SELECT * "
+        "FROM packet "
+        "WHERE fileHash = (SELECT DISTINCT(fileHash) FROM capture WHERE fileName=%(fileName)s);")
+
+    update_packet_toi = (
+        "INSERT INTO pkt_toi "
+        "SELECT * "
+        "FROM packet "
+        "WHERE fileHash = (SELECT DISTINCT(fileHash) FROM capture WHERE fileName=%(fileName)s);")
 
     #;lkj too be completed
     add_pkt = (
@@ -264,6 +343,55 @@ class CaptureDatabase:
 
     def select_device_strings(self, device):
         self.cursor.execute(self.query_device_strings, device)
+
+    # Capture table of interest
+    def drop_cap_toi(self):
+        self.cursor.execute(self.drop_capture_toi)
+        self.cnx.commit()
+
+    def create_cap_toi(self, capture=None):
+        if capture==None:
+            self.cursor.execute(self.create_capture_toi_all)
+        else:
+            self.cursor.execute(self.create_capture_toi, capture)
+        self.cnx.commit()
+
+    def update_cap_toi(self, capture):
+        self.cursor.execute(self.update_capture_toi, capture)
+        self.cnx.commit()
+
+    # Device table of interest
+    def drop_dev_toi(self):
+        self.cursor.execute(self.drop_device_toi)
+        self.cnx.commit()
+
+    def create_dev_toi(self, mac=None):
+        if mac == None:
+            self.cursor.execute(self.create_device_toi_all)
+        else:
+            self.cursor.execute(self.create_device_toi, mac)
+        self.cnx.commit()
+
+    def update_dev_toi(self):
+        self.cursor.execute(self.update_device_toi, mac)
+        self.cnx.commit()
+
+    # Packet table of interest
+    def select_pkt_toi(self, ew):
+        self.cursor.execute(self.query_packet_toi, ew)
+
+    def drop_pkt_toi(self):
+        self.cursor.execute(self.drop_packet_toi)
+        self.cnx.commit()
+
+    def create_pkt_toi(self, capture):
+        self.cursor.execute(self.create_packet_toi, capture)
+        self.cnx.commit()
+
+    def update_pkt_toi(self, capture):
+        self.cursor.execute(self.update_packet_toi, capture)
+        self.cnx.commit()
+
 
     def __exit__(self):
         self.cursor.close()

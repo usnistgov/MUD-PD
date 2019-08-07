@@ -1349,12 +1349,20 @@ class  MudCaptureApplication(tk.Frame):
     def update_comm_list(self, event):
         first = True
 
+
+        self.populate_comm_list()
+        return
+
+
+
         #for dev in self.dev_list.curselection():
         for dev in self.dev_list.selection():
+            cap_details = self.cap_list.get(cap)
+            cap_date = cap_details[0]
             dev_name = self.dev_list.get(dev)
 
             # To simplify debugging
-            print("in update_comm_list")
+            print("\nin update_comm_list")
 
             if type(dev_name) is str:
                 print("dev = " + dev_name)
@@ -1403,8 +1411,14 @@ class  MudCaptureApplication(tk.Frame):
         if not append:
             #self.comm_list.delete(0,tk.END)
             self.comm_list.clear()
+            self.db_handler.db.drop_cap_toi()
+            self.db_handler.db.drop_dev_toi()
+            self.db_handler.db.drop_pkt_toi()
+            first = True
+        else:
+            first = False
 
-        print("Populate Comm List")
+        print("\nPopulate Comm List")
             
         # Selecting based on cap list
         first = True
@@ -1415,18 +1429,23 @@ class  MudCaptureApplication(tk.Frame):
             if cap_date == "All...":
                 #self.populate_device_list()
                 print("All Captures")
+                self.db_handler.db.create_cap_toi()
                 break
             else:
                 cap_name = cap_details[1] #{'fileName':cap_name}
                 print(cap_name)
+                capture = {'fileName':cap_name}
                 if first:
-                    # Create cap_toi
-                    pass
+                    # Create packet table of interest
+                    self.db_handler.db.create_pkt_toi(capture)
+
+                    self.db_handler.db.create_cap_toi(capture)
+                    first=False
                 else:
-                    # Update cap_toi
-                    pass
-                #self.populate_device_list( capture=cap_name, append=(not first) )
-                first=False
+                    # Update packet table of interest
+                    self.db_handler.db.update_pkt_toi(capture)
+
+                    self.db_handler.db.update_cap_toi(capture)
             
 
 
@@ -1443,10 +1462,17 @@ class  MudCaptureApplication(tk.Frame):
             if dev_name == "All...":
                 print("No device restrictions")
                 # Create dev_toi
+                self.db_handler.db.create_dev_toi()
                 break
             else:
                 print("mac =", dev_details[3])
                 dev_mac = dev_details[3]
+                mac = {'mac_addr':dev_mac}
+                if first:
+                    self.db_handler.db.create_dev_toi(mac)
+                else:
+                    self.db_handler.db.update_dev_toi(mac)
+
                 # Update dev_toi
                 #self.populate_comm_list(dev_name, not first)
                 #self.populate_comm_list(append=(not first))
@@ -1455,6 +1481,12 @@ class  MudCaptureApplication(tk.Frame):
 
 
         # Selecting based on E/W or N/S
+        if self.comm_state == "any":
+            ew = {"ew":"(TRUE OR FALSE)"}
+        elif self.comm_state == "ns":
+            ew = {"ew":False}
+        elif self.comm_state == "ew":
+            ew = {"ew":True}
         '''
         if self.comm_state == "any":
             pass
@@ -1463,7 +1495,6 @@ class  MudCaptureApplication(tk.Frame):
         elif self.comm_state == "ew":
             pass
         '''
-
         # Selecting based on restriction
         '''
         if self.comm_dev_restriction == "none":
@@ -1475,11 +1506,11 @@ class  MudCaptureApplication(tk.Frame):
         '''
 
         # Get files from tables of interest
-
+        self.db_handler.db.select_pkt_toi(ew)
 
 
         # Get and insert all captures currently added to database
-        self.db_handler.db.select_packets()
+        #######self.db_handler.db.select_packets()
 
         # might be interesting to include destination URL and NOTES
         # Limiting version for debugging at least
@@ -1504,9 +1535,12 @@ class  MudCaptureApplication(tk.Frame):
             #                               protocol, tlp, tlp_srcport, tlp_dstport, pkt_length])
 
             
-            '''
+            
             self.comm_list.append_unique((pkt_datetime, mac_addr, ip_ver, ip_src, ip_dst, ew, 
                                           protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
+            
+            i+=1
+
             '''
             # Temporary solution: ********************
             if self.comm_state == "any":
@@ -1523,7 +1557,7 @@ class  MudCaptureApplication(tk.Frame):
                     self.comm_list.append_unique((pkt_datetime, mac_addr, ip_ver, ip_src, ip_dst, ew, 
                                                   protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
                     i += 1
-
+            '''
             if i >= self.comm_list_num_pkts: 
                 break
 
@@ -1676,6 +1710,7 @@ class  MudCaptureApplication(tk.Frame):
         else:
             print("Something went wrong with modifying the communication device restriction")
 
+            
         print("comm_dev_restriction:", self.comm_dev_restriction)
         self.populate_comm_list()
 

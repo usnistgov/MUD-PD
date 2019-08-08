@@ -41,24 +41,40 @@ class CaptureDatabase:
         "      mac_addr=%(mac_addr)s;")
 
     add_mac_to_mfr = (
-        "INSERT INTO mac_to_mfr "
+        #"INSERT INTO mac_to_mfr "
+        "REPLACE INTO mac_to_mfr "
         # VARCHAR     TEXT
         "(mac_prefix, mfr) "
         "VALUES (%(mac_prefix)s, %(mfr)s);")
     
     add_device = (
+        #"INSERT INTO device "
+        "REPLACE INTO device "
+        # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT   BOOL
+        "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unidentified) "
+        "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, "
+        "%(wifi)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unidentified)s)")
+
+    add_device_unidentified = (
         "INSERT INTO device "
-        # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT
-        "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes) "
-        #"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
-        "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s)")
+        #"REPLACE INTO device "
+        # TEXT VARCHAR   Bool
+        "(mac_addr) "
+        "VALUES (%(mac_addr)s)")
+        #"(mfr, mac_addr) "
+        #"VALUES (%(mfr)s, %(mac_addr)s)")
 
     add_device_state = (
         "INSERT INTO device_state "
         # BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
         "(fileHash, mac_addr, internalName, fw_ver, ipv4_addr, ipv6_addr) "
-        #"VALUES (%s, %s, %s, %s, %s, %s);"
         "VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+
+    add_device_state_unidentified = (
+        "INSERT INTO device_state "
+        # BINARY    VARCHAR   VARCHAR    TEXT
+        "(fileHash, mac_addr, ipv4_addr, ipv6_addr) "
+        "VALUES (%(fileHash)s, %(mac_addr)s, %(ipv4_addr)s, %(ipv6_addr)s);")
 
     change_device_state = (
         "UPDATE device_state "
@@ -179,10 +195,10 @@ class CaptureDatabase:
                                  #" fileHash=%s);"
                                  " fileName=%s);")
 
-    #query_known_devices_from_capture = ("SELECT * FROM device_in_capture "
+    #query_identified_devices_from_capture = ("SELECT * FROM device_in_capture "
     #                                    "WHERE fileHash = %s AND mac_addr = %s;")
-    #query_known_devices_from_capture = ("SELECT id, mac_addr, imported FROM device_in_capture "
-    query_known_devices_from_capture = ("SELECT * FROM device_in_capture "
+    #query_identified_devices_from_capture = ("SELECT id, mac_addr, imported FROM device_in_capture "
+    query_identified_devices_from_capture = ("SELECT * FROM device_in_capture "
                                         "WHERE fileHash = %s;")
                                         #"WHERE fileHash = %s AND imported = TRUE;")
 
@@ -260,6 +276,10 @@ class CaptureDatabase:
         self.cursor.execute(self.add_device, data_device)
         self.cnx.commit()
 
+    def insert_device_unidentified(self, data_device):
+        self.cursor.execute(self.add_device_unidentified, data_device)
+        self.cnx.commit()
+
     def insert_device_in_capture(self, data_device_in_capture):
         self.cursor.execute(self.add_device_in_capture, data_device_in_capture)
         self.cnx.commit()
@@ -274,6 +294,10 @@ class CaptureDatabase:
 
     def insert_device_state(self, data_device_state):
         self.cursor.execute(self.add_device_state, data_device_state)
+        self.cnx.commit()
+
+    def insert_device_state_unidentified(self, data_device_state):
+        self.cursor.execute(self.add_device_state_unidentified, data_device_state)
         self.cnx.commit()
 
     def update_device_state(self, data_device_state):
@@ -299,8 +323,8 @@ class CaptureDatabase:
         #print(capture)
         self.cursor.execute(self.query_device_from_capture, (capture,))
 
-    def select_known_devices_from_cap(self, fileHash):
-        self.cursor.execute(self.query_known_devices_from_capture, (fileHash,))
+    def select_identified_devices_from_cap(self, fileHash):
+        self.cursor.execute(self.query_identified_devices_from_capture, (fileHash,))
 
     def select_most_recent_fw_ver(self, macdatemac):
         self.cursor.execute(self.query_most_recent_fw_ver, macdatemac)
@@ -625,6 +649,19 @@ class CaptureDigest:
                 ip = "Not found"
 
         return ip
+
+    def findIPs(self, mac):
+        if (mac, "ipv4") in self.ip2mac:
+            ip = self.ip2mac[(mac, "ipv4")]
+        else:
+            ip = "Not found"
+
+        if (mac, "ipv6") in self.ip2mac:
+            ipv6 = self.ip2mac[(mac, "ipv6")]
+        else:
+            ipv6 = "Not found"
+
+        return (ip, ipv6)
 
     def extract_pkts(self):
         for p in self.pkt:

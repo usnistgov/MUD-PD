@@ -752,43 +752,43 @@ class  MudCaptureApplication(tk.Frame):
 
         self.botDevFrame = tk.Frame(self.w_cap_dev, width=600, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
 
-        ## Left (Unknown) Dev Frame
-        self.unknownDevFrame = tk.Frame(self.botDevFrame, width=300)#, bd=1, bg="#dfdfdf")
+        ## Left (Unidentified) Dev Frame
+        self.unidentifiedDevFrame = tk.Frame(self.botDevFrame, width=300)#, bd=1, bg="#dfdfdf")
 
         self.cap_dev_title = tk.Label(self.botDevFrame, text="Devices", bg="#dfdfdf", bd=1, relief="flat", anchor="n")
 
-        self.unknown_title_var=tk.StringVar()
-        self.unknown_title_var.set("Unknown")
-        self.unknown_title = tk.Label(self.unknownDevFrame, textvariable=self.unknown_title_var, bg="#eeeeee", bd=1, relief="flat")
-        self.unknown_title.pack(side="top", fill=tk.X)
+        self.unidentified_title_var=tk.StringVar()
+        self.unidentified_title_var.set("Unidentified")
+        self.unidentified_title = tk.Label(self.unidentifiedDevFrame, textvariable=self.unidentified_title_var, bg="#eeeeee", bd=1, relief="flat")
+        self.unidentified_title.pack(side="top", fill=tk.X)
 
-        self.unknown_dev_header = ["Manufacturer", "MAC", "IPv4", "IPv6"]
-        self.unknown_dev_list = MultiColumnListbox(parent=self.unknownDevFrame,
-                                                   header=self.unknown_dev_header,
+        self.unidentified_dev_header = ["Manufacturer", "MAC", "IPv4", "IPv6"]
+        self.unidentified_dev_list = MultiColumnListbox(parent=self.unidentifiedDevFrame,
+                                                   header=self.unidentified_dev_header,
                                                    list=list(), selectmode="browse")
-        self.unknown_dev_list.bind("<<TreeviewSelect>>", self.update_unknown_list_selection)
+        self.unidentified_dev_list.bind("<<TreeviewSelect>>", self.update_unidentified_list_selection)
 
-        ## Right (Known) Dev Frame
-        self.knownDevFrame = tk.Frame(self.botDevFrame, width=300)#, bd=1, bg="#dfdfdf")
+        ## Right (Identified) Dev Frame
+        self.identifiedDevFrame = tk.Frame(self.botDevFrame, width=300)#, bd=1, bg="#dfdfdf")
 
-        self.known_title_var=tk.StringVar()
-        self.known_title_var.set("Known")
-        self.known_title = tk.Label(self.knownDevFrame, textvariable=self.known_title_var, bg="#eeeeee", bd=1, relief="flat")
-        self.known_title.pack(side="top", fill=tk.X)
+        self.identified_title_var=tk.StringVar()
+        self.identified_title_var.set("Identified")
+        self.identified_title = tk.Label(self.identifiedDevFrame, textvariable=self.identified_title_var, bg="#eeeeee", bd=1, relief="flat")
+        self.identified_title.pack(side="top", fill=tk.X)
 
-        self.known_dev_header = ["Manufacturer", "Model", "Internal Name", "Category", "MAC", "IPv4", "IPv6"]
-        self.known_dev_list = MultiColumnListbox(parent=self.knownDevFrame,
-                                                 header=self.known_dev_header,
+        self.identified_dev_header = ["Manufacturer", "Model", "Internal Name", "Category", "MAC", "IPv4", "IPv6"]
+        self.identified_dev_list = MultiColumnListbox(parent=self.identifiedDevFrame,
+                                                 header=self.identified_dev_header,
                                                  list=list(), selectmode="browse")
-        self.known_dev_list.bind("<<TreeviewSelect>>", self.update_known_list_selection)
+        self.identified_dev_list.bind("<<TreeviewSelect>>", self.update_identified_list_selection)
 
 
         # Grid placements #
         self.topDevFrame.grid(row=0, column=0, sticky="new")
         self.botDevFrame.grid(row=1, column=0, sticky="nsew")
         self.cap_dev_title.grid(row=0, column=0, columnspan=2, sticky="new")
-        self.unknownDevFrame.grid(row=1, column=0, sticky="nsew")
-        self.knownDevFrame.grid(row=1, column=1, sticky="nsew")
+        self.unidentifiedDevFrame.grid(row=1, column=0, sticky="nsew")
+        self.identifiedDevFrame.grid(row=1, column=1, sticky="nsew")
 
         # Grid configuration #
         self.botDevFrame.grid_rowconfigure(1, weight=1)
@@ -801,62 +801,62 @@ class  MudCaptureApplication(tk.Frame):
         '''
         # Select first element of each list
         # Try becuase the list might be empty
-        self.unknown_dev_list.focus(0)
-        self.unknown_dev_list.selection_set(0)
-        self.known_dev_list.focus(0)
-        self.known_dev_list.selection_set(0)
+        self.unidentified_dev_list.focus(0)
+        self.unidentified_dev_list.selection_set(0)
+        self.identified_dev_list.focus(0)
+        self.identified_dev_list.selection_set(0)
 
         try:
-            self.unknown_dev_list.focus(0)
-            self.unknown_dev_list.selection_set(0)
+            self.unidentified_dev_list.focus(0)
+            self.unidentified_dev_list.selection_set(0)
         except:
             pass
 
         try:
-            self.known_dev_list.focus(0)
-            self.known_dev_list.selection_set(0)
+            self.identified_dev_list.focus(0)
+            self.identified_dev_list.selection_set(0)
         except:
             pass
         '''
 
         # Buttons #
-        self.b_cap_dev_close = tk.Button(self.unknownDevFrame, text='Close', command=(lambda c=self.cap.fname : self.close_w_cap_dev(c)))
-        self.b_cap_dev_import = tk.Button(self.unknownDevFrame, text='Import Device', state='disabled',
+        self.b_cap_dev_close = tk.Button(self.unidentifiedDevFrame, text='Close', command=(lambda c=self.cap.fname : self.close_w_cap_dev(c)))
+        self.b_cap_dev_import = tk.Button(self.unidentifiedDevFrame, text='Import Device', state='disabled',
                              command=(lambda f={'fileName':self.cap.fname,'fileHash':self.cap.fileHash}:
                                           self.popup_import_device(f)))
                                   #command=(lambda e=0, d={'fileName':self.cap.fname,'fileHash':self.cap.fileHash,
-                                  #                        'mac_addr':self.unknown_dev_list.get_selected_row()[1]}:
-                                  #             self.popup_import_device(self.unknown_dev_list.get_selected_row()[e],d)))
+                                  #                        'mac_addr':self.unidentified_dev_list.get_selected_row()[1]}:
+                                  #             self.popup_import_device(self.unidentified_dev_list.get_selected_row()[e],d)))
                              
-        self.b_cap_dev_modify = tk.Button(self.knownDevFrame, text='Modify State', state='disabled',
-                             #command=(lambda d=self.known_dev_list.selection(): self.prep_popup_update_device_state(d)))
-                             command=(lambda d=self.known_dev_list.get_selected_row(): self.prep_popup_update_device_state(d)))
+        self.b_cap_dev_modify = tk.Button(self.identifiedDevFrame, text='Modify State', state='disabled',
+                             #command=(lambda d=self.identified_dev_list.selection(): self.prep_popup_update_device_state(d)))
+                             command=(lambda d=self.identified_dev_list.get_selected_row(): self.prep_popup_update_device_state(d)))
 
         self.b_cap_dev_close.pack(side=tk.LEFT, padx=5, pady=5)
         self.b_cap_dev_import.pack(side=tk.RIGHT, padx=5, pady=5)
         self.b_cap_dev_modify.pack(side=tk.RIGHT, padx=5, pady=5)
 
-        # Update unknown, known lists and try to select the first element
-        self.refresh_unknown_known_lists()
+        # Update unidentified, identified lists and try to select the first element
+        self.refresh_unidentified_identified_lists()
         # Select first element of each list
         # Try becuase the list might be empty
-        self.unknown_dev_list.focus(0)
-        self.unknown_dev_list.selection_set(0)
-        self.known_dev_list.focus(0)
-        self.known_dev_list.selection_set(0)
+        self.unidentified_dev_list.focus(0)
+        self.unidentified_dev_list.selection_set(0)
+        self.identified_dev_list.focus(0)
+        self.identified_dev_list.selection_set(0)
 
         self.yield_focus(self.w_cap_dev)
 
-    def update_unknown_list_selection(self, event):
-        self.unknown_dev_list_sel = self.unknown_dev_list.get( self.unknown_dev_list.selection() )
-        print("self.known_dev_list_sel = ", self.unknown_dev_list_sel)
+    def update_unidentified_list_selection(self, event):
+        self.unidentified_dev_list_sel = self.unidentified_dev_list.get( self.unidentified_dev_list.selection() )
+        print("self.identified_dev_list_sel = ", self.unidentified_dev_list_sel)
 
-    def update_known_list_selection(self, event):
-        self.known_dev_list_sel = self.known_dev_list.get( self.known_dev_list.selection() )
-        print("self.known_dev_list_sel = ", self.known_dev_list_sel)
+    def update_identified_list_selection(self, event):
+        self.identified_dev_list_sel = self.identified_dev_list.get( self.identified_dev_list.selection() )
+        print("self.identified_dev_list_sel = ", self.identified_dev_list_sel)
 
     def prep_popup_update_device_state(self, d):
-        d = self.known_dev_list_sel
+        d = self.identified_dev_list_sel
         #print("d = ",d)
         mac = d[4]
         self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
@@ -886,23 +886,27 @@ class  MudCaptureApplication(tk.Frame):
         self.popup_update_device_state(device_state_data)
 
     def close_w_cap_dev(self, capName):
+
+        #Check if any of the devices seen have been added to the device_state table already and add if not
+        #for dev in self.identified
+
         self.populate_device_list(capture = capName)
         self.w_cap_dev.destroy()
 
 
-    def refresh_unknown_known_lists(self):
+    def refresh_unidentified_identified_lists(self):
         # Clear lists
-        self.unknown_dev_list.clear()
-        self.known_dev_list.clear()
+        self.unidentified_dev_list.clear()
+        self.identified_dev_list.clear()
 
-        # Sort devices from Capture into either known or unknown device lists
+        # Sort devices from Capture into either identified or unidentified device lists
         self.db_handler.db.select_device_macs()
         macsInDevTbl = self.db_handler.db.cursor.fetchall()
         #print("macsInDevTbl: ", macsInDevTbl)
         #print()
-        #knownMacsInDb = self.db_handler.db.cursor.fetchall()
-        #print("knownMacsInDb: ", knownMacsInDb)
-        self.db_handler.db.select_known_devices_from_cap(self.cap.fileHash)
+        #identifiedMacsInDb = self.db_handler.db.cursor.fetchall()
+        #print("identifiedMacsInDb: ", identifiedMacsInDb)
+        self.db_handler.db.select_identified_devices_from_cap(self.cap.fileHash)
         #macsInDfCTbl = self.db_handler.db.cursor.fetchall()
         #print("macsInDfCTbl: ", macsInDfCTbl)
         devFromCapTbl = self.db_handler.db.cursor.fetchall()
@@ -911,13 +915,175 @@ class  MudCaptureApplication(tk.Frame):
 
         print("num uniqueMacs:", len(self.cap.uniqueMAC))
         for mac in self.cap.uniqueMAC:
+            unidentified = True
+            if mac.upper() in [x.upper() for (x,) in macsInDevTbl]:
+                # Get device info
+                self.db_handler.db.select_device(mac)
+                (id, mfr, model, mac_addr, internalName, category, mudCapable, wifi, bluetooth, G3, G4, G5, zigbee, zwave, other, notes, unidentified) = self.db_handler.db.cursor.fetchone()
+
+                # Get device state info
+                self.db_handler.db.select_device_state(self.cap.fileHash, mac)
+                if self.db_handler.db.cursor.rowcount == 1:
+                    (id, hash, mac_addr, internalName, fw_ver, ip, ipv6) = self.db_handler.db.cursor.fetchone()
+                elif self.db_handler.db.cursor.rowcount == 0:
+                    #ip = self.cap.findIP(mac)
+                    #ipv6 = self.cap.findIP(mac, v6=True)
+                    (ip, ipv6) = self.cap.findIPs(mac)
+
+                    # May want to modify this not to take the previous fw_version
+                    self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
+                                                                  #'capDate'  : self.cap.capTimeStamp})
+                                                                  'capDate'  : self.cap.capDate + " " + self.cap.capTime})
+                    try:
+                        (fw_ver,) = self.db_handler.db.cursor.fetchone()
+                    except TypeError as te:
+                        fw_ver = ''
+
+                    self.db_handler.db.insert_device_state({"fileHash":self.cap.fileHash,
+                                                            "mac_addr":mac.upper(),
+                                                            "internalName":internalName,
+                                                            #"fw_ver":prev_fw_ver,
+                                                            "fw_ver":fw_ver,
+                                                            "ipv4_addr":ip,
+                                                            "ipv6_addr":ipv6})
+                else:
+                    print("ERROR, something went horribly wrong with the database")
+                    
+                '''
+                if unidentified:
+                    self.unidentified_dev_list.append((lookup_mac(mac), mac.upper(), self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
+                else: #May want to include firmware version here
+                    self.identified_dev_list.append((mfr, model, internalName, category, mac.upper(), ip, ipv6))
+                '''
+
+            else:
+                # Insert device info into device table
+                #device_data = {'mfr' : , 'mac_addr' : mac.upper()}
+
+                #device_data = {'mac_addr' : mac.upper()}
+
+                # Check if MAC to Mfr entry exists
+                self.db_handler.db.select_mac_to_mfr()
+                mac2mfr = self.db_handler.db.cursor.fetchall()
+                mac_prefix = mac.upper()[0:8]
+                if mac_prefix in [x for (id, x, mfr) in mac2mfr]:
+                    if mfr == "**company not found**" or mfr == "None" or mfr == None:
+                        mfr = lookup_mac(mac)
+                else:
+                    mfr = lookup_mac(mac)
+
+                if mfr != "**company not found**" and mfr != "None" and mfr != None:
+                    self.db_handler.db.insert_mac_to_mfr({'mac_prefix':mac_prefix, 'mfr':mfr})
+
+                device_data = {'mac_addr' : mac.upper(), 'mfr': mfr}
+
+                self.db_handler.db.insert_device_unidentified(device_data)
+
+
+                # Insert device_state info into device_state table
+                #ip = self.cap.findIP(mac)
+                #ipv6 = self.cap.findIP(mac, v6=True)
+                (ip, ipv6) = self.cap.findIPs(mac)
+
+                self.db_handler.db.insert_device_state_unidentified(
+                    {"fileHash":self.cap.fileHash,
+                     "mac_addr":mac.upper(),
+                     "ipv4_addr":ip,
+                     "ipv6_addr":ipv6})
+                
+                '''
+                # Insert device_state info into device_state table
+                # THIS SHOULD BE UNNECESSARY BECAUSE IT SHOULD NEVER BE IN THE device_state table without being in the device_table, but no reason not to safety check
+                self.db_handler.db.select_device_state(self.cap.fileHash, mac)
+                if self.db_handler.db.cursor.rowcount == 1:
+                    (id, hash, mac_addr, internalName, fw_ver, ip, ipv6) = self.db_handler.db.cursor.fetchone()
+                    print("ERROR: Instance that shouldn't exist\n\tSomething went horribly wrong with the database")
+                elif self.db_handler.db.cursor.rowcount == 0:
+                    ip = self.cap.findIP(mac)
+                    ipv6 = self.cap.findIP(mac, v6=True)
+
+                    # May want to modify this not to take the previous fw_version
+                    self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
+                                                                  #'capDate'  : self.cap.capTimeStamp})
+                                                                  'capDate'  : self.cap.capDate + " " + self.cap.capTime})
+                    try:
+                        (fw_ver,) = self.db_handler.db.cursor.fetchone()
+                    except TypeError as te:
+                        fw_ver = ''
+
+                    self.db_handler.db.insert_device_state({"fileHash":self.cap.fileHash,
+                                                            "mac_addr":mac.upper(),
+                                                            "internalName":internalName,
+                                                            #"fw_ver":prev_fw_ver,
+                                                            "fw_ver":fw_ver,
+                                                            "ipv4_addr":ip,
+                                                            "ipv6_addr":ipv6})
+                else:
+                    print("ERROR: Multiple Instances:\n\tSomething went horribly wrong with the database")
+                '''
+                '''
+                # Put device into unidentified_dev_list
+                self.unidentified_dev_list.append((lookup_mac(mac), mac.upper(), self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
+                '''
+
+            if unidentified:
+                self.unidentified_dev_list.append((lookup_mac(mac), mac.upper(), self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
+            else: #May want to include firmware version here
+                self.identified_dev_list.append((mfr, model, internalName, category, mac.upper(), ip, ipv6))
+
+
+            '''
+            # Get device state info
+            self.db_handler.db.select_device_state(self.cap.fileHash, mac)
+            if self.db_handler.db.cursor.rowcount == 1:
+                (id, hash, mac_addr, internalName, fw_ver, ip, ipv6) = self.db_handler.db.cursor.fetchone()
+            elif self.db_handler.db.cursor.rowcount == 0:
+                ip = self.cap.findIP(mac)
+                ipv6 = self.cap.findIP(mac, v6=True)
+
+                # May want to modify this not to take the previous fw_version
+                self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
+                                                              #'capDate'  : self.cap.capTimeStamp})
+                                                              'capDate'  : self.cap.capDate + " " + self.cap.capTime})
+                try:
+                    (fw_ver,) = self.db_handler.db.cursor.fetchone()
+                except TypeError as te:
+                    fw_ver = ''
+
+                self.db_handler.db.insert_device_state({"fileHash":self.cap.fileHash,
+                                                        "mac_addr":mac.upper(),
+                                                        "internalName":internalName,
+                                                        #"fw_ver":prev_fw_ver,
+                                                        "fw_ver":fw_ver,
+                                                        "ipv4_addr":ip,
+                                                        "ipv6_addr":ipv6})
+            else:
+                print("ERROR, something went horribly wrong with the database")
+            '''
+
+            '''
+            if unidentified:
+                self.unidentified_dev_list.append((lookup_mac(mac), mac.upper(), self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
+            else:
+                self.identified_dev_list.append((mfr, model, internalName, category, mac.upper(), ip, ipv6))
+            '''
+            # Check if the mac address is in the device_in_capture table and update if necessary
+            if mac.upper() not in [x.upper() for (_,_,_,x) in devFromCapTbl]:
+                #print("mac not found in table for this capture")
+                self.db_handler.db.insert_device_in_capture({'fileName':self.cap.fname,
+                                                             'fileHash':self.cap.fileHash,
+                                                             'mac_addr':mac.upper()})
+
+        """
+        print("num uniqueMacs:", len(self.cap.uniqueMAC))
+        for mac in self.cap.uniqueMAC:
             #print("In for mac in self.cap.uniqueMAC")
             #print("\tmac", mac)
             #print("\tmfr = ", lookup_mac(mac))
             if mac.upper() in [x.upper() for (x,) in macsInDevTbl]:
                 # Get device info
                 self.db_handler.db.select_device(mac)
-                (id, mfr, model, mac_addr, internalName, category, mudCapable, wifi, bluetooth, G3, G4, G5, zigbee, zwave, other, notes) = self.db_handler.db.cursor.fetchone()
+                (id, mfr, model, mac_addr, internalName, category, mudCapable, wifi, bluetooth, G3, G4, G5, zigbee, zwave, other, notes, unidentified) = self.db_handler.db.cursor.fetchone()
 
                 # Get device state info
                 self.db_handler.db.select_device_state(self.cap.fileHash, mac)
@@ -950,15 +1116,15 @@ class  MudCaptureApplication(tk.Frame):
                     
                 '''
                 # Check if the mac address is in the device_in_capture table and update if necessary
-                if mac.upper() not in [x.upper() for (id,x) in knownMacsInDb]:
+                if mac.upper() not in [x.upper() for (id,x) in identifiedMacsInDb]:
                     print("mac not found in db")
                     self.db_handler.db.insert_device_in_capture({'fileName':self.cap.fname,'fileHash':self.cap.fileHash,
                                                                  'mac_addr':mac_addr.upper(), 'imported':True})
-                    #self.db_handkler.db.insert_mac_to_mfr({'mac_prefix':mac_addr.upper()[0:8], 'mfr':mfr})
+                    #self.db_handler.db.insert_mac_to_mfr({'mac_prefix':mac_addr.upper()[0:8], 'mfr':mfr})
                 # Update the entry
                 else:
                     print("mac found in db")
-                    output = [item for item in knownMacsInDb if item[1] == mac_addr.upper() and not item[2]]
+                    output = [item for item in identifiedMacsInDb if item[1] == mac_addr.upper() and not item[2]]
                     print(output)
                     id = output[0][0]
                     imported = output[0][2]
@@ -972,12 +1138,23 @@ class  MudCaptureApplication(tk.Frame):
                     #mac2mfr = self.db_handler.db.cursor.fetchall()
                     #self.db_handler.db.insert_mac_to_mfr({'mac_prefix':mac_addr.upper()[0:8], 'mfr':mfr})
                 '''
-                self.known_dev_list.append((mfr, model, internalName, category, mac.upper(), ip, ipv6))
+                if unidentified:
+                    self.unidentified_dev_list.append((lookup_mac(mac), mac.upper(), self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
+                else:
+                    self.identified_dev_list.append((mfr, model, internalName, category, mac.upper(), ip, ipv6))
             else:
+                #Insert device into Device Table
+
+                if unidentified:
+                    self.unidentified_dev_list.append((lookup_mac(mac), mac.upper(), self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
+                else:
+                    self.identified_dev_list.append((mfr, model, internalName, category, mac.upper(), ip, ipv6))
                 #print("Not in macsInDevTbl")
                 #print("\tmac", mac)
                 #print("\tmfr = ", lookup_mac(mac))
-                self.unknown_dev_list.append((lookup_mac(mac), mac.upper(), self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
+
+
+                #self.unidentified_dev_list.append((lookup_mac(mac), mac.upper(), self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
                 '''
                 self.db_handler.db.insert_device_in_capture({'fileName':self.cap.fname,'fileHash':self.cap.fileHash,
                                                              #'mac_addr':mac_addr.upper(), 'imported':False})
@@ -991,13 +1168,15 @@ class  MudCaptureApplication(tk.Frame):
                                                              'mac_addr':mac.upper()})
 
 
+        """
+
         # Enable / Disable buttons as deemed necessary
-        if self.unknown_dev_list.num_nodes > 0:
+        if self.unidentified_dev_list.num_nodes > 0:
             self.b_cap_dev_import.config(state="normal")
         else:
             self.b_cap_dev_import.config(state="disabled")
 
-        if self.known_dev_list.num_nodes > 0:
+        if self.identified_dev_list.num_nodes > 0:
             self.b_cap_dev_modify.config(state="normal")
         else:
             self.b_cap_dev_modify.config(state="disabled")
@@ -1038,10 +1217,10 @@ class  MudCaptureApplication(tk.Frame):
         self.w_dev = tk.Toplevel()
         self.w_dev.wm_title("Import Devices")
 
-        mfr = self.unknown_dev_list_sel[0]
-        mac = self.unknown_dev_list_sel[1].upper()
-        ipv4 = self.unknown_dev_list_sel[2]
-        ipv6 = self.unknown_dev_list_sel[3]
+        mfr = self.unidentified_dev_list_sel[0]
+        mac = self.unidentified_dev_list_sel[1].upper()
+        ipv4 = self.unidentified_dev_list_sel[2]
+        ipv6 = self.unidentified_dev_list_sel[3]
         #print("ipv4",ipv4)
         #print("ipv6",ipv6)
         #print(mfr)
@@ -1122,7 +1301,7 @@ class  MudCaptureApplication(tk.Frame):
         return entries
 
     def import_dev_and_close(self, entries, dev_in_cap_data, ips):
-        device_data = {}
+        device_data = {"unidentified":False}
         for entry in entries:
             field = entry[0]
             if field == 'MAC':
@@ -1153,7 +1332,7 @@ class  MudCaptureApplication(tk.Frame):
             #print(entries[0])
             self.db_handler.db.insert_mac_to_mfr({'mac_prefix':mac_prefix, 'mfr':entries[0][1].get()})
 
-        self.refresh_unknown_known_lists()
+        self.refresh_unidentified_identified_lists()
 
         #mac = dev_in_cap_data['mac_addr']
 
@@ -1336,7 +1515,7 @@ class  MudCaptureApplication(tk.Frame):
         
 
         for (id, mfr, model, mac_addr, internalName, deviceCategory, mudCapable, wifi, bluetooth,
-             G3, G4, G5, zigbee, zwave, otherProtocols, notes) in self.db_handler.db.cursor:
+             G3, G4, G5, zigbee, zwave, otherProtocols, notes, unidentified) in self.db_handler.db.cursor:
             self.dev_list.append_unique((mfr, model, internalName, mac_addr, deviceCategory)) #for early stages
 
         self.dev_list.focus(0)
@@ -1661,7 +1840,7 @@ class  MudCaptureApplication(tk.Frame):
             self.b_pkt1000.config(state='normal')
             self.b_pkt10000.config(state='disabled')
         else:
-            print("unknown value for modify_comm_num_pkts")
+            print("unidentified value for modify_comm_num_pkts")
         
         self.populate_comm_list()
 
@@ -1733,7 +1912,7 @@ class  MudCaptureApplication(tk.Frame):
                                                    header=addr_range_list_header,
                                                    list=list(), selectmode="browse")
         #To be aded later
-        #self.unknown_dev_list.bind("<<TreeviewSelect>>", self.update_unknown_list_selection)
+        #self.unidentified_dev_list.bind("<<TreeviewSelect>>", self.update_unidentified_list_selection)
 
 
         # Grid placements #
@@ -1758,7 +1937,7 @@ class  MudCaptureApplication(tk.Frame):
         self.b_internal_addr_new = tk.Button(botFrame, text='+', command=self.popup_internal_addr)
         #TO BE COMPLETED
         self.b_internal_addr_modify = tk.Button(botFrame, text='Modify', state='disabled',
-                                                command=(lambda d=self.known_dev_list.get_selected_row(): self.prep_popup_update_device_state(d)))
+                                                command=(lambda d=self.identified_dev_list.get_selected_row(): self.prep_popup_update_device_state(d)))
 
         self.b_internal_addr_close.pack(side=tk.LEFT, padx=5, pady=5)
         self.b_internal_addr_new.pack(side=tk.RIGHT, padx=5, pady=5)

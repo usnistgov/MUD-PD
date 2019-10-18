@@ -19,7 +19,8 @@ def gen_mudfile(config, capture_files):
     
     with tempfile.TemporaryDirectory() as dir:
         # Merge capture files
-        merge_command = 'mergecap -w ' + dir '/merged_caps.pcap' + ' %s'*len(capture_files) % capture_files
+        merge_command = 'mergecap -w ' + dir + '/merged_caps.pcap' + ' %s'*len(capture_files) % capture_files
+        print('merge_command', merge_command)
         os.system(merge_command)
 
         # Create configuration file for MUDGEE

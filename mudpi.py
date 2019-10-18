@@ -159,8 +159,11 @@ class  MudCaptureApplication(tk.Frame):
 
 
         #b_y = tk.Button(self.menuFrame, state="disabled", text="Generate MUD File", highlightbackground="#dfdfdf", wraplength=80)#, anchor=tk.N+tk.W)
-        b_y = tk.Button(self.menuFrame, state="disabled", text="Generate MUD File", wraplength=80)#, anchor=tk.N+tk.W)
-        b_y.pack(side="left")
+        b_generate_MUD = tk.Button(self.menuFrame, state="disabled", text="Generate MUD File", wraplength=80, command=self.generate_MUD_wizard)#, anchor=tk.N+tk.W)
+        b_generate_MUD.pack(side="left")
+
+        b_generate_report = tk.Button(self.menuFrame, state="disabled", text="Generate Device Report", wraplength=80, command=self.generate_report_wizard)#, anchor=tk.N+tk.W)
+        b_generate_report.pack(side="left")
 
         ### Left (capture) frame ###
         self.capFrame = tk.Frame(self.parent, width=300, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
@@ -1967,6 +1970,40 @@ class  MudCaptureApplication(tk.Frame):
         print("update_comm_list will do something eventually")
 
     '''    
+    def generate_MUD_wizard(self):
+        print("You shouldn't have gotten to the generate MUD wizard yet")
+        pass
+
+        self.w_gen_mud = tk.Toplevel()
+        self.w_gen_mud.wm_title('Generate MUD File Wizard')
+        #current spot developed
+
+        ents = self.make_form_device_state(device_state_data)
+
+        self.w_dev_state.bind('<Return>', (lambda event, d=device_state_data, e=ents: self.import_dev_state_and_close(d,e)))
+        
+        b_update = tk.Button(self.w_dev_state, text='Update',
+                                  command=(lambda d=device_state_data, e=ents: self.import_dev_state_and_close(d, e)))
+
+        b_close = tk.Button(self.w_dev_state, text='Close', command=self.w_dev_state.destroy)
+
+        if sys.platform == "win32":
+            b_close.pack(side=tk.RIGHT, padx=5, pady=5)
+            b_update.pack(side=tk.RIGHT, padx=5, pady=5)
+        else:
+            b_update.pack(side=tk.RIGHT, padx=5, pady=5)
+            b_close.pack(side=tk.RIGHT, padx=5, pady=5)
+
+        self.yield_focus(self.w_dev_state)
+
+
+        
+
+    def generate_report_wizard(self):
+        print("You shouldn't have gotten to the generate report wizard yet")
+
+
+
 
     def popup_about(self):
         w_about = tk.Toplevel()

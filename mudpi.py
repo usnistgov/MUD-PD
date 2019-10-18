@@ -162,7 +162,7 @@ class  MudCaptureApplication(tk.Frame):
         b_generate_MUD = tk.Button(self.menuFrame, state="disabled", text="Generate MUD File", wraplength=80, command=self.generate_MUD_wizard)#, anchor=tk.N+tk.W)
         b_generate_MUD.pack(side="left")
 
-        b_generate_report = tk.Button(self.menuFrame, state="disabled", text="Generate Device Report", wraplength=80, command=self.generate_report_wizard)#, anchor=tk.N+tk.W)
+        b_generate_report = tk.Button(self.menuFrame, state="disabled", text="Generate Report", wraplength=80, command=self.generate_report_wizard)#, anchor=tk.N+tk.W)
         b_generate_report.pack(side="left")
 
         ### Left (capture) frame ###

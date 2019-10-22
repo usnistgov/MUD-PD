@@ -6,10 +6,11 @@
 # capture_info = {'filename':<internal_name>,
 #                 'sha256':<SHA256 Hash of file>,
 #                 'activity':<activity captured>,
+#                 'modifiers':[<modifier0>, <modifier1>,...,<modiferN>],
 #                 'start_time':<time capture started>,
 #                 'end_time':<time capture stopped>,
 #                 'duration':<duration of capture>,
-#                 'internet':<Boolean state of internet access>,
+##                 'internet':<Boolean state of internet access>, #DEPRECATED
 #                 'other_devices':
 #                     [{'name':<internal name_0>, 'mac':<mac address_0>},
 #                      {'name':<internal name_1>, 'mac':<mac address_1>},
@@ -67,10 +68,10 @@ class GenerateReport():
             f.write('Capture File:\t' + capture_info['filename'])
             f.write('SHA256 Hash:\t' + capture_info['sha256'])
             f.write('Activity:\t' + capture_info['activity'])
+            f.write('Modifiers:\t' + capture_info['modidifiers'])
             f.write('Start Time:\t' + capture_info['start_time'])
             f.write('End Time:\t' + capture_info['end_time'])
             f.write('Duration:\t' + capture_info['duration'])
-            f.write('Internet:\t' + capture_info['internet'])
             f.write('Other Devices:')
 
             for dev in capture_info['other_devices']:

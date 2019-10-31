@@ -149,24 +149,25 @@ class  MudCaptureApplication(tk.Frame):
         self.menuFrame = tk.Frame(self.parent, bd=1, bg="#dfdfdf") #, bg="#dfdfdf"
 
         icon_connect = tk.PhotoImage(file="data/icons/database40px.png")
-        b_connect = tk.Button(self.menuFrame, compound="top", image=icon_connect, width="40", height="40", command=self.popup_connect2database, highlightthickness=0, activebackground="black", bd=0)
-        b_connect.image = icon_connect
-        b_connect.pack(side="left")
+        self.b_main_connect = tk.Button(self.menuFrame, compound="top", image=icon_connect, width="40", height="40", command=self.popup_connect2database, highlightthickness=0, activebackground="black", bd=0)
+        self.b_main_connect.image = icon_connect
+        self.b_main_connect.pack(side="left")
 
         icon_import = tk.PhotoImage(file="data/icons/import40px.png")
-        b_import = tk.Button(self.menuFrame, compound="top", image=icon_import, width="40", height="40", command=self.popup_import_capture, highlightthickness=0, activebackground="black", bd=0)
-        b_import.image = icon_import
-        b_import.pack(side="left")
-
+        #self.b_main_import = tk.Button(self.menuFrame, compound="top", image=icon_import, width="40", height="40", command=self.popup_import_capture, highlightthickness=0, activebackground="black", bd=0)
+        self.b_main_import = tk.Button(self.menuFrame, compound="top", state='disabled', image=icon_import, width="40", height="40", command=self.popup_import_capture, highlightthickness=0, activebackground="black", bd=0)
+        self.b_main_import.image = icon_import
+        self.b_main_import.pack(side="left")
 
         #b_y = tk.Button(self.menuFrame, state="disabled", text="Generate MUD File", highlightbackground="#dfdfdf", wraplength=80)#, anchor=tk.N+tk.W)
         #b_generate_MUD = tk.Button(self.menuFrame, text="Generate MUD File", wraplength=80, command=self.generate_MUD_wizard)#, anchor=tk.N+tk.W)
-        b_generate_MUD = tk.Button(self.menuFrame, text="Generate MUD File", wraplength=80, command=self.popup_generate_mud_wizard)#, anchor=tk.N+tk.W)
+        #self.b_main_generate_MUD = tk.Button(self.menuFrame, text="Generate MUD File", wraplength=80, command=self.popup_generate_mud_wizard)#, anchor=tk.N+tk.W)
+        self.b_main_generate_MUD = tk.Button(self.menuFrame, text="Generate MUD File", state='disabled', wraplength=80, command=self.popup_generate_mud_wizard)#, anchor=tk.N+tk.W)
         #b_generate_MUD = tk.Button(self.menuFrame, state="disabled", text="Generate MUD File", wraplength=80, command=self.generate_MUD_wizard)#, anchor=tk.N+tk.W)
-        b_generate_MUD.pack(side="left")
+        self.b_main_generate_MUD.pack(side="left")
 
-        b_generate_report = tk.Button(self.menuFrame, state="disabled", text="Generate Report", wraplength=80, command=self.generate_report_wizard)#, anchor=tk.N+tk.W)
-        b_generate_report.pack(side="left")
+        self.b_main_generate_report = tk.Button(self.menuFrame, state="disabled", text="Generate Report", wraplength=80, command=self.generate_report_wizard)#, anchor=tk.N+tk.W)
+        self.b_main_generate_report.pack(side="left")
 
         ### Left (capture) frame ###
         self.capFrame = tk.Frame(self.parent, width=300, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
@@ -190,7 +191,7 @@ class  MudCaptureApplication(tk.Frame):
         '''
 
         #(lambda d=unknown_dev_list.curselection(): self.popup_import_device(d)))
-        b_inspect = tk.Button(self.capFrame, text="Inspect",
+        self.b_main_inspect = tk.Button(self.capFrame, text="Inspect",
                               #command=(lambda c=CaptureDigest((lambda x=None, idx=0, hd0=4, hd1=1
                               #                                 : self.cap_list.selection(x)[idx].get(self.cap_header[hd0]) +
                               #                                   self.cap_list.selection(x)[idx].get(self.cap_header[hd1])))
@@ -203,7 +204,8 @@ class  MudCaptureApplication(tk.Frame):
                         self.cap_list.get_selected_row()[hd0] + "/" +
                         self.cap_list.get_selected_row()[hd1]))))
         '''
-        b_inspect.pack(side="right")
+        self.b_main_inspect.pack(side="right")
+        self.b_main_inspect.config(state="disabled")
         self.cap = None
 
 
@@ -286,7 +288,18 @@ class  MudCaptureApplication(tk.Frame):
         self.b_pkt10.pack(side="right")
 
         self.comm_list_num_pkts = 100
+        #self.b_pkt100.config(state='disabled')
+
+
+        self.b_ns.config(state='disabled')
+        self.b_ew.config(state='disabled')
+        self.b_between.config(state='disabled')
+        self.b_either.config(state='disabled')
+        self.b_pkt10.config(state='disabled')
         self.b_pkt100.config(state='disabled')
+        self.b_pkt1000.config(state='disabled')
+        self.b_pkt10000.config(state='disabled')
+
 
         self.comm_list_all_pkts = []
 
@@ -421,7 +434,23 @@ class  MudCaptureApplication(tk.Frame):
             if save_val:
                 self.popup_confirm_save()
             self.w_db.destroy()
-            
+
+            #Enable main menu buttons
+            self.b_main_import.config(state='normal')
+            self.b_main_generate_MUD.config(state='normal')
+            self.b_main_generate_report.config(state='normal')
+            self.b_main_inspect.config(state="normal")
+            self.b_ns.config(state='normal')
+            self.b_ew.config(state='normal')
+            self.b_between.config(state='normal')
+            self.b_either.config(state='normal')
+            self.b_pkt10.config(state='normal')
+            self.b_pkt100.config(state='normal')
+            self.b_pkt1000.config(state='normal')
+            self.b_pkt10000.config(state='normal')
+
+
+
         else:
             tk.messagebox.showerror("Error", "Problem connecting to database")
             entries.append((save_name, save_var))

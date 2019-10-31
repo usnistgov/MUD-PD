@@ -188,6 +188,19 @@ class CaptureDatabase:
 
     query_imported_capture = ("SELECT * FROM capture;")
 
+    query_imported_capture_with = (
+        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.activity, cap.details "
+        "FROM capture as cap "
+        "    INNER JOIN ( "
+        "      SELECT * FROM device_in_capture "
+        "      WHERE mac_addr=%(dev_mac)s) device "
+        "        ON device.fileHash = cap.fileHash "
+        "    INNER JOIN ( "
+        "      SELECT * FROM device_in_capture "
+        "      WHERE mac_addr=%(gateway_mac)s) gateway "
+        "        ON gateway.fileHash = cap.fileHash;")
+
+
     #query_device_from_capture = ("SELECT * FROM device WHERE fileName=%s;")
     #query_device_from_capture = ("SELECT * FROM device_in_capture WHERE fileHash=%s;")
     query_device_from_capture = ("SELECT * FROM device WHERE mac_addr = ANY "
@@ -221,6 +234,43 @@ class CaptureDatabase:
 
     query_devices =  ("SELECT * FROM device;")
 
+    #query_devices_imported = ("SELECT * FROM device WHERE not ISNULL(internalName);")
+    query_devices_imported = ("SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
+                              "FROM device "
+                              "WHERE NOT ISNULL(internalName);")
+
+    query_devices_imported_ignore_noIPs = (
+        "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
+        "FROM device "
+        #"WHERE internalName!=%(internalName)s AND NOT ISNULL(internalName);")
+        "WHERE mac_addr!=%(ignored_dev)s AND NOT ISNULL(internalName);")
+    
+    query_devices_imported_ignore_known = (
+        "SELECT DISTINCT d.id, d.mfr, d.model, d.mac_addr, d.internalName, d.deviceCategory, s.ipv4_addr, s.ipv6_addr "
+        "FROM device AS d "
+        "    INNER JOIN (SELECT * FROM device_state) AS s ON d.mac_addr=s.mac_addr "
+        "WHERE d.mac_addr!=%(ignored_dev)s AND NOT ISNULL(d.internalName);")
+
+    query_devices_imported_ignore = (
+        "SELECT DISTINCT d.id, d.mfr, d.model, d.mac_addr, d.internalName, d.deviceCategory, s.ipv4_addr, s.ipv6_addr "
+        "FROM device AS d "
+        "    INNER JOIN (SELECT * FROM device_state) AS s ON d.mac_addr=s.mac_addr "
+        #"WHERE d.mac_addr!=%(ignored_dev)s;")
+        #"WHERE d.mac_addr!=%(ignored_dev)s AND s.ipv4_addr!='Not found';")
+        "WHERE d.mac_addr!=%(ignored_dev)s AND "
+        "s.ipv4_addr!='Not found' AND s.ipv4_addr!='0.0.0.0' AND "
+        "s.ipv6_addr!='Not found' AND s.ipv6_addr!='::';")
+
+
+    query_gateway_ips = (
+        "SELECT DISTINCT ipv4_addr, ipv6_addr "
+        "FROM device_state "
+        #"WHERE mac_addr=%(gateway_mac)s;")
+        "WHERE mac_addr=%(gateway_mac)s AND "
+        "ipv4_addr!='Not found' AND ipv4_addr!='0.0.0.0' AND "
+        "ipv6_addr!='Not found' AND ipv6_addr!='::';")
+
+
     query_device_info =  ("SELECT * FROM device WHERE mac_addr=%s;")
 
     query_device_macs = ("SELECT mac_addr FROM device;")
@@ -232,6 +282,7 @@ class CaptureDatabase:
                                 " internalName=%(internalName)s AND fw_ver=%(fw_ver)s AND "
                                 " ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
     
+
     query_device_communication = ("SELECT * FROM protocol WHERE device=%s;")
 
     query_device_communication_by_capture = ("SELECT * FROM protocol WHERE device=%(device)s AND fileHash=%(fileHash)s;")
@@ -319,6 +370,12 @@ class CaptureDatabase:
     def select_imported_captures(self):
         self.cursor.execute(self.query_imported_capture)
 
+    #def select_imported_captures_with(self, device, gateway):
+    #    self.cursor.execute(self.query_imported_capture_with, devices)
+
+    def select_imported_captures_with(self, devices):
+        self.cursor.execute(self.query_imported_capture_with, devices)
+
     def select_devices_from_cap(self, capture):
         #print(capture)
         self.cursor.execute(self.query_device_from_capture, (capture,))
@@ -335,6 +392,15 @@ class CaptureDatabase:
     def select_devices(self):
         self.cursor.execute(self.query_devices)
     
+    def select_devices_imported(self):
+        self.cursor.execute(self.query_devices_imported)
+
+    def select_devices_imported_ignore(self, ignored_dev):
+        self.cursor.execute(self.query_devices_imported_ignore, ignored_dev)
+
+    def select_gateway_ips(self, gateway):
+        self.cursor.execute(self.query_gateway_ips, gateway)
+
     def select_device(self, mac):
         self.cursor.execute(self.query_device_info, (mac,))
 

@@ -70,13 +70,15 @@ class MUDgeeWrapper():
             self.write_config(dest_path = (dir + '/temp_config.json') )
 
             # Generate MUD File with MUDGEE
+            print("Generating MUD file using MUDgee")
             config_command = 'java -jar ../mudgee/target/mudgee-1.0.0-SNAPSHOT.jar ' + dir + '/temp_config.json'
             os.system(config_command)
 
             # Move MUD File from MUDGEE
-            mv_command = 'mv ../mudgee/results/* mudfiles/'
-        
-
+            print("Moving MUD file from MUDgee to mudpi/mudpd")
+            #mv_command = 'mv ../mudgee/result/* mudfiles/'
+            mv_command = 'mv result/ mudfiles/'
+            os.system(mv_command)
 '''
 def merge_captures(capture_files):
     path = os.getcwd() + '/tmp'

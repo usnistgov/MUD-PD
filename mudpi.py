@@ -9,6 +9,7 @@ import hashlib
 from src.lookup import lookup_mac, lookup_hostname
 import math
 from src.generate_mudfile import MUDgeeWrapper
+from src.generate_report import ReportGenerator
 from src.multicolumn_listbox import MultiColumnListbox
 #from multiprocessing import Process, Queue
 import multiprocessing
@@ -73,7 +74,7 @@ class popupWindow(object):
   +--------+--------+
   | capture| device |
   | list   | list   |
-  |   |    |        |
+zzzzzzzzzzz  |   |    |        |
 zz  +-- | ---+--------+
   |   V    | comm   |
   |        | detail |
@@ -445,7 +446,7 @@ class  MudCaptureApplication(tk.Frame):
             self.b_between.config(state='normal')
             self.b_either.config(state='normal')
             self.b_pkt10.config(state='normal')
-            self.b_pkt100.config(state='normal')
+            self.b_pkt100.config(state='disabled')
             self.b_pkt1000.config(state='normal')
             self.b_pkt10000.config(state='normal')
 
@@ -2175,6 +2176,8 @@ class  MudCaptureApplication(tk.Frame):
 
         self.yield_focus(self.w_gen_mud)
 
+
+
     def select_mud_pcaps(self, event):
         print("Select MUD pcaps")
         self.mud_pcap_sel = []
@@ -2191,6 +2194,7 @@ class  MudCaptureApplication(tk.Frame):
                 self.db_handler.db.select_imported_captures_with({"dev_mac":self.dev_mac, "gateway_mac":self.gateway_mac})
                 for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
                     self.mud_pcap_sel.append(fileLoc + "/" + fileName)
+                break
             else:
                 self.mud_pcap_sel.append(pcap[4] + pcap[1])
 
@@ -2359,6 +2363,7 @@ class  MudCaptureApplication(tk.Frame):
 
 
     ## OLD ATTEMPT ##
+    '''
     def generate_MUD_wizard_dropdown(self):
         #print("You shouldn't have gotten to the generate MUD wizard yet")
 
@@ -2434,7 +2439,9 @@ class  MudCaptureApplication(tk.Frame):
 
         self.mud_gate_var.trace('w', change_gate)
 
-        '''
+    '''
+
+    '''
         list_row = tk.Frame(self.w_gen_mud)
         list_row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
@@ -2448,8 +2455,9 @@ class  MudCaptureApplication(tk.Frame):
         #self.w_gen_mud.bind('<Return>', (lambda event, n=internalName, m=mac: self.select_mud_dev(n, m)))
         self.w_gen_mud.bind('<Return>', (lambda event : self.select_mud_dev()))
         
-        '''
+    '''
 
+    '''
         b_select = tk.Button(self.w_gen_mud, text='Select',
                              #command=(lambda n=internalName, m=mac: self.select_mud_dev(n, m)))
                              command=(self.select_mud_dev()))
@@ -2475,7 +2483,7 @@ class  MudCaptureApplication(tk.Frame):
     def update_mud_device_selection():
         print("update_mud_device_selection")
         self.mud_dev = {name:"internalName", mac:"mac"}
-
+    '''
     '''
     def populate_mud_dev_list(self):
         # clear previous list
@@ -2491,6 +2499,7 @@ class  MudCaptureApplication(tk.Frame):
         #self.mud_dev_list.focus(0)
         #self.mud_dev_list.selection_set(0)
     '''
+    '''
     def populate_mud_dev_list_dropdown(self):
         self.mud_dev_list = ['--']
 
@@ -2503,7 +2512,7 @@ class  MudCaptureApplication(tk.Frame):
 
         self.gate_select_dropdown = tk.OptionMenu(self.row_gate, self.mud_gate_var, *self.mud_gate_list)
         self.gate_select_dropdown.pack(side=tk.LEFT)
-
+    '''
 
     '''
     def populate_mud_gateway_list(self):
@@ -2520,6 +2529,7 @@ class  MudCaptureApplication(tk.Frame):
         self.mud_gateway_list.focus(0)
         self.mud_gateway_list.selection_set(0)
 
+    '''
     '''
     def populate_mud_gate_list_dropdown(self, ignored_dev = '--'):
         print("Populating mud gate list")
@@ -2553,51 +2563,245 @@ class  MudCaptureApplication(tk.Frame):
         # Set focus on the first element
         self.cap_list.focus(0)
         self.cap_list.selection_set(0)
-
-
-    '''
-        #generate mudfile
-        self.mud_gen_obj = MUDgeeWrapper()
-        self.mud_gen_obj.set_device(mac=mac, name=internalName)
-        #self.mud_config = MUDgeeWrapper({'device_config':{'device':mac, 'deviceName':internalName}})
-        self.mud_gen_obj.set_gateway(mac=mac, ip=ip, ipv6=ipv6)
-
-        pcap_list = []
-
-        self.mud_gen_obj.gen_mudfile(pcap_list)
-        messagebox.showinfo("MUD File Generation Complete", "The generated MUD file is in the 'mudfiles' directory.")
     '''
 
-    '''
-    def make_form_select_mud_device(self, device_state_data):
-        entries = {}
-
-        for i, (label, value) in enumerate(device_state_data.items()):
-            if not i:
-                continue
-            row = tk.Frame(self.w_dev_state)
-            row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-
-            lab = tk.Label(row, width=15, text=str(field2db.inverse[label]).replace('[','').replace(']','').replace("'",''), anchor='w')
-            lab.pack(side=tk.LEFT)
-            if label == 'fw_ver':
-                v = tk.StringVar()
-                ent = tk.Entry(row, textvariable=v)
-                ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
-                ent.insert(25, value)
-
-                entries[label] = v
-            else:
-                lab = tk.Label(row, width=25, text=value, anchor='w', fg='gray')
-                lab.pack(side=tk.LEFT)
-                entries[label] = value
-
-        return entries
-    '''
         
 
     def generate_report_wizard(self):
         print("You shouldn't have gotten to the generate report wizard yet")
+
+        self.w_gen_report = tk.Toplevel()
+        self.w_gen_report.wm_title('Generate Device Report Wizard')
+
+
+        #Frames for Device, Gateway, and PCAPs
+        self.topReportDevFrame = tk.Frame(self.w_gen_report, width=300, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
+        self.botReportPCAPFrame = tk.Frame(self.w_gen_report, width=300, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
+
+
+        ## Top Device Frame
+        # Title
+        self.report_dev_title_var=tk.StringVar()
+        self.report_dev_title_var.set("Device to Profile:")
+        self.report_dev_title = tk.Label(self.topReportDevFrame, textvariable=self.report_dev_title_var, bg="#eeeeee", bd=1, relief="flat")
+        self.report_dev_title.pack(side="top", fill=tk.X)
+
+        # Listbox
+        self.report_dev_header = ["Internal Name", "Manufacturer", "Model", "MAC Address", "Category"]
+        self.report_dev_list = MultiColumnListbox(parent=self.topReportDevFrame,
+                                               header=self.report_dev_header,
+                                               list=list(), keep1st=True)
+        self.report_dev_list.bind("<<TreeviewSelect>>", self.populate_report_pcap_list)
+
+
+
+        ## Bot PCAP Frame
+        # Title
+        self.report_pcap_title_var=tk.StringVar()
+        self.report_pcap_title_var.set("Select Packet Captures (PCAPs):")
+        self.report_pcap_title = tk.Label(self.botReportPCAPFrame, textvariable=self.report_pcap_title_var, bg="#eeeeee", bd=1, relief="flat")
+        self.report_pcap_title.pack(side="top", fill=tk.X)
+
+        # Listbox
+        self.report_pcap_header = ["Date","Capture Name","Activity", "Details", "Capture File Location", "ID"]
+        self.report_pcap_list = MultiColumnListbox(parent=self.botReportPCAPFrame,
+                                                header=self.report_pcap_header,
+                                                list=list(), keep1st=True)
+        self.report_pcap_list.bind("<<TreeviewSelect>>", self.select_report_pcaps)
+
+
+
+        # Grid placements #
+        self.topReportDevFrame.grid(row=0, column=0, sticky="nsew")
+        self.botReportPCAPFrame.grid(row=1, column=0, sticky="nsew")
+
+        self.w_gen_report.grid_rowconfigure(0, weight=1)
+        self.w_gen_report.grid_rowconfigure(1, weight=1)
+
+
+        ## Buttons
+        self.b_report_generate = tk.Button(self.botReportPCAPFrame, text='Generate', state='disabled',
+                                        command=(self.generate_report))
+
+        self.b_report_cancel = tk.Button(self.botReportPCAPFrame, text='Cancel', command=self.w_gen_report.destroy)
+
+        if sys.platform == "win32":
+            self.b_report_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+            self.b_report_generate.pack(side=tk.RIGHT, padx=5, pady=5)
+        else:
+            self.b_report_generate.pack(side=tk.RIGHT, padx=5, pady=5)
+            self.b_report_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+
+
+        self.populate_report_dev_list()
+
+
+        # Select first element of each list
+        # Try because the list might be empty
+        self.report_dev_list.focus(0)
+        self.report_dev_list.selection_set(0)
+        self.report_pcap_list.focus(0)
+        self.report_pcap_list.selection_set(0)
+
+        self.yield_focus(self.w_gen_report)
+
+
+    def populate_report_dev_list(self):
+        # Get and insert all captures currently added to database
+        self.report_dev_list.clear()
+        self.report_dev_list.append(("All...",))
+
+        print("Populating Report Device List")
+
+        self.db_handler.db.select_devices_imported()
+        for (id, mfr, model, mac, internalName, category) in self.db_handler.db.cursor:
+            self.report_dev_list.append((internalName, mfr, model, category, mac))
+
+
+    def populate_report_pcap_list(self, event=None): #unknown if need "event"
+        print("Populating Report PCAP list")
+
+        # clear previous list
+        self.report_pcap_list.clear()
+        
+
+        self.report_device = self.report_dev_list.get( self.report_dev_list.selection() )
+        try:
+            self.dev_mac = self.report_device[4]
+        except:
+            self.dev_mac = None
+
+        print("device:",self.dev_mac)
+
+        if self.dev_mac == None:
+            print("Returning from report pcap selection early")
+            return
+        self.report_pcap_list.append(("All...",))
+
+        # Get and insert all captures currently added to database
+        if self.report_device[0] == "All...":
+            self.db_handler.db.select_imported_captures()
+        else:
+            self.db_handler.db.select_imported_captures_with_device({"dev_mac":self.dev_mac})
+
+        for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
+            self.report_pcap_list.append((capDate, fileName, activity, details, fileLoc, id)) #for early stages
+        
+        # Set focus on the first element
+        self.report_pcap_list.focus(0)
+        self.report_pcap_list.selection_set(0)
+
+
+    def select_report_pcaps(self, event):
+        print("Select Report pcaps")
+        #self.report_pcap_sel = []
+        self.report_pcap_where = ' '
+
+        print("report_pcap_list.selection():",self.report_pcap_list.selection())
+
+        first = True
+
+        for pcap_item in self.report_pcap_list.selection():
+            pcap = self.report_pcap_list.get( pcap_item )
+            print("pcap:",pcap)
+
+            if pcap[0] != "All...":
+                if first:
+                    self.report_pcap_where = " WHERE c.id = %s" % pcap[5]
+                    first = False
+                else:
+                    self.report_pcap_where += " OR c.id = %s" % pcap[5]
+                    
+        self.report_pcap_where += ';'
+
+        print("self.report_pcap_where:",self.report_pcap_where)
+
+        self.b_report_generate.config(state='normal')
+
+
+    def generate_report(self):
+        print("Preparing to generate report file")
+        #self.report_gen_obj = ReportGenerator()
+
+
+        for dev_item in self.report_dev_list.selection():
+            dev = self.report_dev_list.get( dev_item )
+            
+            if dev[0] == "All...":
+                self.db_handler.db.select_devices_imported()
+                for (id, mfr, model, mac, internalName, category) in self.db_handler.db.cursor:
+                    self.report_gen_obj = ReportGenerator({'name':internalName, 'mac':mac})
+
+                    self.db_handler.db.select_caps_with_device_where({'mac_addr':mac}, conditions=self.report_pcap_where)
+                    pcap_info = self.db_handler.db.cursor
+
+                    capture_info = {}
+                    #Need to add end_time and duration information to database
+                    #for (id, filename, sha256, activity, start_time, end_time, duration) in pcap_info:
+                    for (cap_id, filename, sha256, activity, start_time, details) in pcap_info:
+                        capture_info = {'filename'  : filename,
+                                        'sha256'    : sha256,
+                                        'activity'  : activity,
+                                        #'modifiers' : modifiers,
+                                        'start_time': start_time,
+                                        #'end_time'  : end_time,
+                                        #'duration'  : duration}
+                                        'details'   : details}
+
+                        #capture_info = {'other_devices':[]}
+                        capture_info['other_devices'] = []
+                        self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":dev[4]})
+                        for (id, internalName, mac) in self.db_handler.db.cursor:
+                            capture_info['other_devices'].append({'name': internalName, 'mac' : mac})
+
+                    # Write to file
+                    self.report_gen_obj.write_header()
+                    self.report_gen_obj.write_capture_info(capture_info)
+
+                break
+
+            else:
+                self.report_gen_obj = ReportGenerator({'name':dev[0], 'mac':dev[4]})
+
+                self.db_handler.db.select_caps_with_device_where({'mac_addr':dev[4]}, conditions=self.report_pcap_where)
+                pcap_info = self.db_handler.db.cursor
+                
+                capture_info = {}
+                #Need to add end_time and duration information to database
+                #for (id, filename, sha256, activity, start_time, end_time, duration) in pcap_info:
+                for (cap_id, filename, sha256, activity, start_time, details) in pcap_info:
+                    capture_info = {'filename'  : filename,
+                                    'sha256'    : sha256,
+                                    'activity'  : activity,
+                                    #'modifiers' : modifiers,
+                                    'start_time': start_time,
+                                    #'end_time'  : end_time,
+                                    #'duration'  : duration}
+                                    'details'   : details}
+
+                    capture_info['other_devices'] = []
+                    #capture_info = {'other_devices':[]}
+                    self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":dev[4]})
+                    for (id, internalName, mac) in self.db_handler.db.cursor:
+                        capture_info['other_devices'].append({'name': internalName, 'mac' : mac})
+
+                # Write to file
+                self.report_gen_obj.write_header()
+                self.report_gen_obj.write_capture_info(capture_info)
+
+        messagebox.showinfo("Report Generation Complete", "The generated reports are in the 'reports' directory.")
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

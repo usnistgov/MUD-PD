@@ -44,13 +44,14 @@
 
 from datetime import datetime
 
-class GenerateReport():
-    self.header = 'This document serves to indicate the devices and operations captured in addition to any specific procedures or environmental details of the captures that differs from the general procedure found in the main README.txt'
+class ReportGenerator():
 
     def __init__(self, device_info):
+        self.header = 'This document serves to indicate the devices and operations captured in addition to any specific procedures or environmental details of the captures that differs from the general procedure found in the main README.txt'
         self.date = datetime.today().date()
         self.device_info = device_info
-        self.file = '../reports/' + device_info['name'] + '_' + self.date
+        #self.file = '../reports/' + device_info['name'] + '_' + str(self.date)
+        self.file = 'reports/' + self.device_info['name'] + '_' + str(self.date) + '.txt'
         '''
         self.comm_info{'devices':[],'serv':[]}
         '''
@@ -58,26 +59,29 @@ class GenerateReport():
     def write_header(self):
         with open(self.file, 'w') as f:
             f.write(self.header)
-            f.write()
-            f.write('Device:\t' + device_info['name'])
-            f.write('MAC:\t' + device_info['mac'])
+            f.write('\n')
+            f.write('Device:\t%s\n' % self.device_info['name'])
+            f.write('MAC:\t%s\n' % self.device_info['mac'])
 
+    # Need to add modifiers, end time, and duration to database
     def write_capture_info(self, capture_info):
         with open(self.file, 'a') as f:
-            f.write()
-            f.write('Capture File:\t' + capture_info['filename'])
-            f.write('SHA256 Hash:\t' + capture_info['sha256'])
-            f.write('Activity:\t' + capture_info['activity'])
-            f.write('Modifiers:\t' + capture_info['modidifiers'])
-            f.write('Start Time:\t' + capture_info['start_time'])
-            f.write('End Time:\t' + capture_info['end_time'])
-            f.write('Duration:\t' + capture_info['duration'])
-            f.write('Other Devices:')
+            f.write('\n')
+            f.write('Capture File:\t%s\n' % capture_info['filename'])
+            f.write('SHA256 Hash:\t%s\n' % capture_info['sha256'])
+            f.write('Activity:\t%s\n' % capture_info['activity'])
+            #f.write('Modifiers:\t%s\n' % capture_info['modidifiers'])
+            f.write('Start Time:\t%s\n' % str(capture_info['start_time']))
+            #f.write('End Time:\t%s\n' % str(capture_info['end_time']))
+            #f.write('Duration:\t%s\n' % str(capture_info['duration']))
+            f.write('Other Devices:\n')
 
             for dev in capture_info['other_devices']:
-                f.write('    Name:\t' + dev['name'])
-                f.write('    MAC:\t' + dev['mac'])
-                f.write()
+                print("dev:",dev)
+                f.write('    Name:\t%s\n' % str(dev['name']))
+                f.write('    MAC:\t%s\n' % dev['mac'])
+                f.write('\n')
+            f.write('Notes:\n\t%s\n' % capture_info['details'])
 
     '''
     def prepare_communication_info(self, ew, communication_info):
@@ -90,48 +94,48 @@ class GenerateReport():
     #def write_communication_info(self):
     def write_communication_info(self, communication_info):
         with open(self.file, 'a') as f:
-            f.write()
-            f.write('Devices (E/W):')
+            f.write('\n')
+            f.write('Devices (E/W):\n')
             #for dev in self.comm_info['devices']:
             for dev in communication_info['devices']:
-                f.write('Name:\t' + dev['other_devices']['name'])
-                f.write('MAC Address:\t' + dev['other_devices']['mac'])
-                f.write('Manufacturer:\t' + dev['other_devices']['mfr'])
+                f.write('Name:\t%s\n' % dev['other_devices']['name'])
+                f.write('MAC Address:\t%s\n' % dev['other_devices']['mac'])
+                f.write('Manufacturer:\t%s\n' % dev['other_devices']['mfr'])
 
                 f.write('IP Addresses:')
                 for ip in dev['ip']:
-                    f.write('\t' + ip)
+                    f.write('\t%s\n' % ip)
                 
                 f.write('Protocols')
                 for protocol in dev['protocols']:
-                    f.write(protocol['protocol'])
-                    f.write('Ingress:')
-                    f.write('  Port In:\t' + protocol['ingress']['port_in'])
-                    f.write('  Port Out:\t' + protocol['ingress']['port_out'])
-                    f.write('Egress:')
-                    f.write('  Port In:\t' + protocol['egress']['port_in'])
-                    f.write('  Port Out:\t' + protocol['egress']['port_out'])
-                    f.write()
+                    f.write(protocol['protocol'] + \n)
+                    f.write('Ingress:\n')
+                    f.write('  Port In:\t%s\n' % protocol['ingress']['port_in'])
+                    f.write('  Port Out:\t%s\n' % protocol['ingress']['port_out'])
+                    f.write('Egress:\n')
+                    f.write('  Port In:\t%s\n' % protocol['egress']['port_in'])
+                    f.write('  Port Out:\t%s\n' % protocol['egress']['port_out'])
+                    f.write('\n')
 
                            
             f.write('Servers/Services (N/S):')
             #for serv in self.comm_info['serv']:
             for serv in communication_info['serv']:
-                f.write('Hostname:\t' + serv['hostname'])
-                f.write('MAC:\t' +  serv['mac'])
+                f.write('Hostname:\t%s\n' % serv['hostname'])
+                f.write('MAC:\t%s\n' %  serv['mac'])
                 
                 f.write('IP Addresses:')
                 for ip in dev['ip']:
-                    f.write('\t' + ip)
+                    f.write('\t%s\n' % ip)
                 
                 f.write('Protocols')
                 for protocol in dev['protocols']:
-                    f.write(protocol['protocol'])
-                    f.write('Ingress:')
-                    f.write('  Port In:\t' + protocol['ingress']['port_in'])
-                    f.write('  Port Out:\t' + protocol['ingress']['port_out'])
-                    f.write('Egress:')
-                    f.write('  Port In:\t' + protocol['egress']['port_in'])
-                    f.write('  Port Out:\t' + protocol['egress']['port_out'])
-                    f.write()
+                    f.write(protocol['protocol\n'])
+                    f.write('Ingress:\n')
+                    f.write('  Port In:\t%s\n' % protocol['ingress']['port_in'])
+                    f.write('  Port Out:\t%s\n' % protocol['ingress']['port_out'])
+                    f.write('Egress:\n')
+                    f.write('  Port In:\t%s\n' % protocol['egress']['port_in'])
+                    f.write('  Port Out:\t%s\n' % protocol['egress']['port_out'])
+                    f.write('\n')
                            

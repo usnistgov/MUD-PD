@@ -200,6 +200,13 @@ class CaptureDatabase:
         "      WHERE mac_addr=%(gateway_mac)s) gateway "
         "        ON gateway.fileHash = cap.fileHash;")
 
+    query_imported_capture_with_device = (
+        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.activity, cap.details "
+        "FROM capture as cap "
+        "    INNER JOIN ( "
+        "      SELECT * FROM device_in_capture "
+        "      WHERE mac_addr=%(dev_mac)s) device "
+        "        ON device.fileHash = cap.fileHash;")
 
     #query_device_from_capture = ("SELECT * FROM device WHERE fileName=%s;")
     #query_device_from_capture = ("SELECT * FROM device_in_capture WHERE fileHash=%s;")
@@ -270,6 +277,30 @@ class CaptureDatabase:
         "ipv4_addr!='Not found' AND ipv4_addr!='0.0.0.0' AND "
         "ipv6_addr!='Not found' AND ipv6_addr!='::';")
 
+
+    query_devices_in_caps_except = (
+        "SELECT DISTINCT dc.id, d.internalName, dc.mac_addr "
+        "FROM device_in_capture AS dc "
+        "    INNER JOIN ( "
+        "        SELECT * "
+        "        FROM capture "
+        "        WHERE id=%(cap_id)s) AS c "
+        "    ON dc.fileHash=c.fileHash "
+        "    INNER JOIN ( "
+        "        SELECT * "
+        "        FROM device) AS d "
+        "    ON dc.mac_addr = d.mac_addr "
+        "WHERE dc.mac_addr != %(mac_addr)s;")
+
+    query_caps_with_device_where = (
+        "SELECT DISTINCT "
+        "    c.id, c.fileName, c.fileHash, c.activity, c.capDate, c.details "
+        "FROM capture AS c "
+        "    INNER JOIN ( "
+        "        SELECT * "
+        "        FROM device_in_capture "
+        "        WHERE mac_addr = %(mac_addr)s) AS d "
+        "    ON c.fileHash=d.fileHash")
 
     query_device_info =  ("SELECT * FROM device WHERE mac_addr=%s;")
 
@@ -376,6 +407,9 @@ class CaptureDatabase:
     def select_imported_captures_with(self, devices):
         self.cursor.execute(self.query_imported_capture_with, devices)
 
+    def select_imported_captures_with_device(self, device):
+        self.cursor.execute(self.query_imported_capture_with_device, device)
+
     def select_devices_from_cap(self, capture):
         #print(capture)
         self.cursor.execute(self.query_device_from_capture, (capture,))
@@ -400,6 +434,12 @@ class CaptureDatabase:
 
     def select_gateway_ips(self, gateway):
         self.cursor.execute(self.query_gateway_ips, gateway)
+
+    def select_devices_in_caps_except(self, condition_data):
+        self.cursor.execute(self.query_devices_in_caps_except, condition_data)
+
+    def select_caps_with_device_where(self, mac_addr_data, conditions):
+        self.cursor.execute(self.query_caps_with_device_where + conditions, mac_addr_data)
 
     def select_device(self, mac):
         self.cursor.execute(self.query_device_info, (mac,))

@@ -32,7 +32,8 @@ field2db = BiDict({'File':'fileName', 'Activity':'activity', 'Details':'details'
                    'Date of Capture':'capDate', 'Time of Capture':'capTime',
                    'Manufacturer':'mfr' , 'MAC':'mac_addr', 'Model':'model', 'Internal Name':'internalName',
                    'Category':'deviceCategory', 'Notes':'notes',
-                   'MUD':'mudCapable', 'WiFi':'wifi', 'Bluetooth':'bluetooth', 'Zigbee':'zigbee',
+                   #'MUD':'mudCapable', 'WiFi':'wifi', 'Bluetooth':'bluetooth', 'Zigbee':'zigbee',
+                   'MUD':'mudCapable', 'WiFi':'wifi', 'Ethernet':'ethernet', 'Bluetooth':'bluetooth', 'Zigbee':'zigbee',
                    'ZWave':'zwave', '3G':'G3', '4G':'G4', '5G':'G5', 'Other':'otherProtocols',
                    'Firmware Version': 'fw_ver', 'IP Address' : 'ipv4_addr', 'IPv6 Address' : 'ipv6_addr'})
 dbFields = 'host', 'database', 'user', 'passwd'
@@ -44,7 +45,7 @@ captureInfoFields = 'Date of Capture', 'Time of Capture'#, 'Devices'
 deviceFields = 'Manufacturer', 'Model', 'MAC', 'Internal Name', 'Category', 'Notes', 'Capabilities'
 #deviceField2Var = {'Model' : 'model', 'Internal Name' : 'internalName', 'Device Category' : 'deviceCategory', 'Communication Standards', 'Notes': 'notes'}
 #deviceOptions = 'WiFi', 'Bluetooth', 'Zigbee', 'ZWave', '4G', '5G', 'Other'
-deviceOptions = 'MUD', 'WiFi', 'Bluetooth', 'Zigbee', 'ZWave', '3G', '4G', '5G', 'Other'
+deviceOptions = 'MUD', 'WiFi', 'Ethernet', 'Bluetooth', 'Zigbee', 'ZWave', '3G', '4G', '5G', 'Other'
 #deviceOptions2Var = {'WiFi' : 'wifi', 'Bluetooth' : 'bluetooth', 'Zigbee' : 'zigbee', 'ZWave' : 'zwave', '4G' : '4G', '5G' : '5G', 'Other', 'other'}
 #deviceStateFields = 'Firmware Version' #maybe include this with device fields entry and note that it will be associated with the capture only
 
@@ -74,8 +75,8 @@ class popupWindow(object):
   +--------+--------+
   | capture| device |
   | list   | list   |
-zzzzzzzzzzz  |   |    |        |
-zz  +-- | ---+--------+
+  |   |    |        |
+  +-- | ---+--------+
   |   V    | comm   |
   |        | detail |
   |        |        |
@@ -180,6 +181,7 @@ class  MudCaptureApplication(tk.Frame):
         self.cap_title.pack(side="top", fill=tk.X)
 
         # capture list
+        #self.cap_header = ["Date","Capture Name","Activity", "Duration", "Details","Capture File Location"]
         self.cap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
         self.cap_list = MultiColumnListbox(self.capFrame, self.cap_header, list(), keep1st=True)
         #self.cap_list.bind("<<ListboxSelect>>", self.update_dev_list)
@@ -440,7 +442,7 @@ class  MudCaptureApplication(tk.Frame):
             self.b_main_import.config(state='normal')
             self.b_main_generate_MUD.config(state='normal')
             self.b_main_generate_report.config(state='normal')
-            self.b_main_inspect.config(state="normal")
+            self.b_main_inspect.config(state="disabled")
             self.b_ns.config(state='normal')
             self.b_ew.config(state='normal')
             self.b_between.config(state='normal')
@@ -1316,18 +1318,19 @@ class  MudCaptureApplication(tk.Frame):
                 ent = tk.Entry(row)
 
                 row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+                #lab.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
                 lab.pack(side=tk.LEFT)
                 ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
                 
                 entries.append((option, ent))
             else:
-                if i%4 == 0:
+                if i%5 == 0:
                     row = tk.Frame(self.w_dev)
                     row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
                 checkvar = tk.IntVar()
-                ckb = tk.Checkbutton(row, text=option, width=15, justify=tk.LEFT, variable=checkvar)
-                ckb.pack(side=tk.LEFT, anchor=tk.W)
+                ckb = tk.Checkbutton(row, text=option, width=10, justify=tk.LEFT, variable=checkvar)
+                ckb.pack(side=tk.LEFT, anchor="w")
                 
                 if option == "wifi" or option == "WiFi":
                     checkvar.set(True)
@@ -1483,8 +1486,9 @@ class  MudCaptureApplication(tk.Frame):
         # Get and insert all captures currently added to database
         self.db_handler.db.select_imported_captures()
 
-        for (id, fileName, fileLoc, fileHash, capDate, activity,
+        for (id, fileName, fileLoc, fileHash, capDate, activity, #duration
              details) in self.db_handler.db.cursor:
+            #self.cap_list.append((capDate, fileName, activity, duration, details, fileLoc)) #for early stages
             self.cap_list.append((capDate, fileName, activity, details, fileLoc)) #for early stages
         
         # Set focus on the first element
@@ -1502,11 +1506,13 @@ class  MudCaptureApplication(tk.Frame):
 
             if cap_date == "All...":
                 self.populate_device_list()
+                self.b_main_inspect.config(state="disabled")
                 break
             else:
                 cap_name = cap_details[1]
                 self.populate_device_list( capture=cap_name, append=(not first) )
                 first=False
+                self.b_main_inspect.config(state="normal")
         
         #;lkj
         #self.update_comm_list(None)
@@ -2116,6 +2122,7 @@ class  MudCaptureApplication(tk.Frame):
         self.mud_pcap_title.pack(side="top", fill=tk.X)
 
 
+        #self.mud_pcap_header = ["Date","Capture Name","Activity", "Duration", "Details","Capture File Location"]
         self.mud_pcap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
         self.mud_pcap_list = MultiColumnListbox(parent=self.botMudPCAPFrame,
                                                 header=self.mud_pcap_header,
@@ -2603,6 +2610,7 @@ class  MudCaptureApplication(tk.Frame):
         self.report_pcap_title.pack(side="top", fill=tk.X)
 
         # Listbox
+        #self.report_pcap_header = ["Date","Capture Name","Activity", "Duration", "Details", "Capture File Location", "ID"]
         self.report_pcap_header = ["Date","Capture Name","Activity", "Details", "Capture File Location", "ID"]
         self.report_pcap_list = MultiColumnListbox(parent=self.botReportPCAPFrame,
                                                 header=self.report_pcap_header,
@@ -2684,6 +2692,8 @@ class  MudCaptureApplication(tk.Frame):
         else:
             self.db_handler.db.select_imported_captures_with_device({"dev_mac":self.dev_mac})
 
+        #for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
+            #self.report_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc, id)) #for early stages
         for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
             self.report_pcap_list.append((capDate, fileName, activity, details, fileLoc, id)) #for early stages
         
@@ -2741,13 +2751,14 @@ class  MudCaptureApplication(tk.Frame):
                     capture_info = {}
                     #Need to add end_time and duration information to database
                     #for (id, filename, sha256, activity, start_time, end_time, duration) in pcap_info:
+                    #for (cap_id, filename, sha256, activity, start_time, duration, details) in pcap_info:
                     for (cap_id, filename, sha256, activity, start_time, details) in pcap_info:
                         capture_info = {'filename'  : filename,
                                         'sha256'    : sha256,
                                         'activity'  : activity,
                                         #'modifiers' : modifiers,
                                         'start_time': start_time,
-                                        #'end_time'  : end_time,
+                                        #'end_time'  : start_time + duration,
                                         #'duration'  : duration}
                                         'details'   : details}
 
@@ -2781,7 +2792,7 @@ class  MudCaptureApplication(tk.Frame):
                                     'activity'  : activity,
                                     #'modifiers' : modifiers,
                                     'start_time': start_time,
-                                    #'end_time'  : end_time,
+                                    #'end_time'  : start_time + duration,
                                     #'duration'  : duration}
                                     'details'   : details}
 

@@ -16,6 +16,104 @@ import subprocess
 class CaptureDatabase:
 
 
+    new_database = (
+        "CREATE DATABASE ")
+
+    drop_tables = (
+        "DROP TABLE IF EXISTS "
+        "    capture, "
+        "    device_in_capture, "
+        "    mac_to_mfr, "
+        "    device, "
+        "    device_state, "
+        "    packet, "
+        "    protocol;")
+    
+    create_capture = (
+        "CREATE TABLE capture ( "
+        "    id INT PRIMARY KEY AUTO_INCREMENT, "
+        "    fileName TEXT, "
+        "    fileLoc TEXT, "
+        "    fileHash CHAR(64) UNIQUE, "
+        "    capDate DATETIME, "
+        "    capDuration INT, "
+        "    activity TEXT, "
+        "    details TEXT);")
+
+    create_device_in_capture = (
+        "CREATE TABLE device_in_capture ( "
+        "    id INT PRIMARY KEY AUTO_INCREMENT, "
+        "    fileName TEXT, "
+        "    fileHash CHAR(64), "
+        "    mac_addr VARCHAR(17));")
+
+    create_mac_to_mfr = (
+        "CREATE TABLE mac_to_mfr ( "
+        "    id INT PRIMARY KEY AUTO_INCREMENT, "
+        "    mac_prefix VARCHAR(8) UNIQUE, "
+        "    mfr TEXT);")
+
+    create_device = (
+        "CREATE TABLE device ( "
+        "    id INT PRIMARY KEY AUTO_INCREMENT, "
+        "    mfr TEXT DEFAULT NULL, "
+        "    model TEXT DEFAULT NULL, "
+        "    mac_addr VARCHAR(17) UNIQUE, "
+        "    internalName VARCHAR(20) UNIQUE DEFAULT NULL, "
+        "    deviceCategory TEXT DEFAULT NULL, "
+        "    mudCapable BOOL DEFAULT FALSE, "
+        "    wifi BOOL DEFAULT FALSE, "
+        "    ethernet BOOL DEFAULT FALSE, "
+        "    bluetooth BOOL DEFAULT FALSE, "
+        "    3G BOOL DEFAULT FALSE, "
+        "    4G BOOL DEFAULT FALSE, "
+        "    5G BOOL DEFAULT FALSE, "
+        "    zigbee BOOL DEFAULT FALSE, "
+        "    zwave BOOL DEFAULT FALSE, "
+        "    otherProtocols TEXT DEFAULT NULL, "
+        "    notes TEXT DEFAULT NULL, "
+        "    unidentified BOOL DEFAULT TRUE);")
+
+    create_device_state = (
+        "CREATE TABLE device_state ( "
+        "    id INT AUTO_INCREMENT KEY, "
+        "    fileHash CHAR(64), "
+        "    mac_addr VARCHAR(17), "
+        "    internalName VARCHAR(20) DEFAULT NULL, "
+        "    fw_ver TEXT DEFAULT NULL, "
+        "    ipv4_addr VARCHAR(15), "
+        "    ipv6_addr TEXT);")
+
+    create_packet = (
+        "CREATE TABLE packet ( "
+        "    id INT AUTO_INCREMENT KEY, "
+        "    fileHash CHAR(64), "
+        "    pkt_datetime DATETIME, "
+        "    pkt_epochtime DOUBLE, "
+        "    mac_addr VARCHAR(17), "
+        "    protocol TEXT, "
+        "    ip_ver INT DEFAULT -1, "
+        "    ip_src TEXT, "
+        "    ip_dst TEXT, "
+        "    ew BOOL, "
+        "    tlp TEXT, "
+        "    tlp_srcport INT DEFAULT -1, "
+        "    tlp_dstport INT DEFAULT -1, "
+        "    length INT DEFAULT);")
+
+    create_protocol = (
+        "CREATE TABLE protocol ( "
+        "    id INT AUTO_INCREMENT KEY, "
+        "    fileHash CHAR(64), "
+        "    mac_addr VARCHAR(17), "
+        "    protocol TEXT, "
+        "    src_port INT, "
+        "    dst_ip_addr TEXT, "
+        "    ipv6 BOOL DEFAULT FALSE, "
+        "    dst_url TEXT, "
+        "    dst_port INT, "
+        "    notes TEXT);")
+
     add_capture = (
         "INSERT INTO capture "
         # TEXT      TEXT     BINARY(32)   DATETIME TEXT      TEXT
@@ -52,8 +150,8 @@ class CaptureDatabase:
         "REPLACE INTO device "
         # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT   BOOL
         "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unidentified) "
-        "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, "
-        "%(wifi)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unidentified)s)")
+        "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, "
+        "%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unidentified)s)")
 
     add_device_unidentified = (
         "INSERT INTO device "
@@ -347,6 +445,54 @@ class CaptureDatabase:
 
         self.cursor = self.cnx.cursor(buffered=True)
 
+
+    # SQL Initialize New Database
+    def init_new_database(self, db_name):
+        # Create new database
+        self.cursor.execute(self.new_database + db_name + ';')
+        self.cnx.commit()
+
+        # Drop the tables if they exist
+        self.cursor.execute(self.drop_tables)
+        self.cnx.commit()
+
+        # Create all tables
+        self.cursor.execute(self.create_capture)
+        self.cnx.commit()
+        self.cursor.execute(self.create_device_in_capture)
+        self.cnx.commit()
+        self.cursor.execute(self.create_mac_to_mfr)
+        self.cnx.commit()
+        self.cursor.execute(self.create_device)
+        self.cnx.commit()
+        self.cursor.execute(self.create_device_state)
+        self.cnx.commit()
+        self.cursor.execute(self.create_packet)
+        self.cnx.commit()
+        self.cursor.execute(self.create_protocol)
+        self.cnx.commit()
+
+    def reinit_database(self):
+        # Drop the tables if they exist
+        self.cursor.execute(self.drop_tables)
+        self.cnx.commit()
+
+        # Create all tables
+        self.cursor.execute(self.create_capture)
+        self.cnx.commit()
+        self.cursor.execute(self.create_device_in_capture)
+        self.cnx.commit()
+        self.cursor.execute(self.create_mac_to_mfr)
+        self.cnx.commit()
+        self.cursor.execute(self.create_device)
+        self.cnx.commit()
+        self.cursor.execute(self.create_device_state)
+        self.cnx.commit()
+        self.cursor.execute(self.create_packet)
+        self.cnx.commit()
+        self.cursor.execute(self.create_protocol)
+        self.cnx.commit()
+
     # SQL Insertion Commands
     def insert_capture(self, data_capture):
         #self.cap = CaptureDigest(data_capture.get(fpath, "none"))
@@ -590,6 +736,7 @@ class CaptureDigest:
         print("file size: ", self.fsize)
         self.progress = 24 #capture header
         self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
+        #self.fileHash = hashlib.sha256(open(fpath,'rb').read()).hexdigest()
 
         ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
         ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
@@ -923,6 +1070,7 @@ class CaptureDigest:
         self.fpath = fpath
         self.fdir, self.fname = os.path.split(fpath)
         self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
+        #self.fileHash = hashlib.sha256(open(fpath,'rb').read()).hexdigest()
 
         self.cap = pyshark.FileCapture(fpath)
 

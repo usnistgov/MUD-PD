@@ -2826,10 +2826,10 @@ class  MudCaptureApplication(tk.Frame):
 
 
     def popup_about(self):
-        w_about = tk.Toplevel()
-        w_about.wm_title("About")
+        self.w_about = tk.Toplevel()
+        self.w_about.wm_title("About")
 
-        summaryFrame = tk.Frame(w_about)
+        summaryFrame = tk.Frame(self.w_about)
         summary = tk.Message(summaryFrame,
                            text="This is a proof of concept for evaluating network traffic " +
                            "for use in auditing the network, generating MUD files, and " +
@@ -2839,7 +2839,7 @@ class  MudCaptureApplication(tk.Frame):
         summaryFrame.pack(side="top", fill="both", padx=5, pady=2, expand=True)
         summary.pack(side="left")
 
-        srcFrame = tk.Frame(w_about)
+        srcFrame = tk.Frame(self.w_about)
         sources = tk.Message(srcFrame, text="Icons used under Creative Commons BY 3.0 License:\n" +
                            "CC 3.0 BY Flaticon: www.flaticon.com is licensed by " +
                            "http://creativecommons.org/licenses/by/3.0/ " +
@@ -2848,8 +2848,8 @@ class  MudCaptureApplication(tk.Frame):
         srcFrame.pack(side="top", fill="both", padx=5, pady=2, expand=True)
         sources.pack(side="left")
 
-        closeFrame = tk.Frame(w_about)
-        b_close = tk.Button(closeFrame, text="Close", command=w_about.destroy)
+        closeFrame = tk.Frame(self.w_about)
+        b_close = tk.Button(closeFrame, text="Close", command=self.w_about.destroy)
         closeFrame.pack(side="top", fill="x", padx=5, pady=2, expand=True)
         b_close.pack(side="bottom", padx=5, pady=5)
 

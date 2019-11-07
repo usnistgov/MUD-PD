@@ -2732,8 +2732,11 @@ class  MudCaptureApplication(tk.Frame):
                 for (id, mfr, model, mac, internalName, category) in self.db_handler.db.cursor:
                     self.report_gen_obj = ReportGenerator({'name':internalName, 'mac':mac})
 
+                    # Write to file
+                    self.report_gen_obj.write_header()
+
                     self.db_handler.db.select_caps_with_device_where({'mac_addr':mac}, conditions=self.report_pcap_where)
-                    pcap_info = self.db_handler.db.cursor
+                    pcap_info = self.db_handler.db.cursor.fetchall()
 
                     capture_info = {}
                     #Need to add end_time and duration information to database
@@ -2754,17 +2757,20 @@ class  MudCaptureApplication(tk.Frame):
                         for (id, internalName, mac) in self.db_handler.db.cursor:
                             capture_info['other_devices'].append({'name': internalName, 'mac' : mac})
 
-                    # Write to file
-                    self.report_gen_obj.write_header()
+                    # Append capture information
                     self.report_gen_obj.write_capture_info(capture_info)
 
                 break
 
             else:
+                print("Generating report for one device\n\t%s" % dev[0])
                 self.report_gen_obj = ReportGenerator({'name':dev[0], 'mac':dev[4]})
 
+                # Write header to file
+                self.report_gen_obj.write_header()
+
                 self.db_handler.db.select_caps_with_device_where({'mac_addr':dev[4]}, conditions=self.report_pcap_where)
-                pcap_info = self.db_handler.db.cursor
+                pcap_info = self.db_handler.db.cursor.fetchall()
                 
                 capture_info = {}
                 #Need to add end_time and duration information to database
@@ -2785,9 +2791,8 @@ class  MudCaptureApplication(tk.Frame):
                     for (id, internalName, mac) in self.db_handler.db.cursor:
                         capture_info['other_devices'].append({'name': internalName, 'mac' : mac})
 
-                # Write to file
-                self.report_gen_obj.write_header()
-                self.report_gen_obj.write_capture_info(capture_info)
+                    # Append capture information
+                    self.report_gen_obj.write_capture_info(capture_info)
 
         messagebox.showinfo("Report Generation Complete", "The generated reports are in the 'reports' directory.")
 

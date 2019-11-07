@@ -108,7 +108,7 @@ class ReportGenerator():
                 
                 f.write('Protocols')
                 for protocol in dev['protocols']:
-                    f.write(protocol['protocol'] + \n)
+                    f.write(protocol['protocol'] + '\n')
                     f.write('Ingress:\n')
                     f.write('  Port In:\t%s\n' % protocol['ingress']['port_in'])
                     f.write('  Port Out:\t%s\n' % protocol['ingress']['port_out'])

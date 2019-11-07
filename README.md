@@ -59,8 +59,8 @@ A tool for Profiling IoT devices particularly for use with MUD
 
 1. Install tool
    ```sh
-   shell> git clone https://github.com/usnistgov/MUDPI.git
-   shell> cd MUDPI
+   shell> git clone https://github.com/usnistgov/MUD-PD.git
+   shell> cd MUD-PD
    shell> pip3 install -r requirements.txt
    ```
 
@@ -89,5 +89,5 @@ A tool for Profiling IoT devices particularly for use with MUD
 
 ## Execute
 ```sh
-shell> python3 mudpi.py
+shell> python3 mudpd.py
 ```

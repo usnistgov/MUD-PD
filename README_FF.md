@@ -1,5 +1,5 @@
-# MUDPI Future Features
-(MUD Profiling for IoT)
+# MUD-PD Future Features
+MUD Profiling Database (formerly MUD Profiling for IoT)
 
 A tool for Profiling IoT devices particularly for use with MUD
 

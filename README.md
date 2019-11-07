@@ -1,5 +1,5 @@
-# MUDPI
-(MUD Profiling for IoT)
+# MUD-PD
+MUD Profiling Database (formerly MUD Profiling for IoT)
 
 A tool for Profiling IoT devices particularly for use with MUD
 

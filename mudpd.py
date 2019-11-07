@@ -5,6 +5,7 @@ from src.capture_database import CaptureDatabase
 #from capture_database import DatabaseHandler
 from src.capture_database import CaptureDigest
 from datetime import datetime
+from datetime import timedelta
 import hashlib
 from src.lookup import lookup_mac, lookup_hostname
 import math
@@ -712,6 +713,7 @@ class  MudCaptureApplication(tk.Frame):
                 "fileHash" : self.cap.fileHash,
                 
                 "capDate" : epoch2datetime(float(self.cap.capTimeStamp)),#epoch2datetime(float(self.cap.capDate)),
+                "duration" : self.cap.capDuration.seconds,
                 "activity" : entries[1][1].get(),
                 "details" : entries[2][1].get()
                 }
@@ -2758,7 +2760,7 @@ class  MudCaptureApplication(tk.Frame):
                                         'activity'  : activity,
                                         #'modifiers' : modifiers,
                                         'start_time': start_time,
-                                        #'end_time'  : start_time + duration,
+                                        #'end_time'  : start_time + timedelta(seconds=duration),
                                         #'duration'  : duration}
                                         'details'   : details}
 
@@ -2787,12 +2789,13 @@ class  MudCaptureApplication(tk.Frame):
                 #Need to add end_time and duration information to database
                 #for (id, filename, sha256, activity, start_time, end_time, duration) in pcap_info:
                 for (cap_id, filename, sha256, activity, start_time, details) in pcap_info:
+                    print("start_time type:", type(start_time))
                     capture_info = {'filename'  : filename,
                                     'sha256'    : sha256,
                                     'activity'  : activity,
                                     #'modifiers' : modifiers,
                                     'start_time': start_time,
-                                    #'end_time'  : start_time + duration,
+                                    #'end_time'  : start_time + timedelta(seconds=duration),
                                     #'duration'  : duration}
                                     'details'   : details}
 

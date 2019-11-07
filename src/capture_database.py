@@ -5,6 +5,7 @@ import hashlib
 #MySQl libraries
 from configparser import ConfigParser
 from datetime import datetime
+from datetime import timedelta
 #from lookup import *
 from src.lookup import *
 import mysql.connector
@@ -116,10 +117,13 @@ class CaptureDatabase:
 
     add_capture = (
         "INSERT INTO capture "
-        # TEXT      TEXT     BINARY(32)   DATETIME TEXT      TEXT
-        "(fileName, fileLoc, fileHash, capDate, activity, details) "
+        # TEXT      TEXT     BINARY(32)  DATETIME  TEXT      TEXT
+        #"(fileName, fileLoc, fileHash,   capDate, activity, details) "
+        # TEXT      TEXT     BINARY(32)  DATETIME TEXT       INT       TEXT
+        "(fileName, fileLoc, fileHash,   capDate, activity,  duration, details) "
         #"VALUES (%s, %s, %s, %s, %s, %s);")
-        "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(details)s);")
+        #"VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(details)s);")
+        "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(duration)s, %(details)s);")
 
     add_device_in_capture = (
         "INSERT INTO device_in_capture "
@@ -764,6 +768,8 @@ class CaptureDigest:
         #(self.capDate, self.capTime) = self.cap[0].sniff_timestamp.split()
         (self.capDate, self.capTime) = datetime.utcfromtimestamp(float(self.capTimeStamp)).strftime('%Y-%m-%d %H:%M:%S').split()
 
+        self.capDuration = timedelta(0)
+
         print(self.capDate)
         print(self.capTime)
 
@@ -871,6 +877,7 @@ class CaptureDigest:
             #self.id_unique_addrs(p)
             self.id_addr(p)
         '''
+        self.capDuration = self.pkt[-1].sniff_timestamp - self.capTimeStamp
 
 #    def import_pkts(self, *args):
     def append_pkt(self, *args):

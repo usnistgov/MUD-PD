@@ -20,6 +20,9 @@ class CaptureDatabase:
     new_database = (
         "CREATE DATABASE ")
 
+    use_database = (
+        "USE ")
+
     drop_tables = (
         "DROP TABLE IF EXISTS "
         "    capture, "
@@ -100,7 +103,7 @@ class CaptureDatabase:
         "    tlp TEXT, "
         "    tlp_srcport INT DEFAULT -1, "
         "    tlp_dstport INT DEFAULT -1, "
-        "    length INT DEFAULT);")
+        "    length INT DEFAULT -1);")
 
     create_protocol = (
         "CREATE TABLE protocol ( "
@@ -431,7 +434,10 @@ class CaptureDatabase:
     query_device_strings = ("SELECT * FROM strings WHERE device=%s;")
 
 
-    def __init__(self, db_config):
+    def __init__(self, db_config):#=None, new_db=False):
+        #if new_db:
+        #    pass
+        #else:
         try:
             print("Connecting to MySQL database...")
             self.cnx = mysql.connector.connect(**db_config)
@@ -454,6 +460,10 @@ class CaptureDatabase:
     def init_new_database(self, db_name):
         # Create new database
         self.cursor.execute(self.new_database + db_name + ';')
+        self.cnx.commit()
+
+        # Use new database
+        self.cursor.execute(self.use_database + db_name + ';')
         self.cnx.commit()
 
         # Drop the tables if they exist

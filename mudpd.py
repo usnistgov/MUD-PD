@@ -38,6 +38,7 @@ field2db = BiDict({'File':'fileName', 'Activity':'activity', 'Details':'details'
                    'ZWave':'zwave', '3G':'G3', '4G':'G4', '5G':'G5', 'Other':'otherProtocols',
                    'Firmware Version': 'fw_ver', 'IP Address' : 'ipv4_addr', 'IPv6 Address' : 'ipv6_addr'})
 dbFields = 'host', 'database', 'user', 'passwd'
+dbNewFields = 'host', 'user', 'passwd', 'new database'
 #dbField2Var = {'Host' : 'host', 'Database' : 'database', 'Username' : 'user', 'Password' : 'passwd'}
 captureFields = 'File', 'Activity', 'Details'
 #captureField2Var = {'File' : 'fileLoc', 'Activity' : 'activity', 'Details' : 'details'}
@@ -138,6 +139,7 @@ class  MudCaptureApplication(tk.Frame):
         self.fileSubMenu = tk.Menu(self.fileMenu)
         self.fileMenu.add_cascade(label="File", menu=self.fileSubMenu)
         self.fileSubMenu.add_command(label="Connect to Database...", command=self.popup_connect2database)
+        self.fileSubMenu.add_command(label="Create New Database...", command=self.popup_createNewDatabase)
         self.fileSubMenu.add_command(label="Import Capture File...", command=self.popup_import_capture)
         self.fileSubMenu.add_separator()
         self.fileSubMenu.add_command(label="Quit", command=self.__exit__)
@@ -151,10 +153,15 @@ class  MudCaptureApplication(tk.Frame):
         # Menu top
         self.menuFrame = tk.Frame(self.parent, bd=1, bg="#dfdfdf") #, bg="#dfdfdf"
 
-        icon_connect = tk.PhotoImage(file="data/icons/database40px.png")
-        self.b_main_connect = tk.Button(self.menuFrame, compound="top", image=icon_connect, width="40", height="40", command=self.popup_connect2database, highlightthickness=0, activebackground="black", bd=0)
-        self.b_main_connect.image = icon_connect
-        self.b_main_connect.pack(side="left")
+        icon_db_connect = tk.PhotoImage(file="data/icons/database_connect40px.png")
+        self.b_main_db_connect = tk.Button(self.menuFrame, compound="top", image=icon_db_connect, width="40", height="40", command=self.popup_connect2database, highlightthickness=0, activebackground="black", bd=0)
+        self.b_main_db_connect.image = icon_db_connect
+        self.b_main_db_connect.pack(side="left")
+
+        icon_db_new = tk.PhotoImage(file="data/icons/database_new40px.png")
+        self.b_main_db_new = tk.Button(self.menuFrame, compound="top", image=icon_db_new, width="40", height="40", command=self.popup_createNewDatabase, highlightthickness=0, activebackground="black", bd=0)
+        self.b_main_db_new.image = icon_db_new
+        self.b_main_db_new.pack(side="left")
 
         icon_import = tk.PhotoImage(file="data/icons/import40px.png")
         #self.b_main_import = tk.Button(self.menuFrame, compound="top", image=icon_import, width="40", height="40", command=self.popup_import_capture, highlightthickness=0, activebackground="black", bd=0)
@@ -423,13 +430,78 @@ class  MudCaptureApplication(tk.Frame):
 
         return entries
 
-    def connect_and_close(self, entries):
+    def popup_createNewDatabase(self):
+        self.w_db_new = tk.Toplevel()
+        self.w_db_new.wm_title("Create New Database")
+
+        ents = self.make_form_new_database(dbNewFields)
+
+        self.bind('<Return>', (lambda event, e=ents, c=True: self.connect_and_close(e, create=c)))   
+
+        b_create = tk.Button(self.w_db_new, text='Create',
+                                   command=(lambda e=ents, c=True: self.connect_and_close(e, create=c)))
+        b_cancel = tk.Button(self.w_db_new, text='Cancel', command=self.w_db_new.destroy)
+
+        if sys.platform == "win32":
+            b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+            b_create.pack(side=tk.RIGHT, padx=5, pady=5)
+        else:
+            b_create.pack(side=tk.RIGHT, padx=5, pady=5)
+            b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+
+        # Save checkbutton
+        checkvar = tk.IntVar()
+        ckb_save = tk.Checkbutton(self.w_db_new, text="Save", width=7, justify=tk.LEFT, variable=checkvar)
+        ckb_save.pack(side=tk.LEFT, anchor=tk.W, padx=5)
+        ents.append(("Save", checkvar))
+
+        messagebox.showinfo("CREATING a New Database",
+                            "You are CREATING a new database.\n\nYou will need to use the existing mysql server password.")
+
+        self.yield_focus(self.w_db_new)
+
+
+    def make_form_new_database(self, fields):
+        db_handler_temp = DatabaseHandler()
+        entries = []
+
+        for field in fields:
+            row = tk.Frame(self.w_db_new)
+            lab = tk.Label(row, width=12, text=field, anchor='w')
+            if field == "passwd":
+                ent = tk.Entry(row, show="\u2022", width=15)
+                skip_line = True
+            else:
+                ent = tk.Entry(row)
+                skip_line = False
+            ent.insert( 10, db_handler_temp.config.get(field,"none") )
+
+            row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
+            lab.pack(side=tk.LEFT)
+            ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
+            entries.append((field, ent))
+
+            if skip_line:
+                xtra_row = tk.Frame(self.w_db_new)
+                xtra_row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
+                skip_line = False
+
+        return entries
+
+    def connect_and_close(self, entries, create=False):
         db_handler_temp = DatabaseHandler()
         (save_name, save_var) = entries.pop()
         save_val = save_var.get()
         #print(save_name, " = ", save_var, " = ", save_val)
 
-        db_handler_temp.db_connect(entries)
+        if create:
+            (db_label, db_name) = entries.pop()
+            db_handler_temp.db_connect(entries)
+            db_handler_temp.db.init_new_database(str(db_name.get()))
+            entries.append(('database', db_name))
+        else:
+            db_handler_temp.db_connect(entries)
+        #db_handler_temp.db_connect(entries)
 
         if db_handler_temp.connected:
             self.db_handler = db_handler_temp
@@ -437,7 +509,14 @@ class  MudCaptureApplication(tk.Frame):
             self.populate_capture_list()
             if save_val:
                 self.popup_confirm_save()
-            self.w_db.destroy()
+
+            if create:
+                messagebox.showinfo("Success!","Successfully created and connected to the new database '%s'" % db_name.get())
+                self.w_db_new.destroy()
+            else:
+                messagebox.showinfo("Success!","Successfully connected to the database")
+                self.w_db.destroy()
+
 
             #Enable main menu buttons
             self.b_main_import.config(state='normal')

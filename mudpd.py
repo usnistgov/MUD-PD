@@ -14,6 +14,7 @@ from src.generate_report import ReportGenerator
 from src.multicolumn_listbox import MultiColumnListbox
 #from multiprocessing import Process, Queue
 import multiprocessing
+import mysql.connector
 import pyshark
 import subprocess
 import sys
@@ -189,8 +190,8 @@ class  MudCaptureApplication(tk.Frame):
         self.cap_title.pack(side="top", fill=tk.X)
 
         # capture list
-        #self.cap_header = ["Date","Capture Name","Activity", "Duration", "Details","Capture File Location"]
-        self.cap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
+        self.cap_header = ["Date", "Capture Name", "Activity", "Duration", "Details", "Capture File Location"]
+        #self.cap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
         self.cap_list = MultiColumnListbox(self.capFrame, self.cap_header, list(), keep1st=True)
         #self.cap_list.bind("<<ListboxSelect>>", self.update_dev_list)
         self.cap_list.bind("<<TreeviewSelect>>", self.update_dev_list)
@@ -496,25 +497,65 @@ class  MudCaptureApplication(tk.Frame):
 
         if create:
             (db_label, db_name) = entries.pop()
+            db_name = db_name.get()
             db_handler_temp.db_connect(entries)
-            db_handler_temp.db.init_new_database(str(db_name.get()))
-            entries.append(('database', db_name))
+
+            if not db_handler_temp.connected:
+                tk.messagebox.showerror("Error Connecting to Database",
+                                        "There was some error while connecting to the database.\n" +
+                                        "Please check all the data fields and try again.")
+                return
+                    
+            try:
+                db_handler_temp.db.init_new_database(db_name)
+            except mysql.connector.Error as err:
+                if err.errno == mysql.connector.errorcode.ER_DB_CREATE_EXISTS: # 1007
+                    print("Database already exists")
+
+                    reinit = tk.messagebox.askyesno("Database Creation Error",
+                                                    "Cannot create database '%s' because it already exists.\n\n" % db_name +
+                                                    "Re-initialize the existing database?",
+                                                    default='no')
+                    
+                    if reinit:
+                        confirm = tk.messagebox.askyesno("Overwrite Existing Database",
+                                                         "Are you sure you want to overwrite the database '%s'?\n\n" % db_name +
+                                                         "This action is IRREVERSIBLE and all existing data will be LOST!",
+                                                         default='no')
+                        if confirm:
+                            db_handler_temp.db.reinit_database(db_name);
+                        else:
+                            tk.messagebox.showinfo("Create New Database Name",
+                                                   "Please choose a new database name")
+                            return
+                    else:
+                        tk.messagebox.showinfo("Create New Database Name",
+                                               "Please choose a new database name")
+                        return
+                else:
+                    tk.messagebox.showerror("Error Creating Database",
+                                            "There was some error in creating the database.\n" +
+                                            "Please try again using a different name")
+                    return
+
+            db_handler_temp.db_config['database'] = db_name
+            #entries.append(('database', db_name))
         else:
             db_handler_temp.db_connect(entries)
         #db_handler_temp.db_connect(entries)
 
         if db_handler_temp.connected:
             self.db_handler = db_handler_temp
-            self.status_var.set("Connected to " + self.db_handler.config.get("database","none"))
+            self.status_var.set("Connected to " + self.db_handler.config.get("database", "none"))
             self.populate_capture_list()
             if save_val:
                 self.popup_confirm_save()
 
             if create:
-                messagebox.showinfo("Success!","Successfully created and connected to the new database '%s'" % db_name.get())
+                #messagebox.showinfo("Success!","Successfully created and connected to the new database '%s'" % db_name)
                 self.w_db_new.destroy()
             else:
-                messagebox.showinfo("Success!","Successfully connected to the database")
+                #messagebox.showinfo("Success!","Successfully connected to the database")
                 self.w_db.destroy()
 
 
@@ -543,11 +584,17 @@ class  MudCaptureApplication(tk.Frame):
             '''
 
     def popup_confirm_save(self):
-        confirm = tk.messagebox.askyesno("MUDPI - Profiling IoT", "Are you sure you want to save this configuration?\n\nAny existing configuration will be OVERWRITTEN.")
-        save_pwd = tk.messagebox.askyesno("WARNING", "Password will be saved in plaintext.\n\nSave password anyway?")
+        confirm = tk.messagebox.askyesno("MUDPI - Profiling IoT",
+                                         "Are you sure you want to save this configuration?\n\n" +
+                                         "Any existing configuration will be OVERWRITTEN.",
+                                         default='no')
+        save_pwd = tk.messagebox.askyesno("WARNING",
+                                          "Password will be saved in plaintext.\n\nSave password anyway?",
+                                          default='no')
         #print(confirm)
         if confirm:
             self.db_handler.save_db_config(save_pwd=save_pwd)
+        return
 
     def popup_import_capture(self):
         self.w_cap = tk.Toplevel()
@@ -1567,10 +1614,10 @@ class  MudCaptureApplication(tk.Frame):
         # Get and insert all captures currently added to database
         self.db_handler.db.select_imported_captures()
 
-        for (id, fileName, fileLoc, fileHash, capDate, activity, #duration
-             details) in self.db_handler.db.cursor:
-            #self.cap_list.append((capDate, fileName, activity, duration, details, fileLoc)) #for early stages
-            self.cap_list.append((capDate, fileName, activity, details, fileLoc)) #for early stages
+        for (id, fileName, fileLoc, fileHash, capDate, activity,
+             duration, details) in self.db_handler.db.cursor:
+            self.cap_list.append((capDate, fileName, activity, duration, details, fileLoc)) #for early stages
+            #self.cap_list.append((capDate, fileName, activity, details, fileLoc)) #for early stages
         
         # Set focus on the first element
         self.cap_list.focus(0)
@@ -2166,7 +2213,8 @@ class  MudCaptureApplication(tk.Frame):
 
         self.mud_dev_title_var=tk.StringVar()
         self.mud_dev_title_var.set("Device to Profile:")
-        self.mud_dev_title = tk.Label(self.topMudDevFrame, textvariable=self.mud_dev_title_var, bg="#eeeeee", bd=1, relief="flat")
+        self.mud_dev_title = tk.Label(self.topMudDevFrame, textvariable=self.mud_dev_title_var,
+                                      bg="#eeeeee", bd=1, relief="flat")
         self.mud_dev_title.pack(side="top", fill=tk.X)
 
         #self.mud_dev_header = ["Manufacturer", "Model", "MAC Address", "Internal Name", "Category"]
@@ -2183,10 +2231,12 @@ class  MudCaptureApplication(tk.Frame):
         ## Middle Gateway Frame
         self.mud_gate_title_var=tk.StringVar()
         self.mud_gate_title_var.set("Network Gateway:")
-        self.mud_gate_title = tk.Label(self.midMudGateFrame, textvariable=self.mud_gate_title_var, bg="#eeeeee", bd=1, relief="flat")
+        self.mud_gate_title = tk.Label(self.midMudGateFrame, textvariable=self.mud_gate_title_var,
+                                       bg="#eeeeee", bd=1, relief="flat")
         self.mud_gate_title.pack(side="top", fill=tk.X)
 
-        self.mud_gate_header = ["Internal Name", "Manufacturer", "Model", "Category", "MAC Address", "IPv4", "IPv6"]
+        self.mud_gate_header = ["Internal Name", "Manufacturer", "Model", "Category",
+                                "MAC Address", "IPv4", "IPv6"]
         self.mud_gate_list = MultiColumnListbox(parent=self.midMudGateFrame,
                                                 header=self.mud_gate_header,
                                                 list=list(), selectmode="browse")
@@ -2199,12 +2249,14 @@ class  MudCaptureApplication(tk.Frame):
         ## Bot PCAP Frame
         self.mud_pcap_title_var=tk.StringVar()
         self.mud_pcap_title_var.set("Select Packet Captures (PCAPs):")
-        self.mud_pcap_title = tk.Label(self.botMudPCAPFrame, textvariable=self.mud_pcap_title_var, bg="#eeeeee", bd=1, relief="flat")
+        self.mud_pcap_title = tk.Label(self.botMudPCAPFrame, textvariable=self.mud_pcap_title_var,
+                                       bg="#eeeeee", bd=1, relief="flat")
         self.mud_pcap_title.pack(side="top", fill=tk.X)
 
 
-        #self.mud_pcap_header = ["Date","Capture Name","Activity", "Duration", "Details","Capture File Location"]
-        self.mud_pcap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
+        self.mud_pcap_header = ["Date", "Capture Name", "Activity", "Duration", "Details",
+                                "Capture File Location"]
+        #self.mud_pcap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
         self.mud_pcap_list = MultiColumnListbox(parent=self.botMudPCAPFrame,
                                                 header=self.mud_pcap_header,
                                                 list=list(), keep1st=True)

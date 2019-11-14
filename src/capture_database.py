@@ -122,8 +122,8 @@ class CaptureDatabase:
         "INSERT INTO capture "
         # TEXT      TEXT     BINARY(32)  DATETIME  TEXT      TEXT
         #"(fileName, fileLoc, fileHash,   capDate, activity, details) "
-        # TEXT      TEXT     BINARY(32)  DATETIME TEXT       INT       TEXT
-        "(fileName, fileLoc, fileHash,   capDate, activity,  duration, details) "
+        # TEXT      TEXT     BINARY(32)  DATETIME TEXT      INT       TEXT
+        "(fileName, fileLoc, fileHash,   capDate, activity, duration, details) "
         #"VALUES (%s, %s, %s, %s, %s, %s);")
         #"VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(details)s);")
         "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(duration)s, %(details)s);")
@@ -486,7 +486,11 @@ class CaptureDatabase:
         self.cursor.execute(self.create_protocol)
         self.cnx.commit()
 
-    def reinit_database(self):
+    def reinit_database(self, db_name):
+        # Use new database
+        self.cursor.execute(self.use_database + db_name + ';')
+        self.cnx.commit()
+
         # Drop the tables if they exist
         self.cursor.execute(self.drop_tables)
         self.cnx.commit()
@@ -749,8 +753,8 @@ class CaptureDigest:
         self.fsize = os.path.getsize(fpath)
         print("file size: ", self.fsize)
         self.progress = 24 #capture header
-        self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
-        #self.fileHash = hashlib.sha256(open(fpath,'rb').read()).hexdigest()
+        #self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
+        self.fileHash = hashlib.sha256(open(fpath,'rb').read()).hexdigest()
 
         ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
         ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
@@ -1086,8 +1090,8 @@ class CaptureDigest:
     def load_from_db(self, fpath):
         self.fpath = fpath
         self.fdir, self.fname = os.path.split(fpath)
-        self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
-        #self.fileHash = hashlib.sha256(open(fpath,'rb').read()).hexdigest()
+        #self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
+        self.fileHash = hashlib.sha256(open(fpath,'rb').read()).hexdigest()
 
         self.cap = pyshark.FileCapture(fpath)
 

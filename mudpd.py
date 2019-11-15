@@ -2713,8 +2713,6 @@ class  MudCaptureApplication(tk.Frame):
         
 
     def generate_report_wizard(self):
-        print("You shouldn't have gotten to the generate report wizard yet")
-
         self.w_gen_report = tk.Toplevel()
         self.w_gen_report.wm_title('Generate Device Report Wizard')
 
@@ -2819,12 +2817,14 @@ class  MudCaptureApplication(tk.Frame):
 
         print("device:",self.dev_mac)
 
-        if self.dev_mac == None:
-            print("Returning from report pcap selection early")
-            return
+        #if self.dev_mac == None:
+        #    print("Returning from report pcap selection early")
+        #    return
         self.report_pcap_list.append(("All...",))
 
         # Get and insert all captures currently added to database
+        #print("self.report_device[0] == 'All...':", self.report_device[0] == "All...")
+
         if self.report_device[0] == "All...":
             print("all devices selected")
             self.db_handler.db.select_imported_captures()
@@ -2856,10 +2856,10 @@ class  MudCaptureApplication(tk.Frame):
 
             if pcap[0] != "All...":
                 if first:
-                    self.report_pcap_where = " WHERE c.id = %s" % pcap[5]
+                    self.report_pcap_where = " WHERE c.id = %s" % pcap[6]
                     first = False
                 else:
-                    self.report_pcap_where += " OR c.id = %s" % pcap[5]
+                    self.report_pcap_where += " OR c.id = %s" % pcap[6]
                     
         self.report_pcap_where += ';'
 
@@ -2877,8 +2877,11 @@ class  MudCaptureApplication(tk.Frame):
             dev = self.report_dev_list.get( dev_item )
             
             if dev[0] == "All...":
+                print("All selected")
                 self.db_handler.db.select_devices_imported()
-                for (id, mfr, model, mac, internalName, category) in self.db_handler.db.cursor:
+                devs_imported = self.db_handler.db.cursor.fetchall()
+                #for (id, mfr, model, mac, internalName, category) in self.db_handler.db.cursor:
+                for (id, mfr, model, mac, internalName, category) in devs_imported:
                     self.report_gen_obj = ReportGenerator({'name':internalName, 'mac':mac})
 
                     # Write to file
@@ -2886,12 +2889,11 @@ class  MudCaptureApplication(tk.Frame):
 
                     self.db_handler.db.select_caps_with_device_where({'mac_addr':mac}, conditions=self.report_pcap_where)
                     pcap_info = self.db_handler.db.cursor.fetchall()
+                    print("len(pcap_info)",len(pcap_info))
 
                     capture_info = {}
                     #Need to add end_time and duration information to database
-                    #for (id, filename, sha256, activity, start_time, end_time, duration) in pcap_info:
                     for (cap_id, filename, sha256, activity, start_time, duration, details) in pcap_info:
-                    #for (cap_id, filename, sha256, activity, start_time, details) in pcap_info:
                         capture_info = {'filename'  : filename,
                                         'sha256'    : sha256,
                                         'activity'  : activity,
@@ -2901,15 +2903,13 @@ class  MudCaptureApplication(tk.Frame):
                                         'capDuration'  : duration,
                                         'details'   : details}
 
-                        #capture_info = {'other_devices':[]}
                         capture_info['other_devices'] = []
-                        self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":dev[3]})
+                        self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":mac})
                         for (id, internalName, mac) in self.db_handler.db.cursor:
                             capture_info['other_devices'].append({'name': internalName, 'mac' : mac})
 
-                    # Append capture information
-                    self.report_gen_obj.write_capture_info(capture_info)
-
+                        # Append capture information
+                        self.report_gen_obj.write_capture_info(capture_info)
                 break
 
             else:
@@ -2923,22 +2923,17 @@ class  MudCaptureApplication(tk.Frame):
                 pcap_info = self.db_handler.db.cursor.fetchall()
                 
                 capture_info = {}
-                #Need to add end_time and duration information to database
                 for (cap_id, filename, sha256, activity, start_time, duration, details) in pcap_info:
-                #for (cap_id, filename, sha256, activity, start_time, details) in pcap_info:
-                    print("start_time type:", type(start_time))
                     capture_info = {'filename'  : filename,
                                     'sha256'    : sha256,
                                     'activity'  : activity,
                                     #'modifiers' : modifiers,
                                     'start_time': start_time,
-                                    #'end_time'  : start_time + timedelta(seconds=duration),
                                     'end_time'  : start_time + timedelta(seconds=int(duration)),
                                     'capDuration'  : duration,
                                     'details'   : details}
 
                     capture_info['other_devices'] = []
-                    #capture_info = {'other_devices':[]}
                     self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":dev[3]})
                     for (id, internalName, mac) in self.db_handler.db.cursor:
                         capture_info['other_devices'].append({'name': internalName, 'mac' : mac})

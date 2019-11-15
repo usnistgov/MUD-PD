@@ -123,10 +123,10 @@ class CaptureDatabase:
         # TEXT      TEXT     BINARY(32)  DATETIME  TEXT      TEXT
         #"(fileName, fileLoc, fileHash,   capDate, activity, details) "
         # TEXT      TEXT     BINARY(32)  DATETIME TEXT      INT       TEXT
-        "(fileName, fileLoc, fileHash,   capDate, activity, duration, details) "
+        "(fileName, fileLoc, fileHash,   capDate, capDuration, activity, details) "
         #"VALUES (%s, %s, %s, %s, %s, %s);")
         #"VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(details)s);")
-        "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(duration)s, %(details)s);")
+        "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(capDuration)s, %(activity)s, %(details)s);")
 
     add_device_in_capture = (
         "INSERT INTO device_in_capture "
@@ -155,8 +155,8 @@ class CaptureDatabase:
     add_device = (
         #"INSERT INTO device "
         "REPLACE INTO device "
-        # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT   BOOL
-        "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unidentified) "
+        # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL   BOOL    BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT   BOOL
+        "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, ethernet, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unidentified) "
         "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, "
         "%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unidentified)s)")
 
@@ -294,7 +294,7 @@ class CaptureDatabase:
     query_imported_capture = ("SELECT * FROM capture;")
 
     query_imported_capture_with = (
-        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.activity, cap.details "
+        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, cap.activity, cap.details "
         "FROM capture as cap "
         "    INNER JOIN ( "
         "      SELECT * FROM device_in_capture "
@@ -306,7 +306,7 @@ class CaptureDatabase:
         "        ON gateway.fileHash = cap.fileHash;")
 
     query_imported_capture_with_device = (
-        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.activity, cap.details "
+        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, cap.activity, cap.details "
         "FROM capture as cap "
         "    INNER JOIN ( "
         "      SELECT * FROM device_in_capture "
@@ -399,7 +399,7 @@ class CaptureDatabase:
 
     query_caps_with_device_where = (
         "SELECT DISTINCT "
-        "    c.id, c.fileName, c.fileHash, c.activity, c.capDate, c.details "
+        "    c.id, c.fileName, c.fileHash, c.activity, c.capDate, c.capDuration, c.details "
         "FROM capture AS c "
         "    INNER JOIN ( "
         "        SELECT * "
@@ -782,7 +782,7 @@ class CaptureDigest:
         #(self.capDate, self.capTime) = self.cap[0].sniff_timestamp.split()
         (self.capDate, self.capTime) = datetime.utcfromtimestamp(float(self.capTimeStamp)).strftime('%Y-%m-%d %H:%M:%S').split()
 
-        self.capDuration = timedelta(0)
+        self.capDuration = 0#timedelta(0)
 
         print(self.capDate)
         print(self.capTime)
@@ -891,7 +891,10 @@ class CaptureDigest:
             #self.id_unique_addrs(p)
             self.id_addr(p)
         '''
-        self.capDuration = self.pkt[-1].sniff_timestamp - self.capTimeStamp
+        #datetime.utcfromtimestamp(float(self.capTimeStamp)).strftime('%Y-%m-%d %H:%M:%S').split()
+        #print(self.pkt[0].sniff_timestamp)
+        #print(self.pkt[-1].sniff_timestamp)
+        self.capDuration = round(float(self.pkt[-1].sniff_timestamp) - float(self.capTimeStamp))
 
 #    def import_pkts(self, *args):
     def append_pkt(self, *args):

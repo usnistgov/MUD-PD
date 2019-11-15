@@ -9,7 +9,7 @@
 #                 'modifiers':[<modifier0>, <modifier1>,...,<modiferN>],
 #                 'start_time':<time capture started>,
 #                 'end_time':<time capture stopped>,
-#                 'duration':<duration of capture>,
+#                 'capDuration':<duration of capture>,
 ##                 'internet':<Boolean state of internet access>, #DEPRECATED
 #                 'other_devices':
 #                     [{'name':<internal name_0>, 'mac':<mac address_0>},
@@ -72,8 +72,8 @@ class ReportGenerator():
             f.write('Activity:\t%s\n' % capture_info['activity'])
             #f.write('Modifiers:\t%s\n' % capture_info['modidifiers'])
             f.write('Start Time:\t%s\n' % str(capture_info['start_time']))
-            #f.write('End Time:\t%s\n' % str(capture_info['end_time']))
-            #f.write('Duration:\t%s\n' % str(capture_info['duration']))
+            f.write('End Time:\t%s\n' % str(capture_info['end_time']))
+            f.write('Duration:\t%s\n' % str(capture_info['capDuration']))
             f.write('Other Devices:\n')
 
             for dev in capture_info['other_devices']:

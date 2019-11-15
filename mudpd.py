@@ -484,7 +484,9 @@ class  MudCaptureApplication(tk.Frame):
 
             if skip_line:
                 xtra_row = tk.Frame(self.w_db_new)
+                xtra_lab = tk.Label(xtra_row, width=12, text=' ', anchor='w')
                 xtra_row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
+                xtra_lab.pack(side=tk.LEFT)
                 skip_line = False
 
         return entries
@@ -839,7 +841,8 @@ class  MudCaptureApplication(tk.Frame):
                 "fileHash" : self.cap.fileHash,
                 
                 "capDate" : epoch2datetime(float(self.cap.capTimeStamp)),#epoch2datetime(float(self.cap.capDate)),
-                "duration" : self.cap.capDuration.seconds,
+                #"duration" : self.cap.capDuration.seconds,
+                "capDuration" : self.cap.capDuration,
                 "activity" : entries[1][1].get(),
                 "details" : entries[2][1].get()
                 }
@@ -1085,7 +1088,7 @@ class  MudCaptureApplication(tk.Frame):
             if mac.upper() in [x.upper() for (x,) in macsInDevTbl]:
                 # Get device info
                 self.db_handler.db.select_device(mac)
-                (id, mfr, model, mac_addr, internalName, category, mudCapable, wifi, bluetooth, G3, G4, G5, zigbee, zwave, other, notes, unidentified) = self.db_handler.db.cursor.fetchone()
+                (id, mfr, model, mac_addr, internalName, category, mudCapable, wifi, ethernet, bluetooth, G3, G4, G5, zigbee, zwave, other, notes, unidentified) = self.db_handler.db.cursor.fetchone()
 
                 # Get device state info
                 self.db_handler.db.select_device_state(self.cap.fileHash, mac)
@@ -1684,7 +1687,7 @@ class  MudCaptureApplication(tk.Frame):
             self.db_handler.db.select_devices_from_cap(capture)
         
 
-        for (id, mfr, model, mac_addr, internalName, deviceCategory, mudCapable, wifi, bluetooth,
+        for (id, mfr, model, mac_addr, internalName, deviceCategory, mudCapable, wifi, ethernet, bluetooth,
              G3, G4, G5, zigbee, zwave, otherProtocols, notes, unidentified) in self.db_handler.db.cursor:
             self.dev_list.append_unique((mfr, model, internalName, mac_addr, deviceCategory)) #for early stages
 
@@ -2254,7 +2257,7 @@ class  MudCaptureApplication(tk.Frame):
         self.mud_pcap_title.pack(side="top", fill=tk.X)
 
 
-        self.mud_pcap_header = ["Date", "Capture Name", "Activity", "Duration", "Details",
+        self.mud_pcap_header = ["Date", "Capture Name", "Activity", "Duration (seconds)", "Details",
                                 "Capture File Location"]
         #self.mud_pcap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
         self.mud_pcap_list = MultiColumnListbox(parent=self.botMudPCAPFrame,
@@ -2332,7 +2335,9 @@ class  MudCaptureApplication(tk.Frame):
 
             if pcap[0] == "All...":
                 self.db_handler.db.select_imported_captures_with({"dev_mac":self.dev_mac, "gateway_mac":self.gateway_mac})
-                for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
+                #for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
+
+                for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
                     self.mud_pcap_sel.append(fileLoc + "/" + fileName)
                 break
             else:
@@ -2350,7 +2355,7 @@ class  MudCaptureApplication(tk.Frame):
         self.mud_gen_obj = MUDgeeWrapper()
 
         
-        self.mud_gen_obj.set_device(mac=self.mud_device[4], name=self.mud_device[2])
+        self.mud_gen_obj.set_device(mac=self.mud_device[3], name=self.mud_device[2])
         #self.mud_config = MUDgeeWrapper({'device_config':{'device':mac, 'deviceName':internalName}})
 
 
@@ -2422,7 +2427,7 @@ class  MudCaptureApplication(tk.Frame):
         self.db_handler.db.select_devices_imported()
 
         for (id, mfr, model, mac, internalName, category) in self.db_handler.db.cursor:
-            self.mud_dev_list.append((internalName, mfr, model, category, mac))
+            self.mud_dev_list.append((internalName, mfr, model, mac, category))
             #self.mud_dev_list.append(internalName + ' | ' + mac)
 
         #self.gate_select_list = tk.OptionMenu(self.row_gate, self.mud_gate_var, *self.mud_gate_list)
@@ -2437,7 +2442,7 @@ class  MudCaptureApplication(tk.Frame):
         self.mud_device = self.mud_dev_list.get( self.mud_dev_list.selection() )
         print("device:",self.mud_device)
         #ignored_dev = self.mud_device[4]
-        self.dev_mac = self.mud_device[4]
+        self.dev_mac = self.mud_device[3]
         print("self.dev_mac:")
         print("\t",self.dev_mac)
 
@@ -2472,7 +2477,7 @@ class  MudCaptureApplication(tk.Frame):
         
 
         self.mud_device = self.mud_dev_list.get( self.mud_dev_list.selection() )
-        self.dev_mac = self.mud_device[4]
+        self.dev_mac = self.mud_device[3]
 
         self.mud_gateway = self.mud_gate_list.get( self.mud_gate_list.selection() )
         self.gateway_mac = self.mud_gateway[4]
@@ -2489,8 +2494,8 @@ class  MudCaptureApplication(tk.Frame):
         #self.db_handler.db.select_imported_captures_with(dev='', gate='')
         self.db_handler.db.select_imported_captures_with({"dev_mac":self.dev_mac, "gateway_mac":self.gateway_mac})
 
-        for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
-            self.mud_pcap_list.append((capDate, fileName, activity, details, fileLoc)) #for early stages
+        for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
+            self.mud_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc)) #for early stages
         
         # Set focus on the first element
         self.mud_pcap_list.focus(0)
@@ -2743,8 +2748,8 @@ class  MudCaptureApplication(tk.Frame):
         self.report_pcap_title.pack(side="top", fill=tk.X)
 
         # Listbox
-        #self.report_pcap_header = ["Date","Capture Name","Activity", "Duration", "Details", "Capture File Location", "ID"]
-        self.report_pcap_header = ["Date","Capture Name","Activity", "Details", "Capture File Location", "ID"]
+        self.report_pcap_header = ["Date","Capture Name","Activity", "Duration (seconds)", "Details", "Capture File Location", "ID"]
+        #self.report_pcap_header = ["Date","Capture Name","Activity", "Details", "Capture File Location", "ID"]
         self.report_pcap_list = MultiColumnListbox(parent=self.botReportPCAPFrame,
                                                 header=self.report_pcap_header,
                                                 list=list(), keep1st=True)
@@ -2764,14 +2769,14 @@ class  MudCaptureApplication(tk.Frame):
         self.b_report_generate = tk.Button(self.botReportPCAPFrame, text='Generate', state='disabled',
                                         command=(self.generate_report))
 
-        self.b_report_cancel = tk.Button(self.botReportPCAPFrame, text='Cancel', command=self.w_gen_report.destroy)
+        self.b_report_close = tk.Button(self.botReportPCAPFrame, text='Close', command=self.w_gen_report.destroy)
 
         if sys.platform == "win32":
-            self.b_report_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+            self.b_report_close.pack(side=tk.RIGHT, padx=5, pady=5)
             self.b_report_generate.pack(side=tk.RIGHT, padx=5, pady=5)
         else:
             self.b_report_generate.pack(side=tk.RIGHT, padx=5, pady=5)
-            self.b_report_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+            self.b_report_close.pack(side=tk.RIGHT, padx=5, pady=5)
 
 
         self.populate_report_dev_list()
@@ -2796,7 +2801,7 @@ class  MudCaptureApplication(tk.Frame):
 
         self.db_handler.db.select_devices_imported()
         for (id, mfr, model, mac, internalName, category) in self.db_handler.db.cursor:
-            self.report_dev_list.append((internalName, mfr, model, category, mac))
+            self.report_dev_list.append((internalName, mfr, model, mac, category))
 
 
     def populate_report_pcap_list(self, event=None): #unknown if need "event"
@@ -2808,7 +2813,7 @@ class  MudCaptureApplication(tk.Frame):
 
         self.report_device = self.report_dev_list.get( self.report_dev_list.selection() )
         try:
-            self.dev_mac = self.report_device[4]
+            self.dev_mac = self.report_device[3]
         except:
             self.dev_mac = None
 
@@ -2825,10 +2830,10 @@ class  MudCaptureApplication(tk.Frame):
         else:
             self.db_handler.db.select_imported_captures_with_device({"dev_mac":self.dev_mac})
 
-        #for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
-            #self.report_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc, id)) #for early stages
-        for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
-            self.report_pcap_list.append((capDate, fileName, activity, details, fileLoc, id)) #for early stages
+        for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
+            self.report_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc, id)) #for early stages
+        #for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
+        #    self.report_pcap_list.append((capDate, fileName, activity, details, fileLoc, id)) #for early stages
         
         # Set focus on the first element
         self.report_pcap_list.focus(0)
@@ -2884,20 +2889,20 @@ class  MudCaptureApplication(tk.Frame):
                     capture_info = {}
                     #Need to add end_time and duration information to database
                     #for (id, filename, sha256, activity, start_time, end_time, duration) in pcap_info:
-                    #for (cap_id, filename, sha256, activity, start_time, duration, details) in pcap_info:
-                    for (cap_id, filename, sha256, activity, start_time, details) in pcap_info:
+                    for (cap_id, filename, sha256, activity, start_time, duration, details) in pcap_info:
+                    #for (cap_id, filename, sha256, activity, start_time, details) in pcap_info:
                         capture_info = {'filename'  : filename,
                                         'sha256'    : sha256,
                                         'activity'  : activity,
                                         #'modifiers' : modifiers,
                                         'start_time': start_time,
-                                        #'end_time'  : start_time + timedelta(seconds=duration),
-                                        #'duration'  : duration}
+                                        'end_time'  : start_time + timedelta(seconds=int(duration)),
+                                        'capDuration'  : duration,
                                         'details'   : details}
 
                         #capture_info = {'other_devices':[]}
                         capture_info['other_devices'] = []
-                        self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":dev[4]})
+                        self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":dev[3]})
                         for (id, internalName, mac) in self.db_handler.db.cursor:
                             capture_info['other_devices'].append({'name': internalName, 'mac' : mac})
 
@@ -2908,18 +2913,18 @@ class  MudCaptureApplication(tk.Frame):
 
             else:
                 print("Generating report for one device\n\t%s" % dev[0])
-                self.report_gen_obj = ReportGenerator({'name':dev[0], 'mac':dev[4]})
+                self.report_gen_obj = ReportGenerator({'name':dev[0], 'mac':dev[3]})
 
                 # Write header to file
                 self.report_gen_obj.write_header()
 
-                self.db_handler.db.select_caps_with_device_where({'mac_addr':dev[4]}, conditions=self.report_pcap_where)
+                self.db_handler.db.select_caps_with_device_where({'mac_addr':dev[3]}, conditions=self.report_pcap_where)
                 pcap_info = self.db_handler.db.cursor.fetchall()
                 
                 capture_info = {}
                 #Need to add end_time and duration information to database
-                #for (id, filename, sha256, activity, start_time, end_time, duration) in pcap_info:
-                for (cap_id, filename, sha256, activity, start_time, details) in pcap_info:
+                for (cap_id, filename, sha256, activity, start_time, duration, details) in pcap_info:
+                #for (cap_id, filename, sha256, activity, start_time, details) in pcap_info:
                     print("start_time type:", type(start_time))
                     capture_info = {'filename'  : filename,
                                     'sha256'    : sha256,
@@ -2927,12 +2932,13 @@ class  MudCaptureApplication(tk.Frame):
                                     #'modifiers' : modifiers,
                                     'start_time': start_time,
                                     #'end_time'  : start_time + timedelta(seconds=duration),
-                                    #'duration'  : duration}
+                                    'end_time'  : start_time + timedelta(seconds=int(duration)),
+                                    'capDuration'  : duration,
                                     'details'   : details}
 
                     capture_info['other_devices'] = []
                     #capture_info = {'other_devices':[]}
-                    self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":dev[4]})
+                    self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":dev[3]})
                     for (id, internalName, mac) in self.db_handler.db.cursor:
                         capture_info['other_devices'].append({'name': internalName, 'mac' : mac})
 

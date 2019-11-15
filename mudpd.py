@@ -2826,6 +2826,7 @@ class  MudCaptureApplication(tk.Frame):
 
         # Get and insert all captures currently added to database
         if self.report_device[0] == "All...":
+            print("all devices selected")
             self.db_handler.db.select_imported_captures()
         else:
             self.db_handler.db.select_imported_captures_with_device({"dev_mac":self.dev_mac})

@@ -43,6 +43,7 @@
 #                           }
 
 from datetime import datetime
+from datetime import timedelta
 
 class ReportGenerator():
 
@@ -73,14 +74,15 @@ class ReportGenerator():
             #f.write('Modifiers:\t%s\n' % capture_info['modidifiers'])
             f.write('Start Time:\t%s\n' % str(capture_info['start_time']))
             f.write('End Time:\t%s\n' % str(capture_info['end_time']))
-            f.write('Duration:\t%s\n' % str(capture_info['capDuration']))
+            #f.write('Duration:\t%s\n' % str(capture_info['capDuration']))
+            f.write('Duration:\t%s\n' % str(timedelta(seconds=capture_info['capDuration'])))
             f.write('Other Devices:\n')
 
             for dev in capture_info['other_devices']:
                 print("dev:",dev)
                 f.write('    Name:\t%s\n' % str(dev['name']))
-                f.write('    MAC:\t%s\n' % dev['mac'])
-                f.write('\n')
+                f.write('     MAC:\t%s\n' % dev['mac'])
+                #f.write('\n')
             f.write('Notes:\n\t%s\n' % capture_info['details'])
 
     '''

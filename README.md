@@ -1,18 +1,18 @@
 # MUD-PD
 MUD Profiling Database (formerly MUD Profiling for IoT (MUDPI))
 
-A tool for Profiling IoT devices particularly for use with MUD
+A tool for profiling IoT devices particularly for use with MUD
 
 *N.B. This tool is still in the development phase, and has only been tested on Linux (Ubuntu 18+) and macOS (10.14).*
 
-## Prerequisite
+## Prerequisites
 1. Python 3.7.2+
 
    * Check version
      ```sh
      shell> python3 --version
      ```
-   * Instructions for updating/installing python3 can be found at: https://www.python.org/downloads/
+   * Instructions for updating/installing python3 can be found at https://www.python.org/downloads/
      You can also try the following commands
      * macOS:
      ```sh
@@ -61,47 +61,41 @@ A tool for Profiling IoT devices particularly for use with MUD
    shell> apt-get install tcpdump
    ```
    * macOS: readily available by default.
-   * Windows: follow instructions at: https://nmap.org/npcap/
+   * Windows: follow instructions at https://nmap.org/npcap/
 
 
 
 ## Installation
 
-1. Install tool:
+1. Install MUD-PD:
    ```sh
    shell> git clone https://github.com/usnistgov/MUD-PD.git
    shell> cd MUD-PD
    shell> pip3 install -r requirements.txt
    ```
 
-2. Create MySQL Database:
-
-   1. MySQL Server:
-
-      Follow directions at https://dev.mysql.com/doc/refman/5.7/en/creating-database.html
-
-      ```sh
-      shell> mysql -u username -p
-
-      mysql> CREATE DATABASE <your_db_name>;
-
-      mysql> USE <your_db_name>
-      Database changed
-
-      shell> mysql -h host -u user -p <your_db_name>
-      Enter password: ********
-      ```
-
-   2. MySQL Workbench
-
-      Follow directions at https://dev.mysql.com/doc/workbench/en/wb-mysql-connections-new.html
-
-3. Install MUDgee: (for MUD file generation)
+2. Install MUDgee: (for MUD file generation)
    * Follow instructions at:  https://github.com/ayyoob/mudgee
-   * ***NOTE:*** Both the MUDgee and MUD-PD repositories must be installed in the same parent directory
-   * Latest verified compatible version: Latest commit f63a88d on Jul 5 2019
+   * ***NOTE:***
+      * Both the MUDgee and MUD-PD repositories must be installed in the same parent directory
+      * Latest verified compatible version: Latest commit f63a88d on Jul 5 2019
 
-## Execute
+## Execution
 ```sh
 shell> python3 mudpd.py
 ```
+
+## First Steps
+
+   ![MUD-PD GUI at Start-up](/data/images/mudpd_main.png)
+
+1. Create your first database:
+   ![Create Database Button](/data/images/mudpd_main_create.png)
+   ![Create Database](/data/images/mudpd_DB_create.png)
+
+   * Connect to existing database:
+     ![Connect to Database Button](/data/images/mudpd_main_connect.png)
+     ![Connect to Database](/data/images/mudpd_DB_connect.png)
+
+2. Import PCAP files:
+   ![Import PCAP files](/data/images/mudpd_main_import.png)

@@ -1,9 +1,9 @@
 # MUD-PD
-MUD Profiling Database (formerly MUD Profiling for IoT)
+MUD Profiling Database (formerly MUD Profiling for IoT (MUDPI))
 
 A tool for Profiling IoT devices particularly for use with MUD
 
-*N.B. This tool is still in the development phase, and has only been tested on Linux and macOS.*
+*N.B. This tool is still in the development phase, and has only been tested on Linux (Ubuntu 18+) and macOS (10.14).*
 
 ## Prerequisite
 1. Python 3.7.2+
@@ -12,35 +12,43 @@ A tool for Profiling IoT devices particularly for use with MUD
      ```sh
      shell> python3 --version
      ```
-   * Install/Update:
+   * Instructions for updating/installing python3 can be found at: https://www.python.org/downloads/
+     You can also try the following commands
+     * macOS:
      ```sh
      shell> brew install python3
      ```
-     ***or***
 
+     * Linux
      ```sh
      shell> sudo apt-get install python3.7
      ```
 
-     ***or***
-
-     Follow instructions at https://www.python.org/downloads/
-
 2. MySQL
-   1. If only want MySQL Community Server
-
-      Follow directions at https://dev.mysql.com/downloads/mysql/
-
-   2. MySQL Workbench [recommended]
+   1. MySQL Workbench (recommended because this is being used in development)
 
       Follow directions at https://dev.mysql.com/downloads/workbench/    
 
+   2. If only want MySQL Community Server (theoretically, this should also work)
+
+      Follow directions at https://dev.mysql.com/downloads/mysql/
+
 3. pip
+   * macOS:
+   ```sh
+   shell> curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+   shell> python3 get-pip.py
+   ```
+
+   * Linux:
    ```sh
    shell> sudo apt-get install python3-pip
    ```
 
-4. Tkinter for Python3
+4. Tkinter for Python3 (may already be installed)
+   * macOS: iunstructions can be found at python.org/downloads/mac/tcltk/
+
+   * Linux
    ```sh
    shell> sudo apt-get install python3-tk
    ```
@@ -48,23 +56,25 @@ A tool for Profiling IoT devices particularly for use with MUD
 5. LibPcap
 
    Used for generating packet captures to import into the database and tool 
+   * Linux:
    ```sh
-   Linux: ``apt-get install tcpdump''
-   OSX: readily available by default.
-   Windows: follow instructions at: https://nmap.org/npcap/
+   shell> apt-get install tcpdump
    ```
+   * macOS: readily available by default.
+   * Windows: follow instructions at: https://nmap.org/npcap/
+
 
 
 ## Installation
 
-1. Install tool
+1. Install tool:
    ```sh
    shell> git clone https://github.com/usnistgov/MUD-PD.git
    shell> cd MUD-PD
    shell> pip3 install -r requirements.txt
    ```
 
-1. Create MySQL Database:
+2. Create MySQL Database:
 
    1. MySQL Server:
 
@@ -86,6 +96,10 @@ A tool for Profiling IoT devices particularly for use with MUD
 
       Follow directions at https://dev.mysql.com/doc/workbench/en/wb-mysql-connections-new.html
 
+3. Install MUDgee: (for MUD file generation)
+   * Follow instructions at:  https://github.com/ayyoob/mudgee
+   * ***NOTE:*** Both the MUDgee and MUD-PD repositories must be installed in the same parent directory
+   * Latest verified compatible version: Latest commit f63a88d on Jul 5 2019
 
 ## Execute
 ```sh

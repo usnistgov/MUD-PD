@@ -128,8 +128,7 @@ class  MudCaptureApplication(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
-        #self.parent.title("MUDdy Networks") #MUDdy Airwaves
-        self.parent.title("MUDPI - MUD Profiling for IoT") #MUDdy Airwaves
+        self.parent.title("MUD-PD: MUD Profiling Database") #MUDdy Airwaves
 
         self.window_stack = []
         self.yield_focus(self.parent)
@@ -586,7 +585,7 @@ class  MudCaptureApplication(tk.Frame):
             '''
 
     def popup_confirm_save(self):
-        confirm = tk.messagebox.askyesno("MUDPI - Profiling IoT",
+        confirm = tk.messagebox.askyesno("MUD-PD: MUD Profiling Database",
                                          "Are you sure you want to save this configuration?\n\n" +
                                          "Any existing configuration will be OVERWRITTEN.",
                                          default='no')

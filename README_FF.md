@@ -1,5 +1,5 @@
 # MUD-PD Future Features
-MUD Profiling Database (formerly MUD Profiling for IoT)
+MUD Profiling Database
 
 A tool for Profiling IoT devices particularly for use with MUD
 
@@ -9,19 +9,20 @@ A tool for Profiling IoT devices particularly for use with MUD
 Help is always welcome. 
 Please reach out if you would like to assist with building out any of the following features.
 
-* Filtering by 
-* Human readable report on the IoT device
-* MUD File generation assistant
+- [ ] Additional filters
+- [x] Human readable reports on specific IoT devices (extensions coming)
+- [x] MUD file generation assistant
+- [ ] MUD file generation independant from MUDgee
   * Selective generation based on PCAP files, devices, and/or individual packets
-* MUD File Verification
-* Capture of certificates
+- [ ] MUD file verification
+- [ ] Capture of certificates
 
 
 ## Potential Features
 
-* Integration with NetworkMiner
+- [ ] Integration with NetworkMiner
   * Feeding CSV and parsed packets into database
-* Integrating database with ML to investigate privacy concerns
+- [ ] Integrating database with ML to investigate privacy concerns
 
 ## Planned Extensions
 
@@ -29,8 +30,8 @@ These extensions are features that are not directly related to MUD but are of in
 The primary focus on this front is an investigation of privacy.
 
 * Identification of:
-  * Strings
-  * Plaintext
-  * Credentials
-  * Images
-  * Specific services used
+  - [ ] Strings
+  - [ ] Plaintext
+  - [ ] Credentials
+  - [ ] Images
+  - [ ] Specific services used

@@ -1,6 +1,5 @@
 # MUD-PD
-MUD Profiling Database (formerly MUD Profiling for IoT (MUDPI))
-
+**MUD Profiling Database** (formerly MUDPI (MUD Profiling for IoT))
 A tool for profiling IoT devices particularly for use with MUD
 
 *N.B. This tool is still in the development phase, and has only been tested on Linux (Ubuntu 18+) and macOS (10.14).*
@@ -24,7 +23,7 @@ A tool for profiling IoT devices particularly for use with MUD
      shell> sudo apt-get install python3.7
      ```
 
-2. MySQL
+2. MySQL (options)
    1. MySQL Workbench (recommended because this is being used in development)
 
       Follow directions at https://dev.mysql.com/downloads/workbench/    
@@ -33,7 +32,7 @@ A tool for profiling IoT devices particularly for use with MUD
 
       Follow directions at https://dev.mysql.com/downloads/mysql/
 
-3. pip
+3. pip (may already be installed)
    * macOS:
    ```sh
    shell> curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
@@ -45,7 +44,7 @@ A tool for profiling IoT devices particularly for use with MUD
    shell> sudo apt-get install python3-pip
    ```
 
-4. Tkinter for Python3 (may already be installed)
+4. TkInter for Python3 (may already be installed)
    * macOS: iunstructions can be found at python.org/downloads/mac/tcltk/
 
    * Linux
@@ -60,7 +59,7 @@ A tool for profiling IoT devices particularly for use with MUD
    ```sh
    shell> apt-get install tcpdump
    ```
-   * macOS: readily available by default.
+   * macOS: readily available by default
    * Windows: follow instructions at https://nmap.org/npcap/
 
 
@@ -76,7 +75,7 @@ A tool for profiling IoT devices particularly for use with MUD
 
 2. Install MUDgee: (for MUD file generation)
    * Follow instructions at:  https://github.com/ayyoob/mudgee
-   * ***NOTE:***
+   * ***IMPORTANT:***
       * Both the MUDgee and MUD-PD repositories must be installed in the same parent directory
       * Latest verified compatible version: Latest commit f63a88d on Jul 5 2019
 

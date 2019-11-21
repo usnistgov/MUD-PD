@@ -41,8 +41,16 @@ class CaptureDatabase:
         "    fileHash CHAR(64) UNIQUE, "
         "    capDate DATETIME, "
         "    capDuration INT, "
-        "    activity TEXT, "
-        "    details TEXT);")
+        "    lifecyclePhase VARCHAR(16), "
+        "    internet BOOL DEFAULT TRUE, "
+        "    humanInteraction BOOL DEFAULT TRUE, "
+        "    preferredDNS BOOL DEFAULT TRUE, "
+        "    isolated BOOL DEFAULT TRUE, "
+        "    durationBased BOOL DEFAULT FALSE, "
+        "    duration TEXT DEFAULT NULL, "
+        "    actionBased BOOL DEFAULT TRUE, "
+        "    deviceAction TEXT DEFAULT NULL, "
+        "    details TEXT DEFAULT NULL);")
 
     create_device_in_capture = (
         "CREATE TABLE device_in_capture ( "
@@ -118,6 +126,7 @@ class CaptureDatabase:
         "    dst_port INT, "
         "    notes TEXT);")
 
+    '''
     add_capture = (
         "INSERT INTO capture "
         # TEXT      TEXT     BINARY(32)  DATETIME  TEXT      TEXT
@@ -127,6 +136,17 @@ class CaptureDatabase:
         #"VALUES (%s, %s, %s, %s, %s, %s);")
         #"VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(details)s);")
         "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(capDuration)s, %(activity)s, %(details)s);")
+    '''
+    add_capture = (
+    
+        "INSERT INTO capture "
+        # TEXT      TEXT     VARCHAR(64)  DATETIME  TEXT       VARCHAR(16)     BOOL
+        "(fileName, fileLoc, fileHash,   capDate, capDuration, lifecyclePhase, internet, "
+        # BOOL             BOOL          BOOL      BOOL           TEXT      BOOL         TEXT          TEXT
+        "humanInteraction, preferredDNS, isolated, durationBased, duration, actionBased, deviceAction, details) "
+
+        "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(capDuration)s, %(lifecyclePhase)s, %(internet)s, "
+        "%(humanInteraction)s, %(preferredDNS)s, %(isolated)s, %(durationBased)s, %(duration)s, %(actionBased)s, %(deviceAction)s, %(details)s);")
 
     add_device_in_capture = (
         "INSERT INTO device_in_capture "
@@ -294,7 +314,10 @@ class CaptureDatabase:
     query_imported_capture = ("SELECT * FROM capture;")
 
     query_imported_capture_with = (
-        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, cap.activity, cap.details "
+        #"SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, cap.activity, cap.details "
+        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, "
+        "    cap.lifecyclePhase, cap.internet, cap.humanInteraction, cap.preferredDNS, cap.isolated, "
+        "    cap.durationBased, cap.duration, cap.actionBased, cap.deviceAction, cap.details "
         "FROM capture as cap "
         "    INNER JOIN ( "
         "      SELECT * FROM device_in_capture "
@@ -306,7 +329,10 @@ class CaptureDatabase:
         "        ON gateway.fileHash = cap.fileHash;")
 
     query_imported_capture_with_device = (
-        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, cap.activity, cap.details "
+        #"SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, cap.activity, cap.details "
+        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, "
+        "    cap.lifecyclePhase, cap.internet, cap.humanInteraction, cap.preferredDNS, cap.isolated, "
+        "    cap.durationBased, cap.duration, cap.actionBased, cap.deviceAction, cap.details "
         "FROM capture as cap "
         "    INNER JOIN ( "
         "      SELECT * FROM device_in_capture "

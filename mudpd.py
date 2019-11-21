@@ -1,36 +1,37 @@
 #!/usr/bin/python3
 
+# Local Modules
 from src.bidict import BiDict
 from src.capture_database import CaptureDatabase
 #from capture_database import DatabaseHandler
 from src.capture_database import CaptureDigest
-from datetime import datetime
-from datetime import timedelta
-import hashlib
 from src.lookup import lookup_mac, lookup_hostname
-import math
 from src.generate_mudfile import MUDgeeWrapper
 from src.generate_report import ReportGenerator
 from src.multicolumn_listbox import MultiColumnListbox
-#from multiprocessing import Process, Queue
+
+# External Modules
+import concurrent
+from datetime import datetime
+from datetime import timedelta
+import hashlib
+import math
 import multiprocessing
+#from multiprocessing import Process, Queue
 import mysql.connector
 import pyshark
 import subprocess
 import sys
 import time
-import concurrent
-
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename
-'''
-from tkinter import *
-from tkinter.filedialog import askopenfilename
-'''
 
-field2db = BiDict({'File':'fileName', 'Activity':'activity', 'Details':'details',
+field2db = BiDict({'File':'fileName', 'Activity':'activity', 'Notes (optional)':'details',
+                   'Lifecycle Phase':'lifecyclePhase','Setup':'setup', 'Normal Operation':'normalOperation', 'Removal':'removal',
+                   'Internet':'internet', 'Human Interaction':'humanInteraction', 'Preferred DNS Enabled':'preferredDNS','Isolated':'isolated',
+                   'Duration-based':'durationBased', 'Duration':'duration', 'Action-based':'actionBased', 'Action':'deviceAction',
                    'Date of Capture':'capDate', 'Time of Capture':'capTime',
                    'Manufacturer':'mfr' , 'MAC':'mac_addr', 'Model':'model', 'Internal Name':'internalName',
                    'Category':'deviceCategory', 'Notes':'notes',
@@ -41,7 +42,11 @@ field2db = BiDict({'File':'fileName', 'Activity':'activity', 'Details':'details'
 dbFields = 'host', 'database', 'user', 'passwd'
 dbNewFields = 'host', 'user', 'passwd', 'new database'
 #dbField2Var = {'Host' : 'host', 'Database' : 'database', 'Username' : 'user', 'Password' : 'passwd'}
-captureFields = 'File', 'Activity', 'Details'
+#captureFields = 'File', 'Activity', 'Notes (optional)'
+captureFields = 'File', 'Notes (optional)'
+lifecyclePhaseFields = 'Setup', 'Normal Operation', 'Removal'
+captureEnvFields = 'Internet', 'Human Interaction', 'Preferred DNS Enabled','Isolated'
+captureTypeFields = 'Duration-based', 'Duration', 'Action-based', 'Action'
 #captureField2Var = {'File' : 'fileLoc', 'Activity' : 'activity', 'Details' : 'details'}
 captureInfoFields = 'Date of Capture', 'Time of Capture'#, 'Devices'
 #deviceFields = 'Model', 'Internal Name', 'Device Category', 'Communication Standards', 'Notes'
@@ -601,7 +606,9 @@ class  MudCaptureApplication(tk.Frame):
         self.w_cap = tk.Toplevel()
         self.w_cap.wm_title("Import Packet Capture")
 
-        self.ents = self.make_form_capture(captureFields)
+
+        #self.ents = self.make_form_capture(captureFields)
+        self.ents = self.make_form_capture(captureFields, lifecyclePhaseFields, captureEnvFields, captureTypeFields)
 
         self.bind('<Return>', (lambda event, e=self.ents: self.import_and_close(e)))
 
@@ -629,6 +636,7 @@ class  MudCaptureApplication(tk.Frame):
         entry.insert(0, filename)
 
 
+    '''
     def make_form_capture(self, fields):
         entries = []
         #entries = {}
@@ -651,6 +659,148 @@ class  MudCaptureApplication(tk.Frame):
             entries.append((field, ent))
             #entries[field] = ent
 
+        return entries
+    '''
+
+    def make_form_capture(self, generalFields, phaseFields, envFields, typeFields):
+        entries = []
+        #entries = {}
+        for i, field in enumerate(generalFields):
+            row = tk.Frame(self.w_cap)
+            lab = tk.Label(row, width=15, text=field, anchor='w')
+            ent = tk.Entry(row)
+
+            if i == 0:
+                b_open = tk.Button(row, text='...', command=(lambda e=ent: self.openFileCallBack(e)))#openFileCallBack())
+                row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+                lab.pack(side=tk.LEFT)
+                ent.pack(side=tk.LEFT, fill=tk.X)
+                b_open.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
+            else:
+                row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+                lab.pack(side=tk.LEFT)
+                ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
+
+            entries.append((field, ent))
+            #entries[field] = ent
+
+        # Device Phase (Setup, Normal Operation, Removal)
+        # lifecyclePhaseFields = 'Setup', 'Normal Operation', 'Removal'
+        row = tk.Frame(self.w_cap)
+        lab = tk.Label(row, width=15, text="Lifecycle Phase", anchor='w')
+        row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+        lab.pack(side=tk.LEFT)
+
+        row = tk.Frame(self.w_cap)
+        row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+        v_phz = tk.IntVar(None,1)
+        for i, field in enumerate(phaseFields):
+            b_phz = tk.Radiobutton(row, text=field, variable=v_phz, value=i)
+            b_phz.pack(side=tk.LEFT, fill=tk.X, padx=5, pady=5, anchor=tk.W)
+
+        entries.append((lab, v_phz))
+
+
+        # Environment Variables (Internet, Human Interaction, Preferred DNS Enabled, Isolated
+        # captureEnvFields = 'Internet', 'Human Interaction', 'Preferred DNS Enabled','Isolated'
+        row = tk.Frame(self.w_cap)
+        lab = tk.Label(row, width=20, text="Environmental Variables", anchor='w')
+        row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+        lab.pack(side=tk.LEFT)
+        for i, field in enumerate(envFields):
+            if i % 2 == 0:
+                row = tk.Frame(self.w_cap)
+                row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+                v_env = tk.IntVar(None, 1)
+            else:
+                v_env = tk.IntVar()
+
+            #v_env = tk.IntVar()
+            b_env = tk.Checkbutton(row, text=field, variable=v_env)
+            b_env.pack(side=tk.LEFT, padx=20, anchor=tk.W)
+
+            entries.append((field, v_env))
+            #entries.append((b_env, v_env))
+
+
+        # Capture Type (Duration-based, Duration, Action-based, Action)
+        # captureTypeFields = 'Duration-based', 'Duration', 'Action-based', 'Action'
+        row = tk.Frame(self.w_cap)
+        lab = tk.Label(row, width=15, text="Capture Type", anchor='w')
+        row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+        lab.pack(side=tk.LEFT)
+
+
+        def activateCheckDur():
+            if v_dur.get() == 1:          #whenever checked
+                e_dur.config(state='normal')
+            elif v_dur.get() == 0:        #whenever unchecked
+                e_dur.config(state='disabled')
+
+        i = 0
+        # Duration-based
+        row = tk.Frame(self.w_cap)
+        row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+        v_dur = tk.IntVar()
+        b_dur = tk.Checkbutton(row, text=typeFields[i], variable=v_dur, command=activateCheckDur)
+        b_dur.pack(side=tk.LEFT, fill=tk.X, padx=5, pady=5, anchor=tk.W)
+        entries.append((typeFields[i], v_dur))
+        
+        # Duration
+        i += 1
+        row = tk.Frame(self.w_cap)
+        row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+        lab = tk.Label(row, padx=5, width=9, text=typeFields[i], anchor='w')
+        lab.pack(side=tk.LEFT)
+        e_dur = tk.Entry(row)
+        e_dur.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
+        e_dur.config(state='disabled')
+        entries.append((typeFields[i], e_dur))
+
+
+        def activateCheckAct():
+            if v_act.get() == 1:          #whenever checked
+                e_act.config(state='normal')
+            elif v_act.get() == 0:        #whenever unchecked
+                e_act.config(state='disabled')
+
+        # Action-based
+        i += 1
+        row = tk.Frame(self.w_cap)
+        row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+        v_act = tk.IntVar()
+        b_act = tk.Checkbutton(row, text=typeFields[i], variable=v_act, command=activateCheckAct)
+        b_act.pack(side=tk.LEFT, fill=tk.X, padx=5, pady=5, anchor=tk.W)
+        entries.append((typeFields[i], v_act))
+
+        # Action
+        i += 1
+        row = tk.Frame(self.w_cap)
+        row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+        lab = tk.Label(row, padx=5, width=9, text=typeFields[i], anchor='w')
+        lab.pack(side=tk.LEFT)
+        e_act = tk.Entry(row)
+        e_act.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
+        e_act.config(state='disabled')
+        entries.append((typeFields[i], e_act))
+
+        '''
+        for i, field in typeFields:
+            row = tk.Frame(self.w_cap)
+            row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+
+            if i % 2 == 0:
+                typ = tk.intVar()
+                b_typ = tk.Checkbutton(row, text=field, variable=typ, command=activateCheck)
+                b_typ.pack(side=tk.LEFT, fill=tk.X, padx=5, pady=5, anchor=tk.W)
+                entries.append((field, typ))
+            else:
+                lab = tk.Label(row, width=15, text=field, anchor='w')
+                lab.pack(side=tk.LEFT)
+                ent = tk.Entry(row)
+                typ.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
+                entries.append((field, ent))
+        '''
         return entries
 
 
@@ -799,8 +949,8 @@ class  MudCaptureApplication(tk.Frame):
 
     def import_and_close(self, entries):
 
-        #Check if capture is already in database (using md5hash)
-        filehash = hashlib.md5(open(entries[0][1].get(),'rb').read()).hexdigest()
+        #Check if capture is already in database (using sha256)
+        filehash = hashlib.sha256(open(entries[0][1].get(),'rb').read()).hexdigest()
         self.db_handler.db.select_unique_captures()
 
         captures = self.db_handler.db.cursor.fetchall()
@@ -838,14 +988,29 @@ class  MudCaptureApplication(tk.Frame):
                 "fileName" : self.cap.fname,
                 "fileLoc" : self.cap.fdir,
                 "fileHash" : self.cap.fileHash,
-                
+                #;lkj;lkj
                 "capDate" : epoch2datetime(float(self.cap.capTimeStamp)),#epoch2datetime(float(self.cap.capDate)),
                 #"duration" : self.cap.capDuration.seconds,
                 "capDuration" : self.cap.capDuration,
-                "activity" : entries[1][1].get(),
-                "details" : entries[2][1].get()
+                #"activity" : entries[1][1].get(),
+                #"details" : entries[2][1].get()
+                "details" : entries[1][1].get(),
+                field2db[ entries[2][0].cget('text') ] : field2db[ lifecyclePhaseFields[ entries[2][1].get() ] ]
+                #"Internet" : entries[3][1].get(),
+                #"Human Interaction" : entries[4][1].get(),
+                #"Preferred DNS Enabled" : entries[5][1].get(),
+                #"Isolated" : entries[6][1].get(),
+                #"Duration-based" : entries[7][1].get(),
+                #"Duration" : entries[8][1].get(),
+                #"Action-based" : entries[9][1].get(),
+                #"Action" : entries[10][1].get()
                 }
 
+            for i in range(3,11):
+                data_capture[ field2db[ entries[i][0] ] ] = entries[i][1].get()
+                print(i, entries[i][1].get())
+
+            print('data_capture:', data_capture)
 
             # Popup window
             #self.yield_focus(self.w_cap)
@@ -1616,9 +1781,13 @@ class  MudCaptureApplication(tk.Frame):
         # Get and insert all captures currently added to database
         self.db_handler.db.select_imported_captures()
 
-        for (id, fileName, fileLoc, fileHash, capDate, activity,
-             duration, details) in self.db_handler.db.cursor:
-            self.cap_list.append((capDate, fileName, activity, duration, details, fileLoc)) #for early stages
+        for (id, fileName, fileLoc, fileHash, capDate, capDuration, lifecyclePhase,
+             internet, humanInteraction, preferredDNS, isolated, durationBased,
+             duration, actionBased, deviceAction, details) in self.db_handler.db.cursor:
+            self.cap_list.append((capDate, fileName, deviceAction, capDuration, details, fileLoc))
+        #for (id, fileName, fileLoc, fileHash, capDate, activity,
+             #duration, details) in self.db_handler.db.cursor:
+            #self.cap_list.append((capDate, fileName, activity, duration, details, fileLoc)) #for early stages
             #self.cap_list.append((capDate, fileName, activity, details, fileLoc)) #for early stages
         
         # Set focus on the first element
@@ -2336,8 +2505,12 @@ class  MudCaptureApplication(tk.Frame):
                 self.db_handler.db.select_imported_captures_with({"dev_mac":self.dev_mac, "gateway_mac":self.gateway_mac})
                 #for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
 
-                for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
+                for (id, fileName, fileLoc, fileHash, capDate, capDuration, lifecyclePhase,
+                     internet, humanInteraction, preferredDNS, isolated, durationBased,
+                     duration, actionBased, deviceAction, details) in self.db_handler.db.cursor:
                     self.mud_pcap_sel.append(fileLoc + "/" + fileName)
+                #for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
+                #    self.mud_pcap_sel.append(fileLoc + "/" + fileName)
                 break
             else:
                 self.mud_pcap_sel.append(pcap[4] + pcap[1])
@@ -2493,8 +2666,13 @@ class  MudCaptureApplication(tk.Frame):
         #self.db_handler.db.select_imported_captures_with(dev='', gate='')
         self.db_handler.db.select_imported_captures_with({"dev_mac":self.dev_mac, "gateway_mac":self.gateway_mac})
 
-        for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
-            self.mud_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc)) #for early stages
+        for (id, fileName, fileLoc, fileHash, capDate, capDuration, lifecyclePhase,
+             internet, humanInteraction, preferredDNS, isolated, durationBased,
+             duration, actionBased, deviceAction, details) in self.db_handler.db.cursor:
+            self.mud_pcap_list.append((capDate, fileName, deviceAction, duration, details, fileLoc)) #for early stages
+
+        #for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
+        #    self.mud_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc)) #for early stages
         
         # Set focus on the first element
         self.mud_pcap_list.focus(0)
@@ -2830,8 +3008,14 @@ class  MudCaptureApplication(tk.Frame):
         else:
             self.db_handler.db.select_imported_captures_with_device({"dev_mac":self.dev_mac})
 
-        for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
+        for (id, fileName, fileLoc, fileHash, capDate, capDuration, lifecyclePhase,
+             internet, humanInteraction, preferredDNS, isolated, durationBased,
+             duration, actionBased, deviceAction, details) in self.db_handler.db.cursor:
             self.report_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc, id)) #for early stages
+        #for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
+        #    self.report_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc, id)) #for early stages
+
+
         #for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
         #    self.report_pcap_list.append((capDate, fileName, activity, details, fileLoc, id)) #for early stages
         

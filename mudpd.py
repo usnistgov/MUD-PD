@@ -3011,7 +3011,8 @@ class  MudCaptureApplication(tk.Frame):
         for (id, fileName, fileLoc, fileHash, capDate, capDuration, lifecyclePhase,
              internet, humanInteraction, preferredDNS, isolated, durationBased,
              duration, actionBased, deviceAction, details) in self.db_handler.db.cursor:
-            self.report_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc, id)) #for early stages
+            #self.report_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc, id)) #for early stages
+            self.report_pcap_list.append((capDate, fileName, deviceAction, duration, details, fileLoc, id)) #for early stages
         #for (id, fileName, fileLoc, fileHash, capDate, duration, activity, details) in self.db_handler.db.cursor:
         #    self.report_pcap_list.append((capDate, fileName, activity, duration, details, fileLoc, id)) #for early stages
 
@@ -3074,17 +3075,29 @@ class  MudCaptureApplication(tk.Frame):
                     pcap_info = self.db_handler.db.cursor.fetchall()
                     print("len(pcap_info)",len(pcap_info))
 
-                    capture_info = {}
+                    capture_info = {} #;lkj;lkj;lkj
                     #Need to add end_time and duration information to database
-                    for (cap_id, filename, sha256, activity, start_time, duration, details) in pcap_info:
-                        capture_info = {'filename'  : filename,
-                                        'sha256'    : sha256,
-                                        'activity'  : activity,
+                    #for (cap_id, filename, sha256, activity, start_time, duration, details) in pcap_info:
+                    for (cap_id, fileName, fileLoc, fileHash, start_time, capDuration, lifecyclePhase,
+                         internet, humanInteraction, preferredDNS, isolated, durationBased,
+                         duration, actionBased, deviceAction, details) in pcap_info:
+                        capture_info = {'filename'         : fileName,
+                                        'sha256'           : fileHash,
+                                        #'activity'         : activity,
                                         #'modifiers' : modifiers,
-                                        'start_time': start_time,
-                                        'end_time'  : start_time + timedelta(seconds=int(duration)),
-                                        'capDuration'  : duration,
-                                        'details'   : details}
+                                        'phase'            : field2db.inverse[lifecyclePhase][0],
+                                        'internet'         : internet,
+                                        'humanInteraction' : humanInteraction,
+                                        'preferredDNS'     : preferredDNS,
+                                        'isolated'         : isolated,
+                                        'actionBased'      : actionBased,
+                                        'deviceAction'     : deviceAction,
+                                        'durationBased'    : durationBased, 
+                                        'duration'         : duration,
+                                        'capDuration'      : capDuration,
+                                        'start_time'       : start_time,
+                                        'end_time'         : start_time + timedelta(seconds=int(capDuration)),
+                                        'details'          : details}
 
                         capture_info['other_devices'] = []
                         self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":mac})
@@ -3096,7 +3109,7 @@ class  MudCaptureApplication(tk.Frame):
                 break
 
             else:
-                print("Generating report for one device\n\t%s" % dev[0])
+                print("Generating report for one device:\t%s" % dev[0])
                 self.report_gen_obj = ReportGenerator({'name':dev[0], 'mac':dev[3]})
 
                 # Write header to file
@@ -3106,7 +3119,29 @@ class  MudCaptureApplication(tk.Frame):
                 pcap_info = self.db_handler.db.cursor.fetchall()
                 
                 capture_info = {}
-                for (cap_id, filename, sha256, activity, start_time, duration, details) in pcap_info:
+                #for (cap_id, filename, sha256, activity, start_time, duration, details) in pcap_info:
+                for (cap_id, fileName, fileLoc, fileHash, start_time, capDuration, lifecyclePhase,
+                     internet, humanInteraction, preferredDNS, isolated, durationBased,
+                     duration, actionBased, deviceAction, details) in pcap_info:
+
+                    capture_info = {'filename'         : fileName,
+                                    'sha256'           : fileHash,
+                                    #'activity'         : activity,
+                                    #'modifiers' : modifiers,
+                                    'phase'            : field2db.inverse[lifecyclePhase][0],
+                                    'internet'         : internet,
+                                    'humanInteraction' : humanInteraction,
+                                    'preferredDNS'     : preferredDNS,
+                                    'isolated'         : isolated,
+                                    'actionBased'      : actionBased,
+                                    'deviceAction'     : deviceAction,
+                                    'durationBased'    : durationBased, 
+                                    'duration'         : duration,
+                                    'capDuration'      : capDuration,
+                                    'start_time'       : start_time,
+                                    'end_time'         : start_time + timedelta(seconds=int(capDuration)),
+                                    'details'          : details}
+                    '''
                     capture_info = {'filename'  : filename,
                                     'sha256'    : sha256,
                                     'activity'  : activity,
@@ -3115,7 +3150,7 @@ class  MudCaptureApplication(tk.Frame):
                                     'end_time'  : start_time + timedelta(seconds=int(duration)),
                                     'capDuration'  : duration,
                                     'details'   : details}
-
+                    '''
                     capture_info['other_devices'] = []
                     self.db_handler.db.select_devices_in_caps_except({"cap_id":cap_id, "mac_addr":dev[3]})
                     for (id, internalName, mac) in self.db_handler.db.cursor:

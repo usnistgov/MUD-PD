@@ -423,6 +423,19 @@ class CaptureDatabase:
         "    ON dc.mac_addr = d.mac_addr "
         "WHERE dc.mac_addr != %(mac_addr)s;")
 
+
+    query_caps_with_device_where = (
+        "SELECT DISTINCT "
+        "    c.id, c.fileName, c.fileLoc, c.fileHash, c.capDate, c.capDuration, "
+        "    c.lifecyclePhase, c.internet, c.humanInteraction, c.preferredDNS, c.isolated, "
+        "    c.durationBased, c.duration, c.actionBased, c.deviceAction, c.details "
+        "FROM capture AS c "
+        "    INNER JOIN ( "
+        "        SELECT * "
+        "        FROM device_in_capture "
+        "        WHERE mac_addr = %(mac_addr)s) AS d "
+        "    ON c.fileHash=d.fileHash")
+    '''
     query_caps_with_device_where = (
         "SELECT DISTINCT "
         "    c.id, c.fileName, c.fileHash, c.activity, c.capDate, c.capDuration, c.details "
@@ -432,6 +445,7 @@ class CaptureDatabase:
         "        FROM device_in_capture "
         "        WHERE mac_addr = %(mac_addr)s) AS d "
         "    ON c.fileHash=d.fileHash")
+    '''
 
     query_device_info =  ("SELECT * FROM device WHERE mac_addr=%s;")
 

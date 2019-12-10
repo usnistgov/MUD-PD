@@ -57,23 +57,6 @@ deviceOptions = 'MUD', 'WiFi', 'Ethernet', 'Bluetooth', 'Zigbee', 'ZWave', '3G',
 #deviceOptions2Var = {'WiFi' : 'wifi', 'Bluetooth' : 'bluetooth', 'Zigbee' : 'zigbee', 'ZWave' : 'zwave', '4G' : '4G', '5G' : '5G', 'Other', 'other'}
 #deviceStateFields = 'Firmware Version' #maybe include this with device fields entry and note that it will be associated with the capture only
 
-#fields = 'Last Name', 'First Name', 'Job', 'Country'
-
-
-
-'''
-class popupWindow(object):
-    def __init__(self, master):
-        top=self.top = tk.Toplevel(master)
-        self.l = tk.Label(top,text="Hello World")
-        self.l.pack()
-        self.e = tk.Entry(top)
-        self.e.pack()
-        self.b = tk.Button(top, text='Ok', command=self.cleanup)
-    def cleanup(self):
-        self.value=self.e.get()
-        self.top.destroy()
-'''
 
 '''
   +--------+--------+
@@ -1916,11 +1899,37 @@ class  MudCaptureApplication(tk.Frame):
         '''
         print("In import_packets")
         h = {"fileHash" : cap.fileHash}
+        batch = []
+
+        start = datetime.now()
+
+        i = 0
         for p in cap.pkt_info:
-            #print("pre update:", p)
             p.update(h)
-            #print("post update:", p)
-            self.db_handler.db.insert_packet( p )
+
+            #self.db_handler.db.insert_packet( p )
+            batch.append(p)
+
+            # packet components: INT*5 + Char(64) + Datetime + Double + VARCHAR(17) + TEXT (4-8B) + TEXT*2 (IPv4 or IPv6) + BOOL + TEXT
+            # packet size = 20B + 64B + 5B + 8B + 17B + (4-8)B + (8/32)B + 1B + (3B)
+            # packet size w/o ID = 16 + 64 + 5 + 8 + 17 + 4-8 + 8-32 + 1 + 3B
+            # min packet size = 126B
+            # max packet size = 154B (161) (172)
+
+            #if i < 1023:
+            if i < 511:
+              i += 1
+            else:
+            #if len(batch) >= 1024:
+              self.db_handler.db.insert_packet_batch( batch )
+              batch.clear()
+              i = 0
+
+        # Insert the stragglers 
+        self.db_handler.db.insert_packet_batch( batch )
+
+        stop = datetime.now()
+        print("time to import = ", (stop-start).total_seconds())
 
         self.populate_comm_list()
 

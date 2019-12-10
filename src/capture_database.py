@@ -105,10 +105,13 @@ class CaptureDatabase:
         "    mac_addr VARCHAR(17), "
         "    protocol TEXT, "
         "    ip_ver INT DEFAULT -1, "
-        "    ip_src TEXT, "
-        "    ip_dst TEXT, "
+        #"    ip_src TEXT, "
+        #"    ip_dst TEXT, "
+        "    ip_src VARCHAR(39), "
+        "    ip_dst VARCHAR(39), "
         "    ew BOOL, "
-        "    tlp TEXT, "
+        #"    tlp TEXT, "
+        "    tlp CHAR(3), "
         "    tlp_srcport INT DEFAULT -1, "
         "    tlp_dstport INT DEFAULT -1, "
         "    length INT DEFAULT -1);")
@@ -287,9 +290,21 @@ class CaptureDatabase:
         "SELECT "
         "    %(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
         "    %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
-        "    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s "
-        "WHERE NOT EXISTS (SELECT * FROM packet "
-        "                  WHERE fileHash=%(fileHash)s AND pkt_epochtime=%(pkt_timestamp)s);")
+        "    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s;")
+
+        #"    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s "
+        #"WHERE NOT EXISTS (SELECT * FROM packet "
+        #"                  WHERE fileHash=%(fileHash)s AND pkt_epochtime=%(pkt_timestamp)s);")
+
+    add_pkt_batch = (
+        "INSERT INTO packet "
+        "    (fileHash, pkt_datetime, pkt_epochtime, mac_addr, "
+        "     protocol, ip_ver, ip_src, ip_dst, ew, "
+        "     tlp, tlp_srcport, tlp_dstport, length) "
+        "SELECT "
+        "    %(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
+        "    %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
+        "    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s; ")
 
     '''
         "INSERT INTO packet "
@@ -592,6 +607,10 @@ class CaptureDatabase:
 
     def insert_packet(self, data_pkt):
         self.cursor.execute(self.add_pkt, data_pkt)
+        self.cnx.commit()
+
+    def insert_packet_batch(self, pkt_batch):
+        self.cursor.executemany(self.add_pkt_batch, pkt_batch)
         self.cnx.commit()
 
     def insert_protocol(self, data_protocol):

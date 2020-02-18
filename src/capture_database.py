@@ -8,6 +8,7 @@ from datetime import datetime
 from datetime import timedelta
 #from lookup import *
 from src.lookup import *
+from multiprocessing import Pool
 import mysql.connector
 from mysql.connector import MySQLConnection, Error
 import os
@@ -104,7 +105,7 @@ class CaptureDatabase:
         "    pkt_epochtime DOUBLE, "
         "    mac_addr VARCHAR(17), "
         "    protocol TEXT, "
-        "    ip_ver INT DEFAULT -1, "
+        "    ip_ver INT DEFAULT NULL, " #changed -1 to NULL
         #"    ip_src TEXT, "
         #"    ip_dst TEXT, "
         "    ip_src VARCHAR(39), "
@@ -290,7 +291,7 @@ class CaptureDatabase:
         "SELECT "
         "    %(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
         "    %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
-        "    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s;")
+        "    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s ;")
 
         #"    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s "
         #"WHERE NOT EXISTS (SELECT * FROM packet "
@@ -937,12 +938,18 @@ class CaptureDigest:
 
     def import_pkts(self):
         print("in import_pkts")
+        start = datetime.now()
         self.cap.apply_on_packets(self.append_pkt)
-
+        stop_append = datetime.now()
 
         #:LKJ
         self.extract_pkts()
+        stop_xtrct = datetime.now()
         self.id_unique_addrs()
+        stop = datetime.now()
+        print("Time to append:", stop_append-start)
+        print("Time to extract:", stop_xtrct-stop_append)
+        print("Time for full process:", stop-start)
         '''
         for i, p in enumerate(self.pkt):
             #if i < 2:
@@ -1004,9 +1011,9 @@ class CaptureDigest:
             self.pkt_info.append({"pkt_timestamp":p.sniff_timestamp,
                                   "mac_addr":'',
                                   "protocol":p.layers[-1].layer_name.upper(),
-                                  "ip_ver":'-1',
-                                  "ip_src":'',
-                                  "ip_dst":'',
+                                  "ip_ver":None, # changed '-1' to None and then ''
+                                  "ip_src":None,
+                                  "ip_dst":None,
                                   "ew": p.number in self.ew_index,
                                   "tlp":'',
                                   "tlp_srcport":'-1',

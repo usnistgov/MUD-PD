@@ -1074,7 +1074,7 @@ class  MudCaptureApplication(tk.Frame):
         self.cap_dev_title = tk.Label(self.botDevFrame, text="Devices", bg="#dfdfdf", bd=1, relief="flat", anchor="n")
 
         self.unidentified_title_var=tk.StringVar()
-        self.unidentified_title_var.set("Unidentified")
+        self.unidentified_title_var.set("Unlabeled")
         self.unidentified_title = tk.Label(self.unidentifiedDevFrame, textvariable=self.unidentified_title_var, bg="#eeeeee", bd=1, relief="flat")
         self.unidentified_title.pack(side="top", fill=tk.X)
 
@@ -1088,7 +1088,7 @@ class  MudCaptureApplication(tk.Frame):
         self.identifiedDevFrame = tk.Frame(self.botDevFrame, width=300)#, bd=1, bg="#dfdfdf")
 
         self.identified_title_var=tk.StringVar()
-        self.identified_title_var.set("Identified")
+        self.identified_title_var.set("Labeled")
         self.identified_title = tk.Label(self.identifiedDevFrame, textvariable=self.identified_title_var, bg="#eeeeee", bd=1, relief="flat")
         self.identified_title.pack(side="top", fill=tk.X)
 
@@ -2063,8 +2063,16 @@ class  MudCaptureApplication(tk.Frame):
             #self.comm_list.insert(tk.END, [pkt_time, mac_addr, ip_ver, ip_src, ip_dst, ew, 
             #                               protocol, tlp, tlp_srcport, tlp_dstport, pkt_length])
 
-            
-            
+            # Handle instances where data is NULL/None
+            if ip_ver == None:
+                ip_ver = ''
+                ip_src = ''
+                ip_dst = ''
+            if tlp == None:
+                tlp = ''
+                tlp_srcport = ''
+                tlp_dstport = ''
+                
             self.comm_list.append_unique((pkt_datetime, mac_addr, ip_ver, ip_src, ip_dst, ew, 
                                           protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
             

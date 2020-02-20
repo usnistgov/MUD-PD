@@ -99,6 +99,21 @@ shell> python3 mudpd.py
 
    ![MUD-PD GUI at Start-up](/data/images/mudpd_main_labeled2.png)
 
+   <ol type="a">
+    <li>Connect to existing database</li>
+    <li>Create and (re)initialize database</li>
+    <li>Import capture file</li>
+    <li>Generate MUD file</li>
+    <li>Generate device report</li>
+    <li>Box containing list of imported capture files</li>
+    <li>Box containing list of local devices active on network during traffic captures</li>
+    <li>Box containing list of communication within selected capture files</li>
+    <li>Inspect selected imported capture file</li>
+    <li>Toggle communication view to north/south (external), east/west (internal), or unfiltered traffic</li>
+    <li>Future feature not yet enabled. Eventually to filter communication to only that "between" selected devices or any packets to/from "either" device but not necessarily between both</li>
+    <li>Limit list of packets in communication box to the selected number</li>
+  </ol>
+
    A. Connect to existing database
 
    B. Create and (re)initialize database

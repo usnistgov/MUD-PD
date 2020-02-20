@@ -6,7 +6,7 @@ A tool for profiling IoT devices particularly for use with MUD
 *N.B. This tool is still in the development phase, and has only been tested on Linux (Ubuntu 18+) and macOS (10.14).*
 
 ## Prerequisites
-0. git
+0. Git
      * macOS: easiest through an installer such as the one found at: https://www.atlassian.com/git/tutorials/install-git
 
      * Linux:
@@ -20,6 +20,7 @@ A tool for profiling IoT devices particularly for use with MUD
      shell> python3 --version
      ```
    * Instructions for updating/installing python3 can be found at: https://www.python.org/downloads/
+
      You can also try the following commands
      * macOS:
      ```sh
@@ -36,7 +37,9 @@ A tool for profiling IoT devices particularly for use with MUD
 
       Follow directions at: https://dev.mysql.com/downloads/mysql/
 
-   2. MySQL Workbench (optional: recommended for those who may wish to interat directly with the database and write custom queries).
+   2. MySQL Workbench (optional)
+
+      (recommended for those who may wish to interact directly with the database and write custom queries)
 
       Follow directions at: https://dev.mysql.com/downloads/workbench/    
 
@@ -94,7 +97,31 @@ shell> python3 mudpd.py
 
 ## First Steps
 
-   ![MUD-PD GUI at Start-up](/data/images/mudpd_main.png)
+   ![MUD-PD GUI at Start-up](/data/images/mudpd_main_labeled2.png)
+
+   A. Connect to existing database
+
+   B. Create and (re)initialize database
+
+   C. Import capture file
+
+   D. Generate MUD file
+
+   E. Generate device report
+
+   F. Box containing list of imported capture files
+
+   G. Box containing list of local devices active on network during traffic captures
+
+   H. Box containing list of communication within selected capture files
+
+   I. Inspect selected imported capture file
+
+   J. Toggle communication view to north/south (external), east/west (internal), or unfiltered traffic
+
+   K. Future feature not yet enabled. Eventually to filter communication to only that "between" selected devices or any packets to/from "either" device but not necessarily between both
+
+   L. Limit list of packets in communication box to the selected number
 
 1. Create your first database:
    ![Create Database Button](/data/images/mudpd_main_create.png)

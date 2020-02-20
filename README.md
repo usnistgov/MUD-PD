@@ -1,18 +1,25 @@
 # MUD-PD
-**MUD Profiling Database** (formerly MUDPI (MUD Profiling for IoT))
+**MUD Profiling Database**
 
 A tool for profiling IoT devices particularly for use with MUD
 
 *N.B. This tool is still in the development phase, and has only been tested on Linux (Ubuntu 18+) and macOS (10.14).*
 
 ## Prerequisites
+0. git
+     * macOS: easiest through an installer such as the one found at: https://www.atlassian.com/git/tutorials/install-git
+
+     * Linux:
+     ```sh
+     shell> sudo apt-get install git
+     ```
 1. Python 3.7.2+
 
    * Check version
      ```sh
      shell> python3 --version
      ```
-   * Instructions for updating/installing python3 can be found at https://www.python.org/downloads/
+   * Instructions for updating/installing python3 can be found at: https://www.python.org/downloads/
      You can also try the following commands
      * macOS:
      ```sh
@@ -24,14 +31,14 @@ A tool for profiling IoT devices particularly for use with MUD
      shell> sudo apt-get install python3.7
      ```
 
-2. MySQL (options)
-   1. MySQL Workbench (recommended because this is being used in development)
+2. MySQL
+   1. MySQL Server
 
-      Follow directions at https://dev.mysql.com/downloads/workbench/    
+      Follow directions at: https://dev.mysql.com/downloads/mysql/
 
-   2. If only want MySQL Community Server (theoretically, this should also work)
+   2. MySQL Workbench (optional: recommended for those who may wish to interat directly with the database and write custom queries).
 
-      Follow directions at https://dev.mysql.com/downloads/mysql/
+      Follow directions at: https://dev.mysql.com/downloads/workbench/    
 
 3. pip (may already be installed)
    * macOS:
@@ -46,9 +53,9 @@ A tool for profiling IoT devices particularly for use with MUD
    ```
 
 4. TkInter for Python3 (may already be installed)
-   * macOS: iunstructions can be found at python.org/downloads/mac/tcltk/
+   * macOS: instructions can be found at https://python.org/downloads/mac/tcltk/
 
-   * Linux
+   * Linux:
    ```sh
    shell> sudo apt-get install python3-tk
    ```
@@ -58,7 +65,7 @@ A tool for profiling IoT devices particularly for use with MUD
    Used for generating packet captures to import into the database and tool 
    * Linux:
    ```sh
-   shell> apt-get install tcpdump
+   shell> sudo apt-get install tcpdump
    ```
    * macOS: readily available by default
    * Windows: follow instructions at https://nmap.org/npcap/

@@ -17,9 +17,11 @@ PAD_X = 5
 class MultiColumnListbox(object):
     """use a ttk.TreeView as a multicolumn ListBox"""
 
-    def __init__(self, parent, header, list, selectmode="extended", keep1st=False):
+    def __init__(self, parent, header, list, selectmode="extended", keep1st=False, exclusionList=[]):
         self.parent = parent
         self.header = header
+        self.exclusionList = exclusionList
+        self.displaycolumns = []
 
         self.tree = None
         self.num_nodes = 0
@@ -58,15 +60,21 @@ to change width of column drag boundary
     def _build_tree(self, list):
         #self.header = header
         for col in self.header:
-            self.tree.heading(col, text=col.title(),
+            if col in self.exclusionList:
+                continue
+            self.displaycolumns.append(col)
+            self.tree.heading(col, text=col,#text=col.title(),
                 command=lambda c=col: self._sortby(c, 0))
             # adjust the column's width to the header string
             self.tree.column(col,
-                width=tkFont.Font().measure(col.title()))
+                #width=tkFont.Font().measure(col.title()))
+                width=tkFont.Font().measure(col))
 
         for item in list:
             self.tree.insert('', 'end', values=item)
             self._adjust_width(item)
+
+        self._update_displayColumns()
 
 
     # adjust column's width if necessary to fit each value
@@ -97,6 +105,16 @@ to change width of column drag boundary
             self.tree.move(item[1], '', ix)
         # switch the heading so it will sort in the opposite direction
         self.tree.heading(col, command=lambda col=col: self._sortby(col, int(not descending)))
+
+    def _update_displayColumns(self):
+        self.displaycolumns=[]
+
+        for h in self.header:
+            if h not in self.exclusionList:
+                self.displaycolumns.append(h)
+
+        self.tree["displaycolumns"]=self.displaycolumns
+
 
     def bind(self, *args, **kwargs):
         self.tree.bind(*args, **kwargs)
@@ -188,8 +206,19 @@ to change width of column drag boundary
                 if unique:
                     self.append(item)
 
-# the test data ...
+    def exclude_column(self, exclusion):
+        if exclusion not in exclusionList:
+            exclusionList.append(exclusion)
+        self._update_displayColumns
 
+    def include_column(self, inclusion):
+        if inclusion in exclusionList:
+            exclusionList.remove(inclusion)
+        self._update_displayColumns
+
+
+# the test data ...
+'''
 car_header = ['car', 'repair']
 car_list = [
 ('Hyundai', 'brakes') ,
@@ -204,6 +233,21 @@ car_list = [
 ('test',) ,
 ()
 ]
+'''
+car_header = ['ID','Car', 'Repair']
+car_list = [
+(1, 'Hyundai', 'brakes') ,
+(2, 'Honda', 'light') ,
+(3, 'Lexus', 'battery') ,
+(4, 'Benz', 'wiper') ,
+(5, 'Ford', 'tire') ,
+(6, 'Chevy', 'air') ,
+(7, 'Chrysler', 'piston') ,
+(8, 'Toyota', 'brake pedal') ,
+(9, 'BMW', 'seat') ,
+(10, 'test',) ,
+()
+]
 
 def printSelection(tree, event=None):
     #print(type(tree))
@@ -216,7 +260,7 @@ def printSelection(tree, event=None):
         itemList = tree.item(sel)["values"]
         line = ''
         for item in itemList:
-            line += item + " "
+            line += str(item) + " "
 
         print(line)
 
@@ -243,7 +287,7 @@ if __name__ == '__main__':
     root = tk.Tk()
     root.title("Multicolumn Treeview/Listbox")
     #listbox = MultiColumnListbox()
-    listbox = MultiColumnListbox(root, car_header, car_list)
+    listbox = MultiColumnListbox(root, car_header, car_list, exclusionList=["ID"])
     listbox.append(('Mazda', 'window'))
 
     #listbox.tree.bind("<<TreeviewSelect>>", lambda event, lb=listbox.tree: printSelection(lb))

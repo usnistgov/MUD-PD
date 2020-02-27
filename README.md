@@ -37,6 +37,14 @@ A tool for profiling IoT devices particularly for use with MUD
 
       Follow directions at: https://dev.mysql.com/downloads/mysql/
 
+      Note: may need to create a new user and grant permissions using the following commands:
+      ```sh
+      shell> sudo mysql -u root -p
+      mysql> CREATE USER '<new_user>'@'localhost' IDENTIFIED BY '<new_password>';
+      mysql> GRANT ALL PRIVILEGES ON *.* TO '<new_user>'@'localhost';
+      mysql> FLUSH PRIVILEGES;
+      ```
+
    2. MySQL Workbench (optional)
 
       (recommended for those who may wish to interact directly with the database and write custom queries)

@@ -71,7 +71,7 @@ A tool for profiling IoT devices particularly for use with MUD
    shell> sudo apt-get install python3-tk
    ```
 
-5. LibPcap
+5. Libpcap
 
    Used for generating packet captures to import into the database and tool 
    * Linux:

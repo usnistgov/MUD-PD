@@ -56,9 +56,11 @@ class CaptureDatabase:
     create_device_in_capture = (
         "CREATE TABLE device_in_capture ( "
         "    id INT PRIMARY KEY AUTO_INCREMENT, "
-        "    fileName TEXT, "
-        "    fileHash CHAR(64), "
-        "    mac_addr VARCHAR(17));")
+        #"    fileName TEXT, "
+        #"    fileHash CHAR(64), "
+        "    fileID INT, "
+        #"    mac_addr VARCHAR(17));")
+        "    deviceID INT);")
 
     create_mac_to_mfr = (
         "CREATE TABLE mac_to_mfr ( "
@@ -85,14 +87,17 @@ class CaptureDatabase:
         "    zwave BOOL DEFAULT FALSE, "
         "    otherProtocols TEXT DEFAULT NULL, "
         "    notes TEXT DEFAULT NULL, "
-        "    unidentified BOOL DEFAULT TRUE);")
+        #"    unidentified BOOL DEFAULT TRUE);")
+        "    unlabeled BOOL DEFAULT TRUE);")
 
     create_device_state = (
         "CREATE TABLE device_state ( "
         "    id INT AUTO_INCREMENT KEY, "
-        "    fileHash CHAR(64), "
-        "    mac_addr VARCHAR(17), "
-        "    internalName VARCHAR(20) DEFAULT NULL, "
+        #"    fileHash CHAR(64), "
+        "    fileID INT, "
+        #"    fileHash CHAR(64), "
+        "    deviceID INT, "
+        #"    internalName VARCHAR(20) DEFAULT NULL, "
         "    fw_ver TEXT DEFAULT NULL, "
         "    ipv4_addr VARCHAR(15), "
         "    ipv6_addr TEXT);")
@@ -100,7 +105,8 @@ class CaptureDatabase:
     create_packet = (
         "CREATE TABLE packet ( "
         "    id INT AUTO_INCREMENT KEY, "
-        "    fileHash CHAR(64), "
+        #"    fileHash CHAR(64), "
+        "    fileID INT, "
         "    pkt_datetime DATETIME, "
         "    pkt_epochtime DOUBLE, "
         "    mac_addr VARCHAR(17), "
@@ -108,20 +114,23 @@ class CaptureDatabase:
         "    ip_ver INT DEFAULT NULL, " #changed -1 to NULL
         #"    ip_src TEXT, "
         #"    ip_dst TEXT, "
-        "    ip_src VARCHAR(39), "
-        "    ip_dst VARCHAR(39), "
+        "    ip_src VARCHAR(39) DEFAULT NULL, "
+        "    ip_dst VARCHAR(39) DEFAULT NULL, "
         "    ew BOOL, "
         #"    tlp TEXT, "
-        "    tlp CHAR(3), "
-        "    tlp_srcport INT DEFAULT -1, "
-        "    tlp_dstport INT DEFAULT -1, "
-        "    length INT DEFAULT -1);")
+        "    tlp CHAR(3) DEFAULT NULL, "
+        "    tlp_srcport INT DEFAULT NULL, "
+        "    tlp_dstport INT DEFAULT NULL, "
+        #"    length INT DEFAULT -1);")
+        "    length INT DEFAULT NULL);")
 
     create_protocol = (
         "CREATE TABLE protocol ( "
         "    id INT AUTO_INCREMENT KEY, "
-        "    fileHash CHAR(64), "
-        "    mac_addr VARCHAR(17), "
+        #"    fileHash CHAR(64), "
+        "    fileID INT, "
+        #"    mac_addr VARCHAR(17), "
+        "    deviceID INT, "
         "    protocol TEXT, "
         "    src_port INT, "
         "    dst_ip_addr TEXT, "
@@ -154,20 +163,34 @@ class CaptureDatabase:
 
     add_device_in_capture = (
         "INSERT INTO device_in_capture "
-        # TEXT      VARCHAR   VARCHAR
-        "(fileName, fileHash, mac_addr) "
-        "VALUES (%(fileName)s, %(fileHash)s, %(mac_addr)s);")
+        ## TEXT      VARCHAR   VARCHAR
+        #"(fileName, fileHash, mac_addr) "
+        #"VALUES (%(fileName)s, %(fileHash)s, %(mac_addr)s);")
+        # INT     INT
+        #"(fileID, mac_addr) "
+        "(fileID, deviceID) "
+        "VALUES (%(fileID)s, %(deviceID)s);")
         # TEXT      VARCHAR   VARCHAR    BOOL
         #"(fileName, fileHash, mac_addr, imported) "
         #"VALUES (%(fileName)s, %(fileHash)s, %(mac_addr)s, %(imported)s);")
 
+    add_device_in_capture_unique = (
+        "INSERT INTO device_in_capture "
+        "    (fileID, deviceID)"
+        "SELECT %(fileID)s, %(deviceID)s "
+        "WHERE NOT EXISTS (SELECT fileID, deviceID "
+        "                  FROM device_in_capture "
+        "                  WHERE fileID=%(fileID)s AND deviceID=%(deviceID)s)")
+
     change_device_in_capture = (
         "UPDATE device_in_capture "
         "SET imported = %(imported)s "
+        ## TEXT      VARCHAR   VARCHAR
+        #"WHERE id=%(id)s AND fileName=%(fileName)s AND fileHash=%(fileHash)s AND "
+        ##"      mac_addr=%(mac_addr)s AND imported=%(imported)s);")
+        #"      mac_addr=%(mac_addr)s;")
         # TEXT      VARCHAR   VARCHAR
-        "WHERE id=%(id)s AND fileName=%(fileName)s AND fileHash=%(fileHash)s AND "
-        #"      mac_addr=%(mac_addr)s AND imported=%(imported)s);")
-        "      mac_addr=%(mac_addr)s;")
+        "WHERE id=%(id)s;")
 
     add_mac_to_mfr = (
         #"INSERT INTO mac_to_mfr "
@@ -180,35 +203,48 @@ class CaptureDatabase:
         #"INSERT INTO device "
         "REPLACE INTO device "
         # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL   BOOL    BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT   BOOL
-        "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, ethernet, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unidentified) "
+        #"(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, ethernet, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unidentified) "
+        "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, ethernet, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unlabeled) "
         "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, "
-        "%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unidentified)s)")
+        #"%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unidentified)s)")
+        "%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unlabeled)s)")
 
-    add_device_unidentified = (
+    #add_device_unidentified = (
+    add_device_unlabeled = (
         "INSERT INTO device "
         #"REPLACE INTO device "
         # TEXT VARCHAR   Bool
-        "(mac_addr) "
-        "VALUES (%(mac_addr)s)")
+        #"(mac_addr) "
+        #"VALUES (%(mac_addr)s)")
+        "(mfr, mac_addr) "
+        "VALUES (%(mfr)s, %(mac_addr)s)")
         #"(mfr, mac_addr) "
         #"VALUES (%(mfr)s, %(mac_addr)s)")
 
     add_device_state = (
         "INSERT INTO device_state "
-        # BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
-        "(fileHash, mac_addr, internalName, fw_ver, ipv4_addr, ipv6_addr) "
-        "VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+        ## BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
+        #"(fileHash, mac_addr, internalName, fw_ver, ipv4_addr, ipv6_addr) "
+        #"VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+        # INT     INT       TEXT    VARCHAR    TEXT
+        "(fileID, deviceID, fw_ver, ipv4_addr, ipv6_addr) "
+        "VALUES (%(fileID)s, %(deviceID)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
 
-    add_device_state_unidentified = (
+    #add_device_state_unidentified = (
+    add_device_state_unlabeled = (
         "INSERT INTO device_state "
-        # BINARY    VARCHAR   VARCHAR    TEXT
-        "(fileHash, mac_addr, ipv4_addr, ipv6_addr) "
-        "VALUES (%(fileHash)s, %(mac_addr)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+        ## BINARY    VARCHAR   VARCHAR    TEXT
+        #"(fileHash, mac_addr, ipv4_addr, ipv6_addr) "
+        #"VALUES (%(fileHash)s, %(mac_addr)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+        # INT     INT       VARCHAR    TEXT
+        "(fileID, deviceID, ipv4_addr, ipv6_addr) "
+        "VALUES (%(fileID)s, %(deviceID)s, %(ipv4_addr)s, %(ipv6_addr)s);")
 
     change_device_state = (
         "UPDATE device_state "
         "SET fw_ver = %(fw_ver)s "
-        "WHERE id=%(id)s AND fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s;")
+        #"WHERE id=%(id)s AND fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s;")
+        "WHERE id=%(id)s;")
 
     # Temporary Tables of Interest (toi)
     # capture toi
@@ -217,20 +253,38 @@ class CaptureDatabase:
 
     create_capture_toi_all = (
         "CREATE TEMPORARY TABLE cap_toi "
-        "SELECT DISTINCT(fileHash) "
+        #"SELECT DISTINCT(fileHash) "
+        "SELECT DISTINCT(id) "
         "FROM capture;")
 
+    '''
     create_capture_toi = (
         "CREATE TEMPORARY TABLE cap_toi "
-        "SELECT DISTINCT(fileHash) "
+        #"SELECT DISTINCT(fileHash) "
+        "SELECT DISTINCT(id) "
         "FROM capture "
         "WHERE fileName=%(fileName)s;" )
+    '''
+    create_capture_toi = (
+        "CREATE TEMPORARY TABLE cap_toi "
+        "SELECT DISTINCT(id) "
+        "FROM capture "
+        "WHERE fileID=%(cap_id)s;" )
 
+    '''
     update_capture_toi = (
         "INSERT INTO cap_toi "
-        "SELECT DISTINCT(fileHash) "
+        #"SELECT DISTINCT(fileHash) "
+        "SELECT DISTINCT(id) "
         "FROM capture "
-        "WHERE fileName=%(fileHash)s;")
+        #"WHERE fileName=%(fileHash)s;")
+        "WHERE fileName=%(fileName)s;")
+    '''
+    update_capture_toi = (
+        "INSERT INTO cap_toi "
+        "SELECT DISTINCT(id) "
+        "FROM capture "
+        "WHERE fileID=%(cap_id)s;")
 
     # device toi
     drop_device_toi = (
@@ -238,58 +292,132 @@ class CaptureDatabase:
 
     create_device_toi_all = (
         "CREATE TEMPORARY TABLE dev_toi "
-        "SELECT d.fileHash, d.mac_addr, d.ipv4_addr, d.ipv6_addr "
+        #"SELECT d.fileHash, d.mac_addr, d.ipv4_addr, d.ipv6_addr "
+        "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
         "FROM device_state d "
-        "    INNER JOIN cap_toi c ON d.fileHash = c.fileHash;")
+        #"    INNER JOIN cap_toi c ON d.fileHash = c.fileHash;")
+        "    INNER JOIN cap_toi c ON d.fileID = c.id;")
 
     create_device_toi = (
         "CREATE TEMPORARY TABLE dev_toi "
-        "SELECT d.fileHash, d.mac_addr, d.ipv4_addr, d.ipv6_addr "
+        #"SELECT d.fileHash, d.mac_addr, d.ipv4_addr, d.ipv6_addr "
+        "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
         "FROM device_state d "
-        "    INNER JOIN cap_toi c ON d.fileHash = c.fileHash "
-        "WHERE d.mac_addr=%(mac_addr)s;")
+        #"    INNER JOIN cap_toi c ON d.fileHash = c.fileHash "
+        #"WHERE d.mac_addr=%(mac_addr)s;")
+        "    INNER JOIN cap_toi c ON d.fileID = c.id "
+        "WHERE d.deviceID=%(deviceID)s;")
+
+    #create_device_toi_from_deviceID_list = (
+    create_device_toi_from_captureID_list = (
+        #"DROP TEMPORARY TABLE IF EXISTS dev_toi;"
+        "CREATE TEMPORARY TABLE dev_toi "
+        "SELECT ds.fileID, ds.deviceID, d.mac_addr, ds.ipv4_addr, ds.ipv6_addr "
+        "FROM device_state ds "
+        "    INNER JOIN device d ON d.id=ds.deviceID "
+        "WHERE ds.fileID IN (%s);")
+
 
     update_device_toi = (
         "INSERT INTO dev_toi "
-        "SELECT d.fileHash, d.mac_addr, d.ipv4_addr, d.ipv6_addr "
+        #"SELECT d.fileHash, d.mac_addr, d.ipv4_addr, d.ipv6_addr "
+        "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
         "FROM device_state d "
-        "    INNER JOIN cap_toi c ON d.fileHash = c.fileHash "
-        "WHERE d.mac_addr=%(mac_addr)s;")
+        #"    INNER JOIN cap_toi c ON d.fileHash = c.fileHash "
+        #"WHERE d.mac_addr=%(mac_addr)s;")
+        "    INNER JOIN cap_toi c ON d.fileID = c.id "
+        "WHERE d.deviceID=%(deviceID)s;")
 
     # packet toi
+    '''
     query_packet_toi = (
         "SELECT p.* "
         "FROM packet p "
         "    INNER JOIN dev_toi d "
-        "ON (d.fileHash=p.fileHash "
+        #"ON (d.fileHash=p.fileHash "
+        #"    AND (p.mac_addr=d.mac_addr "
+        "ON (d.fileID = p.fileID "
         "    AND (p.mac_addr=d.mac_addr "
+        #"    AND (p.deviceID = d.id "
         "         OR p.ip_src=(d.ipv4_addr OR d.ipv6_addr) "
         "                OR p.ip_dst=(d.ipv4_addr OR d.ipv6_addr))) "
         "WHERE p.ew=%(ew)s;")
+    '''
+
+    '''
+        query_packet_toi = (
+        "SELECT p.* "
+        "FROM pkt_toi p "
+        "    INNER JOIN dev_toi d "
+        #"ON (d.fileHash=p.fileHash "
+        #"    AND (p.mac_addr=d.mac_addr "
+        "ON (d.fileID = p.fileID "
+        "    AND (p.mac_addr=d.mac_addr "
+        #"    AND (p.deviceID = d.id "
+        "         OR p.ip_src=(d.ipv4_addr OR d.ipv6_addr) "
+        "                OR p.ip_dst=(d.ipv4_addr OR d.ipv6_addr))) "
+        #"WHERE p.ew=%(ew)s LIMIT %(num_pkts)s;")
+        "WHERE d.deviceID IN (%(deviceIDs)s) AND p.ew=%(ew)s LIMIT %(num_pkts)s;")
+        #"WHERE deviceID IN (%s) AND p.ew=%s LIMIT %s;")
+
+    '''
+    query_packet_toi = (
+        "SELECT p.* \n"
+        "FROM pkt_toi p \n"
+        "    INNER JOIN dev_toi d \n"
+        "    ON (p.mac_addr=d.mac_addr OR \n"
+        "        p.ip_src=(d.ipv4_addr OR d.ipv6_addr) OR \n"
+        "        p.ip_dst=(d.ipv4_addr OR d.ipv6_addr)) \n"
+        #"WHERE d.deviceID IN (%(deviceIDs)s) AND p.ew=%(ew)s LIMIT %(num_pkts)s;")
+        #"WHERE p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
+        "WHERE d.deviceID IN (%(deviceIDs)s) AND p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
 
     drop_packet_toi = (
         "DROP TEMPORARY TABLE IF EXISTS pkt_toi;")
-
+    '''
     create_packet_toi = (
         "CREATE TEMPORARY TABLE pkt_toi "
         "SELECT * "
         "FROM packet "
-        "WHERE fileHash = (SELECT DISTINCT(fileHash) FROM capture WHERE fileName=%(fileName)s);")
+        #"WHERE fileHash = (SELECT DISTINCT(fileHash) FROM capture WHERE fileName=%(fileName)s);")
+        "WHERE fileID = (SELECT DISTINCT(id) FROM capture WHERE fileName=%(fileName)s);")
+    '''
+    create_packet_toi = (
+        "CREATE TEMPORARY TABLE pkt_toi "
+        "SELECT * "
+        "FROM packet "
+        "WHERE fileID = %(cap_id)s;")
 
+    create_packet_toi_from_captureID_list = (
+        "CREATE TEMPORARY TABLE pkt_toi "
+        "SELECT * "
+        "FROM packet "
+        "WHERE fileID IN (%s);")
+
+    '''
     update_packet_toi = (
         "INSERT INTO pkt_toi "
         "SELECT * "
         "FROM packet "
-        "WHERE fileHash = (SELECT DISTINCT(fileHash) FROM capture WHERE fileName=%(fileName)s);")
+        #"WHERE fileHash = (SELECT DISTINCT(fileHash) FROM capture WHERE fileName=%(fileName)s);")
+        "WHERE fileID = (SELECT DISTINCT(id) FROM capture WHERE fileName=%(fileName)s);")
+    '''
+    update_packet_toi = (
+        "INSERT INTO pkt_toi "
+        "SELECT * "
+        "FROM packet "
+        "WHERE fileID = %(cap_id)s;")
 
     #;lkj too be completed
     add_pkt = (
         "INSERT INTO packet "
-        "    (fileHash, pkt_datetime, pkt_epochtime, mac_addr, "
+        #"    (fileHash, pkt_datetime, pkt_epochtime, mac_addr, "
+        "    (fileID, pkt_datetime, pkt_epochtime, mac_addr, "
         "     protocol, ip_ver, ip_src, ip_dst, ew, "
         "     tlp, tlp_srcport, tlp_dstport, length) "
         "SELECT "
-        "    %(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
+        #"    %(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
+        "    %(fileID)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
         "    %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
         "    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s ;")
 
@@ -299,11 +427,13 @@ class CaptureDatabase:
 
     add_pkt_batch = (
         "INSERT INTO packet "
-        "    (fileHash, pkt_datetime, pkt_epochtime, mac_addr, "
+        #"    (fileHash, pkt_datetime, pkt_epochtime, mac_addr, "
+        "    (fileID, pkt_datetime, pkt_epochtime, mac_addr, "
         "     protocol, ip_ver, ip_src, ip_dst, ew, "
         "     tlp, tlp_srcport, tlp_dstport, length) "
         "SELECT "
-        "    %(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
+        #"    %(fileHash)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
+        "    %(fileID)s, FROM_UNIXTIME( %(pkt_timestamp)s ), %(pkt_timestamp)s, %(mac_addr)s, "
         "    %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
         "    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s; ")
 
@@ -318,14 +448,19 @@ class CaptureDatabase:
         "     %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s);")
     '''
 
+    # Not yet in use...
     add_protocol = ("INSERT INTO protocol "
-                    # BINARY       VARCHAR   TEXT      INT       TEXT         BOOL  TEXT     INT       TEXT
-                    "(fileHash, mac_addr, protocol, src_port, dst_ip_addr, ipv6, dst_url, dst_port, notes) "
+                    ## BINARY       VARCHAR   TEXT      INT       TEXT         BOOL  TEXT     INT       TEXT
+                    #"(fileHash, mac_addr, protocol, src_port, dst_ip_addr, ipv6, dst_url, dst_port, notes) "
+                    # INT     INT       TEXT      INT       TEXT         BOOL  TEXT     INT       TEXT
+                    "(fileID, deviceID, protocol, src_port, dst_ip_addr, ipv6, dst_url, dst_port, notes) "
                     #"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);")
-                    "VALUES (%(fileHash)s, %(mac_addr)s, %(protocol), %(src_port)s, %(dst_ip_addr)s, %(ipv6)s, %(dst_url)s, %(dst_port)s, %(notes)s);")
+                    #"VALUES (%(fileHash)s, %(mac_addr)s, %(protocol), %(src_port)s, %(dst_ip_addr)s, %(ipv6)s, %(dst_url)s, %(dst_port)s, %(notes)s);")
+                    "VALUES (%(fileID)s, %(deviceID)s, %(protocol), %(src_port)s, %(dst_ip_addr)s, %(ipv6)s, %(dst_url)s, %(dst_port)s, %(notes)s);")
 
     # Queries
     query_unique_capture = ("SELECT fileHash FROM capture;")
+    #query_unique_capture = ("SELECT id FROM capture;")
 
     query_imported_capture = ("SELECT * FROM capture;")
 
@@ -337,12 +472,16 @@ class CaptureDatabase:
         "FROM capture as cap "
         "    INNER JOIN ( "
         "      SELECT * FROM device_in_capture "
-        "      WHERE mac_addr=%(dev_mac)s) device "
-        "        ON device.fileHash = cap.fileHash "
+        #"      WHERE mac_addr=%(dev_mac)s) device "
+        #"        ON device.fileHash = cap.fileHash "
+        "      WHERE deviceID=%(deviceID)s) device "
+        "        ON device.fileID = cap.id "
         "    INNER JOIN ( "
         "      SELECT * FROM device_in_capture "
-        "      WHERE mac_addr=%(gateway_mac)s) gateway "
-        "        ON gateway.fileHash = cap.fileHash;")
+        #"      WHERE mac_addr=%(gateway_mac)s) gateway "
+        #"        ON gateway.fileHash = cap.fileHash;")
+        "      WHERE deviceID=%(gatewayID)s) gateway "
+        "        ON gateway.fileID = cap.id;")
 
     query_imported_capture_with_device = (
         #"SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, cap.activity, cap.details "
@@ -352,37 +491,52 @@ class CaptureDatabase:
         "FROM capture as cap "
         "    INNER JOIN ( "
         "      SELECT * FROM device_in_capture "
-        "      WHERE mac_addr=%(dev_mac)s) device "
-        "        ON device.fileHash = cap.fileHash;")
+        #"      WHERE mac_addr=%(dev_mac)s) device "
+        #"        ON device.fileHash = cap.fileHash;")
+        "      WHERE deviceID=%(deviceID)s) device "
+        "        ON device.fileID = cap.id;")
 
     #query_device_from_capture = ("SELECT * FROM device WHERE fileName=%s;")
     #query_device_from_capture = ("SELECT * FROM device_in_capture WHERE fileHash=%s;")
     query_device_from_capture = ("SELECT * FROM device WHERE mac_addr = ANY "
-                                 "(SELECT mac_addr FROM device_in_capture WHERE"
+                                 #"(SELECT mac_addr FROM device_in_capture WHERE"
+                                 "(SELECT deviceID FROM device_in_capture \n"
                                  #" fileHash=%s);"
-                                 " fileName=%s);")
+                                 #" fileName=%s);")
+                                 " WHERE fileID=%s);")
+
+    query_device_from_capture_list = ("SELECT * FROM device WHERE id = ANY "
+                                      "(SELECT DISTINCT deviceID FROM device_in_capture \n"
+                                      " WHERE fileID IN (%s) );")
 
     #query_identified_devices_from_capture = ("SELECT * FROM device_in_capture "
     #                                    "WHERE fileHash = %s AND mac_addr = %s;")
     #query_identified_devices_from_capture = ("SELECT id, mac_addr, imported FROM device_in_capture "
-    query_identified_devices_from_capture = ("SELECT * FROM device_in_capture "
-                                        "WHERE fileHash = %s;")
+    #query_identified_devices_from_capture = ("SELECT * FROM device_in_capture "
+    query_labeled_devices_from_capture = ("SELECT * FROM device_in_capture "
+                                        #"WHERE fileHash = %s;")
+                                        "WHERE fileID = %s;")
                                         #"WHERE fileHash = %s AND imported = TRUE;")
 
     query_most_recent_fw_ver = ("SELECT ds.fw_ver FROM device_state AS ds "
                                 "INNER JOIN "
-                                "    (SELECT capture.fileHash as fileHash "
+                                #"    (SELECT capture.fileHash as fileHash "
+                                "    (SELECT capture.id as fileID "
                                 "     FROM capture "
                                 "     INNER JOIN "
                                 "         (SELECT MAX(c.capDate) as capDate "
                                 "          FROM device_state as ds "
                                 "          INNER JOIN "
-                                "              capture as c on ds.fileHash = c.fileHash "
-                                "          WHERE ds.mac_addr = %(mac_addr)s AND "
+                                #"              capture as c on ds.fileHash = c.fileHash "
+                                #"          WHERE ds.mac_addr = %(mac_addr)s AND "
+                                "              capture as c on ds.fileID = c.id "
+                                "          WHERE ds.deviceID = %(deviceID)s AND "
                                 "                c.capDate <= %(capDate)s "
                                 "         ) AS q1 ON capture.capDate=q1.capDate "
-                                "     ) AS q2 ON ds.fileHash=q2.fileHash "
-                                " WHERE ds.mac_addr = %(mac_addr)s;")
+                                #"     ) AS q2 ON ds.fileHash=q2.fileHash "
+                                #" WHERE ds.mac_addr = %(mac_addr)s;")
+                                "     ) AS q2 ON ds.fileID=q2.fileID "
+                                " WHERE ds.deviceID = %(deviceID)s;")
 
     query_mac_to_mfr = ("SELECT * FROM mac_to_mfr;")
 
@@ -397,21 +551,26 @@ class CaptureDatabase:
         "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
         "FROM device "
         #"WHERE internalName!=%(internalName)s AND NOT ISNULL(internalName);")
-        "WHERE mac_addr!=%(ignored_dev)s AND NOT ISNULL(internalName);")
+        #"WHERE mac_addr!=%(ignored_dev)s AND NOT ISNULL(internalName);")
+        "WHERE mac_addr!=%(ignored_deviceID)s AND NOT ISNULL(internalName);")
     
     query_devices_imported_ignore_known = (
         "SELECT DISTINCT d.id, d.mfr, d.model, d.mac_addr, d.internalName, d.deviceCategory, s.ipv4_addr, s.ipv6_addr "
         "FROM device AS d "
-        "    INNER JOIN (SELECT * FROM device_state) AS s ON d.mac_addr=s.mac_addr "
-        "WHERE d.mac_addr!=%(ignored_dev)s AND NOT ISNULL(d.internalName);")
+        #"    INNER JOIN (SELECT * FROM device_state) AS s ON d.mac_addr=s.mac_addr "
+        #"WHERE d.mac_addr!=%(ignored_dev)s AND NOT ISNULL(d.internalName);")
+        "    INNER JOIN (SELECT * FROM device_state) AS s ON d.id=s.deviceID "
+        "WHERE d.id!=%(ignored_deviceID)s AND NOT ISNULL(d.internalName);")
 
     query_devices_imported_ignore = (
         "SELECT DISTINCT d.id, d.mfr, d.model, d.mac_addr, d.internalName, d.deviceCategory, s.ipv4_addr, s.ipv6_addr "
         "FROM device AS d "
-        "    INNER JOIN (SELECT * FROM device_state) AS s ON d.mac_addr=s.mac_addr "
+        #"    INNER JOIN (SELECT * FROM device_state) AS s ON d.mac_addr=s.mac_addr "
+        "    INNER JOIN (SELECT * FROM device_state) AS s ON d.id=s.deviceID "
         #"WHERE d.mac_addr!=%(ignored_dev)s;")
         #"WHERE d.mac_addr!=%(ignored_dev)s AND s.ipv4_addr!='Not found';")
-        "WHERE d.mac_addr!=%(ignored_dev)s AND "
+        #"WHERE d.mac_addr!=%(ignored_dev)s AND "
+        "WHERE d.id!=%(ignored_deviceID)s AND "
         "s.ipv4_addr!='Not found' AND s.ipv4_addr!='0.0.0.0' AND "
         "s.ipv6_addr!='Not found' AND s.ipv6_addr!='::';")
 
@@ -420,7 +579,8 @@ class CaptureDatabase:
         "SELECT DISTINCT ipv4_addr, ipv6_addr "
         "FROM device_state "
         #"WHERE mac_addr=%(gateway_mac)s;")
-        "WHERE mac_addr=%(gateway_mac)s AND "
+        #"WHERE mac_addr=%(gateway_mac)s AND "
+        "WHERE deviceID=%(gatewayID)s AND "
         "ipv4_addr!='Not found' AND ipv4_addr!='0.0.0.0' AND "
         "ipv6_addr!='Not found' AND ipv6_addr!='::';")
 
@@ -431,13 +591,16 @@ class CaptureDatabase:
         "    INNER JOIN ( "
         "        SELECT * "
         "        FROM capture "
-        "        WHERE id=%(cap_id)s) AS c "
-        "    ON dc.fileHash=c.fileHash "
+        "        WHERE id=%(captureID)s) AS c "
+        #"    ON dc.fileHash=c.fileHash "
+        "    ON dc.fileID=c.id "
         "    INNER JOIN ( "
         "        SELECT * "
         "        FROM device) AS d "
-        "    ON dc.mac_addr = d.mac_addr "
-        "WHERE dc.mac_addr != %(mac_addr)s;")
+        #"    ON dc.mac_addr = d.mac_addr "
+        #"WHERE dc.mac_addr != %(mac_addr)s;")
+        "    ON dc.deviceID = d.id "
+        "WHERE dc.deviceID != %(deviceID)s;")
 
 
     query_caps_with_device_where = (
@@ -449,8 +612,10 @@ class CaptureDatabase:
         "    INNER JOIN ( "
         "        SELECT * "
         "        FROM device_in_capture "
-        "        WHERE mac_addr = %(mac_addr)s) AS d "
-        "    ON c.fileHash=d.fileHash")
+        #"        WHERE mac_addr = %(mac_addr)s) AS d "
+        #"    ON c.fileHash=d.fileHash")
+        "        WHERE deviceID = %(deviceID)s) AS d "
+        "    ON c.id=d.fileID")
     '''
     query_caps_with_device_where = (
         "SELECT DISTINCT "
@@ -463,31 +628,47 @@ class CaptureDatabase:
         "    ON c.fileHash=d.fileHash")
     '''
 
-    query_device_info =  ("SELECT * FROM device WHERE mac_addr=%s;")
+    query_capID_where_capName = ("SELECT id FROM capture WHERE fileName=%s;")
 
-    query_device_macs = ("SELECT mac_addr FROM device;")
+    #query_device_info =  ("SELECT * FROM device WHERE mac_addr=%s;")
+    query_device_info =  ("SELECT * FROM device WHERE id=%s;")
 
-    query_device_state = ("SELECT * FROM device_state WHERE fileHash=%s AND mac_addr=%s;")
+    #query_device_macs = ("SELECT mac_addr FROM device;")
+    #query_device_macs = ("SELECT id, mac_addr FROM device;")
+    query_device_macs = ("SELECT id, mac_addr, unlabeled FROM device;")
+
+    query_device_ids_from_macs = ("SELECT id, mac_addr FROM device WHERE mac_addr IN (%s);")
+
+    #query_device_state = ("SELECT * FROM device_state WHERE fileHash=%s AND mac_addr=%s;")
+    query_device_state = ("SELECT * FROM device_state WHERE fileID=%s AND deviceID=%s;")
 
     query_device_state_exact = ("SELECT * FROM device_state WHERE "
-                                " fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s AND "
-                                " internalName=%(internalName)s AND fw_ver=%(fw_ver)s AND "
-                                " ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
+                                #" fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s AND "
+                                #" internalName=%(internalName)s AND fw_ver=%(fw_ver)s AND "
+                                #" ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
+                                " fileID=%(fileID)s AND deviceID=%(deviceID)s AND "
+                                " fw_ver=%(fw_ver)s AND ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
     
 
-    query_device_communication = ("SELECT * FROM protocol WHERE device=%s;")
+    #query_device_communication = ("SELECT * FROM protocol WHERE device=%s;")
+    query_device_communication = ("SELECT * FROM protocol WHERE deviceID=%s;")
 
-    query_device_communication_by_capture = ("SELECT * FROM protocol WHERE device=%(device)s AND fileHash=%(fileHash)s;")
+    #query_device_communication_by_capture = ("SELECT * FROM protocol WHERE device=%(device)s AND fileHash=%(fileHash)s;")
+    query_device_communication_by_capture = ("SELECT * FROM protocol WHERE deviceID=%(deviceID)s AND fileID=%(fileID)s;")
 
     query_pkts = ("SELECT * FROM packet;")
 
-    query_pkts_by_capture = ("SELECT * FROM packet WHERE fileHash=%(fileHash)s;")
+    #query_pkts_by_capture = ("SELECT * FROM packet WHERE fileHash=%(fileHash)s;")
+    query_pkts_by_capture = ("SELECT * FROM packet WHERE fileID=%(fileID)s;")
 
     #query_pkts_by_capture_and_device = ("SELECT * FROM packet WHERE fileHash=%(fileHash)s AND dev...;")
 
     #query_pkts_by_device = ("SELECT * FROM packet WEHRE dev...;")
 
-    query_device_strings = ("SELECT * FROM strings WHERE device=%s;")
+    #query_device_strings = ("SELECT * FROM strings WHERE device=%s;")
+    query_device_strings = ("SELECT * FROM strings WHERE deviceID=%s;")
+
+    query_last_insert_id = ("SELECT last_insert_id();")
 
 
     def __init__(self, db_config):#=None, new_db=False):
@@ -510,6 +691,9 @@ class CaptureDatabase:
         #    print("Connection closed.")
 
         self.cursor = self.cnx.cursor(buffered=True)
+
+        self.captureID_list = []
+        self.deviceID_list = []
 
 
     # SQL Initialize New Database
@@ -578,12 +762,18 @@ class CaptureDatabase:
         self.cursor.execute(self.add_device, data_device)
         self.cnx.commit()
 
-    def insert_device_unidentified(self, data_device):
-        self.cursor.execute(self.add_device_unidentified, data_device)
+    #def insert_device_unidentified(self, data_device):
+    #    self.cursor.execute(self.add_device_unidentified, data_device)
+    def insert_device_unlabeled(self, data_device):
+        self.cursor.execute(self.add_device_unlabeled, data_device)
         self.cnx.commit()
 
     def insert_device_in_capture(self, data_device_in_capture):
         self.cursor.execute(self.add_device_in_capture, data_device_in_capture)
+        self.cnx.commit()
+
+    def insert_device_in_capture_unique(self, data_device_in_capture):
+        self.cursor.execute(self.add_device_in_capture_unique, data_device_in_capture)
         self.cnx.commit()
 
     def update_device_in_capture(self, data_device_in_capture):
@@ -598,8 +788,10 @@ class CaptureDatabase:
         self.cursor.execute(self.add_device_state, data_device_state)
         self.cnx.commit()
 
-    def insert_device_state_unidentified(self, data_device_state):
-        self.cursor.execute(self.add_device_state_unidentified, data_device_state)
+    #def insert_device_state_unidentified(self, data_device_state):
+    #    self.cursor.execute(self.add_device_state_unidentified, data_device_state)
+    def insert_device_state_unlabeled(self, data_device_state):
+        self.cursor.execute(self.add_device_state_unlabeled, data_device_state)
         self.cnx.commit()
 
     def update_device_state(self, data_device_state):
@@ -628,21 +820,38 @@ class CaptureDatabase:
     #def select_imported_captures_with(self, device, gateway):
     #    self.cursor.execute(self.query_imported_capture_with, devices)
 
-    def select_imported_captures_with(self, devices):
-        self.cursor.execute(self.query_imported_capture_with, devices)
+    #def select_imported_captures_with(self, devices):
+    #    self.cursor.execute(self.query_imported_capture_with, devices)
+    def select_imported_captures_with(self, deviceIDs):
+        self.cursor.execute(self.query_imported_capture_with, deviceIDs)
 
-    def select_imported_captures_with_device(self, device):
-        self.cursor.execute(self.query_imported_capture_with_device, device)
+    #def select_imported_captures_with_device(self, device):
+    #    self.cursor.execute(self.query_imported_capture_with_device, device)
+    def select_imported_captures_with_device(self, deviceID):
+        self.cursor.execute(self.query_imported_capture_with_device, deviceID)
 
-    def select_devices_from_cap(self, capture):
-        #print(capture)
-        self.cursor.execute(self.query_device_from_capture, (capture,))
+    #def select_devices_from_cap(self, capture):
+    #    self.cursor.execute(self.query_device_from_capture, (capture,))
+    def select_devices_from_caplist(self, captureIDs):
+        #self.cursor.execute(self.query_device_from_capture_list, (",".join( map(str, captureIDs) ),) )
+        format_strings = ",".join(['%s'] * len(captureIDs))
+        self.cursor.execute(self.query_device_from_capture_list % format_strings, tuple(captureIDs) )
+        self.cnx.commit()
 
-    def select_identified_devices_from_cap(self, fileHash):
-        self.cursor.execute(self.query_identified_devices_from_capture, (fileHash,))
+    def select_devices_from_cap(self, captureID):
+        self.cursor.execute(self.query_device_from_capture, (captureID,))
 
-    def select_most_recent_fw_ver(self, macdatemac):
-        self.cursor.execute(self.query_most_recent_fw_ver, macdatemac)
+    #def select_identified_devices_from_cap(self, fileHash):
+    #    self.cursor.execute(self.query_identified_devices_from_capture, (fileHash,))
+    #def select_identified_devices_from_cap(self, fileID):
+    #    self.cursor.execute(self.query_identified_devices_from_capture, (fileID,))
+    def select_labeled_devices_from_cap(self, fileID):
+        self.cursor.execute(self.query_labeled_devices_from_capture, (fileID,))
+
+    #def select_most_recent_fw_ver(self, macdatemac):
+    #    self.cursor.execute(self.query_most_recent_fw_ver, macdatemac)
+    def select_most_recent_fw_ver(self, deviceID_date_deviceID):
+        self.cursor.execute(self.query_most_recent_fw_ver, deviceID_date_deviceID)
 
     def select_mac_to_mfr(self):
         self.cursor.execute(self.query_mac_to_mfr)
@@ -653,29 +862,46 @@ class CaptureDatabase:
     def select_devices_imported(self):
         self.cursor.execute(self.query_devices_imported)
 
-    def select_devices_imported_ignore(self, ignored_dev):
-        self.cursor.execute(self.query_devices_imported_ignore, ignored_dev)
+    #def select_devices_imported_ignore(self, ignored_dev):
+    #    self.cursor.execute(self.query_devices_imported_ignore, ignored_dev)
+    def select_devices_imported_ignore(self, ignored_deviceID):
+        self.cursor.execute(self.query_devices_imported_ignore, ignored_deviceID)
 
-    def select_gateway_ips(self, gateway):
-        self.cursor.execute(self.query_gateway_ips, gateway)
+    #def select_gateway_ips(self, gateway):
+    #    self.cursor.execute(self.query_gateway_ips, gateway)
+    def select_gateway_ips(self, gatewayID):
+        self.cursor.execute(self.query_gateway_ips, gatewayID)
 
     def select_devices_in_caps_except(self, condition_data):
         self.cursor.execute(self.query_devices_in_caps_except, condition_data)
 
+    #unknown if needs to be changed
     def select_caps_with_device_where(self, mac_addr_data, conditions):
         self.cursor.execute(self.query_caps_with_device_where + conditions, mac_addr_data)
 
-    def select_device(self, mac):
-        self.cursor.execute(self.query_device_info, (mac,))
+    def select_capID_where_capName(self, capName):
+        self.cursor.execute(self.query_capID_where_capName, (capName,))
 
-    def select_device_state(self, hash, mac):
-        self.cursor.execute(self.query_device_state, (hash, mac))
+    #def select_device(self, mac):
+    #    self.cursor.execute(self.query_device_info, (mac,))
+    def select_device(self, deviceID):
+        self.cursor.execute(self.query_device_info, (deviceID,))
+
+    #def select_device_state(self, hash, mac):
+    #    self.cursor.execute(self.query_device_state, (hash, mac))
+    def select_device_state(self, fileID, deviceID):
+        self.cursor.execute(self.query_device_state, (fileID, deviceID))
 
     def select_device_state_exact(self, device_state_data):
         self.cursor.execute(self.query_device_state_exact, device_state_data)
 
     def select_device_macs(self):
         self.cursor.execute(self.query_device_macs)                                                                                
+
+    def select_device_ids_from_macs(self, deviceMACs):
+        format_strings = ",".join(['%s'] * len(self.deviceMACs))
+        self.cursor.execute(query_device_ids_from_macs % format_strings, tuple(deviceMACs))
+
 
     # work to be done
     def select_packets(self):
@@ -687,6 +913,7 @@ class CaptureDatabase:
     def select_packets_by_device(self, pkt_data_device):
         self.cursor.execute(self.query_pkt_by_device, pkt_data_device)
 
+    #unknown if this should be changed
     def select_packets_by_capture_and_device(self, pkt_data):
         self.cursor.execute(self.query_pkt_by_capture_and_device, pkt_data)
 
@@ -695,8 +922,13 @@ class CaptureDatabase:
         self.cursor.execute(self.query_device_communication, device)
     '''
 
-    def select_device_strings(self, device):
-        self.cursor.execute(self.query_device_strings, device)
+    #def select_device_strings(self, device):
+    #    self.cursor.execute(self.query_device_strings, device)
+    def select_device_strings(self, deviceID):
+        self.cursor.execute(self.query_device_strings, deviceID)
+
+    def select_last_insert_id(self):
+        self.cursor.execute(self.query_last_insert_id)
 
     # Capture table of interest
     def drop_cap_toi(self):
@@ -719,20 +951,54 @@ class CaptureDatabase:
         self.cursor.execute(self.drop_device_toi)
         self.cnx.commit()
 
-    def create_dev_toi(self, mac=None):
-        if mac == None:
+    #def create_dev_toi(self, mac=None):
+    #    if mac == None:
+    def create_dev_toi(self, deviceID=None):
+        if deviceID == None:
             self.cursor.execute(self.create_device_toi_all)
         else:
-            self.cursor.execute(self.create_device_toi, mac)
+            #self.cursor.execute(self.create_device_toi, mac)
+            self.cursor.execute(self.create_device_toi, deviceID)
         self.cnx.commit()
 
+    #def create_dev_toi_from_deviceID_list(self):
+    def create_dev_toi_from_fileID_list(self):
+        #self.cursor.execute(self.create_device_toi_from_deviceID_list, ( ",".join( map(str, self.deviceID_list) ), ) )
+        #format_strings = ",".join(['%s'] * len(self.deviceID_list))
+        format_strings = ",".join(['%s'] * len(self.captureID_list))
+        #self.cursor.execute(self.create_device_toi_from_deviceID_list % format_strings, tuple(self.deviceID_list))
+        self.cursor.execute(self.create_device_toi_from_captureID_list % format_strings, tuple(self.captureID_list))
+        self.cnx.commit()
+        #print(self.create_device_toi_from_deviceID_list % format_strings, tuple(self.deviceID_list))
+        #print(self.create_device_toi_from_captureID_list % format_strings, tuple(self.captureID_list))
+
     def update_dev_toi(self):
-        self.cursor.execute(self.update_device_toi, mac)
+        #self.cursor.execute(self.update_device_toi, mac)
+        self.cursor.execute(self.update_device_toi, deviceID)
         self.cnx.commit()
 
     # Packet table of interest
-    def select_pkt_toi(self, ew):
-        self.cursor.execute(self.query_packet_toi, ew)
+    #def select_pkt_toi(self, ew):
+    def select_pkt_toi(self, ew, num_pkts):
+        #self.cursor.execute(self.query_packet_toi, {**ew, **{"num_pkts":num_pkts}})
+        #format_strings = ",".join(['%s'] * len(self.deviceID_list))
+        #self.cursor.execute(self.query_packet_toi % {"deviceIDs":format_strings, **ew, "num_pkts":num_pkts}, tuple(self.deviceID_list))# + ew["ew"] + num_pkts)
+
+
+        #format_strings = ",".join(['%s'] * len(self.deviceID_list))
+        #self.cursor.execute(self.query_packet_toi % {"deviceIDs":format_strings, **ew, "num_pkts":num_pkts} % tuple(self.deviceID_list))
+        format_dev = ",".join(['%s'] * len(self.deviceID_list))
+        format_ew = ",".join(['%s'] * len(ew))
+        self.cursor.execute(self.query_packet_toi % {"deviceIDs":format_dev, "ew":format_ew, "num_pkts":num_pkts} % tuple(self.deviceID_list + ew))
+        #self.cursor.execute(self.query_packet_toi % {"ew":format_ew, "num_pkts":num_pkts} % tuple(ew))
+
+
+
+        #print(self.query_packet_toi)
+        #print(self.deviceID_list)
+        #print(ew)
+        #print(num_pkts)
+        #print(self.query_packet_toi % {"deviceIDs":format_strings, **ew, "num_pkts":num_pkts} % tuple(self.deviceID_list))
 
     def drop_pkt_toi(self):
         self.cursor.execute(self.drop_packet_toi)
@@ -740,6 +1006,12 @@ class CaptureDatabase:
 
     def create_pkt_toi(self, capture):
         self.cursor.execute(self.create_packet_toi, capture)
+        self.cnx.commit()
+
+    def create_pkt_toi_from_captureID_list(self):
+        format_strings = ",".join(['%s'] * len(self.captureID_list))
+        #self.cursor.execute(self.create_packet_toi_from_captureID_list, (",".join( map(str, self.captureID_list) ), ) )
+        self.cursor.execute(self.create_packet_toi_from_captureID_list % format_strings, tuple(self.captureID_list))
         self.cnx.commit()
 
     def update_pkt_toi(self, capture):
@@ -815,6 +1087,7 @@ class CaptureDigest:
         self.progress = 24 #capture header
         #self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
         self.fileHash = hashlib.sha256(open(fpath,'rb').read()).hexdigest()
+        self.id = None
 
         ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
         ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
@@ -850,6 +1123,10 @@ class CaptureDigest:
         self.uniqueIP = []
         self.uniqueIPv6 = []
         self.uniqueMAC = []
+
+        self.newDevicesImported = False
+        self.labeledDev = []
+        self.unlabeledDev = []
 
         self.ip2mac = {}
 
@@ -1007,6 +1284,7 @@ class CaptureDigest:
         return (ip, ipv6)
 
     def extract_pkts(self):
+        # This should be parallelizeable 
         for p in self.pkt:
             self.pkt_info.append({"pkt_timestamp":p.sniff_timestamp,
                                   "mac_addr":'',
@@ -1016,8 +1294,8 @@ class CaptureDigest:
                                   "ip_dst":None,
                                   "ew": p.number in self.ew_index,
                                   "tlp":'',
-                                  "tlp_srcport":'-1',
-                                  "tlp_dstport":'-1',
+                                  "tlp_srcport":None,
+                                  "tlp_dstport":None,
                                   "length":p.length})
                                   #"raw":p})
 
@@ -1098,6 +1376,7 @@ class CaptureDigest:
         except:
             pMAC = pkt.sll.src_eth
 
+        pMAC = pMAC.upper()
         #;lkj
         #self.pkt_info.append({})
         #self.pkt_info[-1]["mac"] = pMAC
@@ -1155,6 +1434,7 @@ class CaptureDigest:
                 #print(pIP)
                 self.uniqueIP_dst.append(pIP_dst)
 
+    #Need to check on what this is for (2020-02-20)
     #TBD in the future (2019-06-13)
     def load_from_db(self, fpath):
         self.fpath = fpath

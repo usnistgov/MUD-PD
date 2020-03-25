@@ -134,6 +134,13 @@ to change width of column drag boundary
     def get(self, item):
         return self.tree.item(item)["values"]
 
+    def get_list(self):
+        temp_list = []
+        for child in self.tree.get_children():
+            temp_list.append(self.tree.item(child)["values"])
+        return temp_list
+
+
     def get_selected_row(self):
         #print("self.get( self.selection()[0] = ", self.get( self.selection()[0] ))
         #return self.get( self.selection()[0] )
@@ -178,6 +185,10 @@ to change width of column drag boundary
                 if item == values:
                     unique = False
                     break
+                for i, value in enumerate(values):
+                    if value == item[i]:
+                        unique = False
+                        break
             if unique:
                 self.append(item)
 
@@ -216,6 +227,28 @@ to change width of column drag boundary
             exclusionList.remove(inclusion)
         self._update_displayColumns
 
+    def is_empty(self):
+        if self.num_nodes == 0:
+            return True
+        else:
+            return False
+
+    def remove_by_value(self, value, column):
+        children = self.tree.get_children()
+        #column_id = self.tree.column(column, option='id')
+        if len(children) > 0:
+            for child in children:
+                values = self.tree.item(child, 'values')
+
+                if str(value) == values[column]:
+                    self.tree.delete(*[child])
+                    return
+
+    def remove_exact(self, item):
+        if self.tree.exists(item):
+            #self.tree.delete(item)
+            self.tree.delete(*[item])
+
 
 # the test data ...
 '''
@@ -245,8 +278,8 @@ car_list = [
 (7, 'Chrysler', 'piston') ,
 (8, 'Toyota', 'brake pedal') ,
 (9, 'BMW', 'seat') ,
-(10, 'test',) ,
-()
+(10, 'test',) #,
+#()
 ]
 
 def printSelection(tree, event=None):
@@ -288,7 +321,8 @@ if __name__ == '__main__':
     root.title("Multicolumn Treeview/Listbox")
     #listbox = MultiColumnListbox()
     listbox = MultiColumnListbox(root, car_header, car_list, exclusionList=["ID"])
-    listbox.append(('Mazda', 'window'))
+    mazda=(11, 'Mazda', 'window')
+    #listbox.append((11, 'Mazda', 'window'))
 
     #listbox.tree.bind("<<TreeviewSelect>>", lambda event, lb=listbox.tree: printSelection(lb))
     #listbox.tree.bind("<<TreeviewSelect>>", lambda event, lbt=listbox.tree: printSelection(lbt))
@@ -304,6 +338,18 @@ if __name__ == '__main__':
     b_load = tk.Button(root, text="Load", command=(lambda lst=car_list: listbox.populate_unique(lst)))
     #b_load = tk.Button(root, text="Load", command=(lambda lb=listbox: populateListbox(lb)))
     b_load.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
+
+    b_add = tk.Button(root, text="Add", command=(lambda mzda=mazda: listbox.append_unique(mzda)))
+    b_add.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
+
+    b_remove = tk.Button(root, text="Remove", command=(lambda val=11, col=0: listbox.remove_by_value(val,col)))
+    b_remove.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
+
+    print("listbox.tree.get_children()[1]", listbox.tree.get_children()[1])
+    #print("listbox.tree.identify_column(0)", listbox.tree.identify_column('ID'))
+    print("listbox.tree.column('ID', option='id')", listbox.tree.column('ID', option='id'))
+    print("")
+    print("child")
 
     zero = listbox.tree.get_children()[0]
     listbox.tree.focus(zero)

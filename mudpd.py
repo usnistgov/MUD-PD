@@ -1479,6 +1479,7 @@ class  MudCaptureApplication(tk.Frame):
 
                     # Collect necessary information about device and place it into unlabeled_dev_list listbox
                     self.db_handler.db.select_device(deviceID)
+                    print("deviceID",deviceID)
                     #(_, mfr, model, mac_addr, internalName, category, mudCapable, wifi, ethernet, bluetooth, G3, G4, G5, zigbee, zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
                     (_, mfr, _, mac_addr, _, _, _, _, _, _, _, _, _, _, _, _, _, unlabeled) = self.db_handler.db.cursor.fetchone()
 
@@ -1947,7 +1948,8 @@ class  MudCaptureApplication(tk.Frame):
 
         #dev_in_cap_data = fname
         #dev_in_cap_data['mac_addr'] = mac
-        dev_in_cap_data = {'fileID'  : self.cap.id,
+        dev_in_cap_data = {'mac_addr': mac,
+                           'fileID'  : self.cap.id,
                            'deviceID': deviceID}
 
         #dev_in_cap_data['imported'] = True
@@ -2027,6 +2029,7 @@ class  MudCaptureApplication(tk.Frame):
         device_data = {"unlabeled":False}
         for entry in entries:
             field = entry[0]
+
             if field == 'MAC':
                 value = dev_in_cap_data['mac_addr']
             else:
@@ -2441,7 +2444,7 @@ class  MudCaptureApplication(tk.Frame):
                 '''
         print("captureID_list", self.db_handler.db.captureID_list)
         # Check if the list is empty and return if it is
-        if not self.db_handler.db.caputreID_list:
+        if not self.db_handler.db.captureID_list:
             return
         self.db_handler.db.create_pkt_toi_from_captureID_list()
 

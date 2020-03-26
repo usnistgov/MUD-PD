@@ -2440,6 +2440,9 @@ class  MudCaptureApplication(tk.Frame):
                     self.db_handler.db.update_cap_toi(capture)
                 '''
         print("captureID_list", self.db_handler.db.captureID_list)
+        # Check if the list is empty and return if it is
+        if not self.db_handler.db.caputreID_list:
+            return
         self.db_handler.db.create_pkt_toi_from_captureID_list()
 
 

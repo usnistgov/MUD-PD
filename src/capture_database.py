@@ -195,20 +195,26 @@ class CaptureDatabase:
 
     add_mac_to_mfr = (
         #"INSERT INTO mac_to_mfr "
-        "REPLACE INTO mac_to_mfr "
+        #"REPLACE INTO mac_to_mfr "
+        "INSERT INTO mac_to_mfr "
         # VARCHAR     TEXT
         "(mac_prefix, mfr) "
-        "VALUES (%(mac_prefix)s, %(mfr)s);")
+        "VALUES (%(mac_prefix)s, %(mfr)s) "
+        "ON DUPLICATE KEY UPDATE id=last_insert_id(id), mfr=%(mfr)s;")
     
     add_device = (
         #"INSERT INTO device "
-        "REPLACE INTO device "
+        #"REPLACE INTO device "
+        "INSERT INTO device "
         # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL   BOOL    BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT   BOOL
         #"(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, ethernet, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unidentified) "
         "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, ethernet, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unlabeled) "
         "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, "
         #"%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unidentified)s)")
-        "%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unlabeled)s)")
+        "%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unlabeled)s) "
+        "ON DUPLICATE KEY UPDATE id=last_insert_id(id), mfr=%(mfr)s, model=%(model)s, internalName=%(internalName)s, deviceCategory=%(deviceCategory)s, "
+        "mudCapable=%(mudCapable)s, wifi=%(wifi)s, ethernet=%(ethernet)s, 3G=%(G3)s, 4G=%(G4)s, 5G=%(G5)s, bluetooth=%(bluetooth)s, "
+        "zigbee=%(zigbee)s, zwave=%(zwave)s, otherProtocols=%(otherProtocols)s, notes=%(notes)s, unlabeled=%(unlabeled)s;")
 
     #add_device_unidentified = (
     add_device_unlabeled = (
@@ -218,7 +224,8 @@ class CaptureDatabase:
         #"(mac_addr) "
         #"VALUES (%(mac_addr)s)")
         "(mfr, mac_addr) "
-        "VALUES (%(mfr)s, %(mac_addr)s)")
+        "VALUES (%(mfr)s, %(mac_addr)s) "
+        "ON DUPLICATE KEY UPDATE id=last_insert_id(id), mfr=%(mfr)s;")
         #"(mfr, mac_addr) "
         #"VALUES (%(mfr)s, %(mac_addr)s)")
 
@@ -371,7 +378,7 @@ class CaptureDatabase:
         "        p.ip_dst=(d.ipv4_addr OR d.ipv6_addr)) \n"
         #"WHERE d.deviceID IN (%(deviceIDs)s) AND p.ew=%(ew)s LIMIT %(num_pkts)s;")
         #"WHERE p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
-        "WHERE d.deviceID IN (%(deviceIDs)s) AND p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
+        "WHERE d.deviceID IN (%(deviceIDs)s) \nAND p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
 
     drop_packet_toi = (
         "DROP TEMPORARY TABLE IF EXISTS pkt_toi;")

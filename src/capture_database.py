@@ -100,7 +100,8 @@ class CaptureDatabase:
         #"    internalName VARCHAR(20) DEFAULT NULL, "
         "    fw_ver TEXT DEFAULT NULL, "
         "    ipv4_addr VARCHAR(15), "
-        "    ipv6_addr TEXT);")
+        #"    ipv6_addr TEXT);")
+        "    ipv6_addr VARCHAR(39));")
 
     create_packet = (
         "CREATE TABLE packet ( "

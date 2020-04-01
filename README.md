@@ -1,7 +1,7 @@
 # MUD-PD
-**MUD Profiling Database** (formerly MUDPI (MUD Profiling for IoT))
 
-A tool for profiling IoT devices particularly for use with MUD
+A tool for characterizing IoT devices particularly for use with MUD (Manufacturer Usage Description)
+MUD Specification: https://tools.ietf.org/html/rfc8520 
 
 *N.B. This tool is still in the development phase, and has only been tested on Linux (Ubuntu 18+) and macOS (10.14).*
 

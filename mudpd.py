@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
 # Local Modules
+import _mysql_connector
+
 from src.bidict import BiDict
 from src.capture_database import CaptureDatabase
 #from capture_database import DatabaseHandler
@@ -1032,9 +1034,11 @@ class  MudCaptureApplication(tk.Frame):
         #sel_cap_path = self.cap_list.get_selected_row()[5] + "/" + self.cap_list.get_selected_row()[2]
         sel_cap_path = self.cap_list.get_selected_row()[6] + "/" + self.cap_list.get_selected_row()[2]
 
+        start = datetime.now()
+
         if self.cap == None or (self.cap.fdir + "/" + self.cap.fname) != sel_cap_path:
             #self.popup_import_capture_devices( CaptureDigest(sel_cap_path, gui=True) )
-            start = datetime.now()
+            #start = datetime.now()
             self.cap = CaptureDigest(sel_cap_path)
 
             self.cap.id = self.cap_list.get_selected_row()[0]
@@ -2046,7 +2050,7 @@ class  MudCaptureApplication(tk.Frame):
         self.db_handler.db.insert_device(device_data)
         self.db_handler.db.insert_device_in_capture(dev_in_cap_data)
 
-        #mac = dev_in_cap_data['mac_addr']
+        mac = dev_in_cap_data['mac_addr']
         deviceID = dev_in_cap_data['deviceID']
         #print("mac:", mac)
 
@@ -2075,8 +2079,10 @@ class  MudCaptureApplication(tk.Frame):
         except TypeError as te:
             fw_ver = ''
             
-        device_state_data = {'fileHash'     : dev_in_cap_data['fileHash'],
+        device_state_data = {#'fileHash'     : dev_in_cap_data['fileHash'],
+                             'fileID'       : dev_in_cap_data['fileID'],
                              'mac_addr'     : mac,
+                             'deviceID'     : dev_in_cap_data['deviceID'],
                              'internalName' : device_data['internalName'],
                              'fw_ver'       : fw_ver,
                              #'ipv4_addr'    : self.cap.findIP(mac),
@@ -2765,23 +2771,23 @@ class  MudCaptureApplication(tk.Frame):
 
         self.w_internal_addr.wm_title("Internal Address Ranges")
 
-        topFrame = tk.Frame(self.w_internal_addr, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
+        topFrame = tk.Frame(self.w_internal_addr, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
         subtitle = tk.Label(topFrame, text="Current Address Ranges", bg="#eeeeee", bd=1, relief="flat")
         subtitle.pack(side="top", fill=tk.X)
 
-        botFrame = tk.Frame(elf.w_internal_addr, width=300, bd=1, bg="#eeeeee")#, bg="#dfdfdf")
+        botFrame = tk.Frame(self.w_internal_addr, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
 
         addr_range_list_header = ["Lower Bound", "Upper Bound", "IP Version"]
         addr_range_list = MultiColumnListbox(parent=botFrame,
                                                    header=addr_range_list_header,
                                                    list=list(), selectmode="browse")
-        #To be aded later
-        #self.unidentified_dev_list.bind("<<TreeviewSelect>>", self.update_unidentified_list_selection)
+        # To be aded later
+        # self.unidentified_dev_list.bind("<<TreeviewSelect>>", self.update_unidentified_list_selection)
 
 
         # Grid placements #
-        #self.topDevFrame.grid(row=0, column=0, sticky="new")
-        #self.botDevFrame.grid(row=1, column=0, sticky="nsew")
+        # self.topDevFrame.grid(row=0, column=0, sticky="new")
+        # self.botDevFrame.grid(row=1, column=0, sticky="nsew")
         topFrame.grid(row=0, column=0, sticky="new")
         botFrame.grid(row=1, column=0, sticky="nsew")
 
@@ -3066,14 +3072,14 @@ class  MudCaptureApplication(tk.Frame):
         ipv6 = None
 
         for (ipv4_addr, ipv6_addr) in self.db_handler.db.cursor:
-            print("ipv4_addr:",ipv4_addr)
+            print("ipv4_addr:", ipv4_addr)
             print("ipv4:",ip)
-            print("ipv6_addr:",ipv6_addr)
+            print("ipv6_addr:", ipv6_addr)
             print("ipv6:",ipv6)
 
             if (ip != None and ip != ipv4_addr):
                 if ip == "Not found" or ip == "0.0.0.0":
-                    if ipv4 != "Not found" and ipv4 != "0.0.0.0":
+                    if ipv4_addr != "Not found" and ipv4_addr != "0.0.0.0":
                         ip = ipv4_addr
                 else:
                     messagebox.showerror("MUD Gateway Selection Error",

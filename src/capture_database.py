@@ -908,7 +908,7 @@ class CaptureDatabase:
 
     def select_device_ids_from_macs(self, deviceMACs):
         format_strings = ",".join(['%s'] * len(self.deviceMACs))
-        self.cursor.execute(query_device_ids_from_macs % format_strings, tuple(deviceMACs))
+        self.cursor.execute(self.query_device_ids_from_macs % format_strings, tuple(deviceMACs))
 
 
     # work to be done
@@ -980,7 +980,7 @@ class CaptureDatabase:
         #print(self.create_device_toi_from_deviceID_list % format_strings, tuple(self.deviceID_list))
         #print(self.create_device_toi_from_captureID_list % format_strings, tuple(self.captureID_list))
 
-    def update_dev_toi(self):
+    def update_dev_toi(self, deviceID):
         #self.cursor.execute(self.update_device_toi, mac)
         self.cursor.execute(self.update_device_toi, deviceID)
         self.cnx.commit()

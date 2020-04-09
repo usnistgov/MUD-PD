@@ -1,6 +1,6 @@
 # MUD-PD
 
-A tool for characterizing IoT devices particularly for use with MUD (Manufacturer Usage Description)
+A tool for characterizing the network behavior of IoT devices particularly for use with MUD (Manufacturer Usage Description)
 
 MUD Specification: https://tools.ietf.org/html/rfc8520 
 

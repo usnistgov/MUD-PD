@@ -117,7 +117,7 @@ class  MudCaptureApplication(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
-        self.parent.title("MUD-PD: MUD Profiling Database") #MUDdy Airwaves
+        self.parent.title("MUD-PD") #MUDdy Airwaves
 
         self.window_stack = []
         self.yield_focus(self.parent)

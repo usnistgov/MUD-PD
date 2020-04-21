@@ -1250,7 +1250,7 @@ class  MudCaptureApplication(tk.Frame):
             fw_ver = temp[0]
 
         #device_state_data = {'fileHash'     : self.cap.fileHash,
-        device_state_data = {'fileID'     : self.cap.fileID,
+        device_state_data = {'fileID'     : self.cap.id, #self.cap.fileID,
                              'mac_addr'     : mac.upper(),
                              #'deviceID'     : deviceID,
                              #need to comment out the next line
@@ -1281,8 +1281,8 @@ class  MudCaptureApplication(tk.Frame):
     #def refresh_unidentified_identified_lists(self):
     def refresh_unlabeled_labeled_lists(self):
         # Clear lists
-        self.unlabeled_dev_list.clear()
-        self.labeled_dev_list.clear()
+        #self.unlabeled_dev_list.clear()
+        #self.labeled_dev_list.clear()
 
         # Sort devices from Capture into either labeled or unlabeled device lists
         self.db_handler.db.select_device_macs()
@@ -1297,6 +1297,9 @@ class  MudCaptureApplication(tk.Frame):
         ## Sort devices found in the capture file into two lists: labeled, and unlabeled
         # Check if the devices in the capture file have been sorted yet
         if self.cap.newDevicesImported is not True:
+            #self.unlabeled_dev_list.clear()
+            #self.labeled_dev_list.clear()
+
             importedDevices = []
 
             # Loop through the uniqueMAC addresses found in the capture file
@@ -1457,7 +1460,7 @@ class  MudCaptureApplication(tk.Frame):
 
         else:
             # Loop through lists of self.cap.labeledDev and self.cap.unlabeledDev and
-            #   check if the device is no longer in the respective listsbox and
+            #   check if the device is no longer in the respective listboxes and
             #     move check that it's in the correct one
             # Check if unlabeled_dev_list is unpopulated and populate if not
             if self.unlabeled_dev_list.num_nodes > 0:
@@ -1465,7 +1468,8 @@ class  MudCaptureApplication(tk.Frame):
                 for unlabeledDevice in self.unlabeled_dev_list.get_list():
                     deviceID = unlabeledDevice[0]
                     if deviceID not in self.cap.unlabeledDev:
-                        self.unlabeled_dev_list.delete_by_val(deviceID,0)
+                        #self.unlabeled_dev_list.delete_by_val(deviceID, 0)
+                        self.unlabeled_dev_list.remove_by_value(deviceID, 0)
 
                         # Collect necessary information about device and move it into the labeled_dev_list listbox
                         self.db_handler.db.select_device(deviceID)
@@ -1500,7 +1504,10 @@ class  MudCaptureApplication(tk.Frame):
 
             # check if labeled_dev_list is empty and populate if it is
             if self.labeled_dev_list.num_nodes > 0:
-                labeledDeviceIDs = self.labeled_dev_list.get_list()
+                labeledDeviceIDs = []
+                #labeledDeviceIDs = self.labeled_dev_list.get_list()
+                for labeled_dev in self.labeled_dev_list.get_list():
+                    labeledDeviceIDs.append(labeled_dev[0])
                 for deviceID in self.cap.labeledDev:
                     if deviceID not in labeledDeviceIDs:
                         # Collect necessary information about device and move it into the labeled_dev_list listbox
@@ -1513,11 +1520,11 @@ class  MudCaptureApplication(tk.Frame):
                         #self.labeled_dev_list.append((deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
                         self.labeled_dev_list.append_unique((deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
 
-                        self.cap.labeledDev.append(deviceID)
+                        #self.cap.labeledDev.append(deviceID)
             else:
                 for deviceID in self.cap.labeledDev:
 
-                    # Collect necessary information about device and place it into unlabeled_dev_list listbox
+                    # Collect necessary information about device and place it into labeled_dev_list listbox
                     self.db_handler.db.select_device(deviceID)
                     #(_, mfr, model, mac_addr, internalName, category, mudCapable, wifi, ethernet, bluetooth, G3, G4, G5, zigbee, zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
                     (_, mfr, model, mac_addr, internalName, category, _, _, _, _, _, _, _, _, _, _, _, unlabeled) = self.db_handler.db.cursor.fetchone()
@@ -1526,7 +1533,7 @@ class  MudCaptureApplication(tk.Frame):
                     (deviceStateID, _, _, fw_ver, ip, ipv6) = self.db_handler.db.cursor.fetchone()
 
                     if unlabeled:
-                        print("ERROR with popoulating labeled device list (device is labeled)")
+                        print("ERROR with populating labeled device list (device is unlabeled)")
                         return
                     #self.labeled_dev_list.append((deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
                     self.labeled_dev_list.append_unique((deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
@@ -2066,6 +2073,8 @@ class  MudCaptureApplication(tk.Frame):
         '''
 
         #self.refresh_unidentified_identified_lists()
+        self.cap.unlabeledDev.remove(deviceID)
+        self.cap.labeledDev.append(deviceID)
         self.refresh_unlabeled_labeled_lists()
 
         #mac = dev_in_cap_data['mac_addr']
@@ -2082,7 +2091,8 @@ class  MudCaptureApplication(tk.Frame):
         device_state_data = {#'fileHash'     : dev_in_cap_data['fileHash'],
                              'fileID'       : dev_in_cap_data['fileID'],
                              'mac_addr'     : mac,
-                             'deviceID'     : dev_in_cap_data['deviceID'],
+                             #'deviceID'     : dev_in_cap_data['deviceID'],
+                             'deviceID'     : 'deviceID',
                              'internalName' : device_data['internalName'],
                              'fw_ver'       : fw_ver,
                              #'ipv4_addr'    : self.cap.findIP(mac),
@@ -2125,8 +2135,11 @@ class  MudCaptureApplication(tk.Frame):
         entries = {}
 
         for i, (label, value) in enumerate(device_state_data.items()):
-            if not i:
+            # if not i:
+            if (label=='fileID') or (label=='deviceID'):
                 continue
+            if (value == None):
+                value = ''
             row = tk.Frame(self.w_dev_state)
             row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
@@ -2156,7 +2169,8 @@ class  MudCaptureApplication(tk.Frame):
         
         # Check if there is already an entry for this data:
         #self.db_handler.db.select_device_state_exact(device_state_data)
-        self.db_handler.db.select_device_state(device_state_data["fileHash"], device_state_data["mac_addr"])
+        #self.db_handler.db.select_device_state(device_state_data["fileHash"], device_state_data["mac_addr"])
+        self.db_handler.db.select_device_state(device_state_data["fileID"], device_state_data["deviceID"])
         temp = self.db_handler.db.cursor.fetchone()
         print(temp)
         if temp == None:

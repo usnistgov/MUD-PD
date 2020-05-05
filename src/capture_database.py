@@ -100,7 +100,8 @@ class CaptureDatabase:
         #"    internalName VARCHAR(20) DEFAULT NULL, "
         "    fw_ver TEXT DEFAULT NULL, "
         "    ipv4_addr VARCHAR(15), "
-        "    ipv6_addr TEXT);")
+        #"    ipv6_addr TEXT);")
+        "    ipv6_addr VARCHAR(39));")
 
     create_packet = (
         "CREATE TABLE packet ( "
@@ -194,20 +195,26 @@ class CaptureDatabase:
 
     add_mac_to_mfr = (
         #"INSERT INTO mac_to_mfr "
-        "REPLACE INTO mac_to_mfr "
+        #"REPLACE INTO mac_to_mfr "
+        "INSERT INTO mac_to_mfr "
         # VARCHAR     TEXT
         "(mac_prefix, mfr) "
-        "VALUES (%(mac_prefix)s, %(mfr)s);")
+        "VALUES (%(mac_prefix)s, %(mfr)s) "
+        "ON DUPLICATE KEY UPDATE id=last_insert_id(id), mfr=%(mfr)s;")
     
     add_device = (
         #"INSERT INTO device "
-        "REPLACE INTO device "
+        #"REPLACE INTO device "
+        "INSERT INTO device "
         # TEXT TEXT   VARCHAR       VARCHAR   TEXT            BOOL       BOOL   BOOL    BOOL BOOL BOOL BOOL       BOOL    BOOL   TEXT            TEXT   BOOL
         #"(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, ethernet, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unidentified) "
         "(mfr, model, internalName, mac_addr, deviceCategory, mudCapable, wifi, ethernet, 3G, 4G, 5G,  bluetooth, zigbee, zwave, otherProtocols, notes, unlabeled) "
         "VALUES (%(mfr)s, %(model)s, %(internalName)s, %(mac_addr)s, %(deviceCategory)s, %(mudCapable)s, %(wifi)s, "
         #"%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unidentified)s)")
-        "%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unlabeled)s)")
+        "%(ethernet)s, %(G3)s, %(G4)s, %(G5)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(otherProtocols)s, %(notes)s, %(unlabeled)s) "
+        "ON DUPLICATE KEY UPDATE id=last_insert_id(id), mfr=%(mfr)s, model=%(model)s, internalName=%(internalName)s, deviceCategory=%(deviceCategory)s, "
+        "mudCapable=%(mudCapable)s, wifi=%(wifi)s, ethernet=%(ethernet)s, 3G=%(G3)s, 4G=%(G4)s, 5G=%(G5)s, bluetooth=%(bluetooth)s, "
+        "zigbee=%(zigbee)s, zwave=%(zwave)s, otherProtocols=%(otherProtocols)s, notes=%(notes)s, unlabeled=%(unlabeled)s;")
 
     #add_device_unidentified = (
     add_device_unlabeled = (
@@ -217,9 +224,19 @@ class CaptureDatabase:
         #"(mac_addr) "
         #"VALUES (%(mac_addr)s)")
         "(mfr, mac_addr) "
-        "VALUES (%(mfr)s, %(mac_addr)s)")
+        "VALUES (%(mfr)s, %(mac_addr)s) "
+        "ON DUPLICATE KEY UPDATE id=last_insert_id(id), mfr=%(mfr)s;")
         #"(mfr, mac_addr) "
         #"VALUES (%(mfr)s, %(mac_addr)s)")
+
+    #add_device_state = (
+    #    "INSERT INTO device_state "
+    #    ## BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
+    #    #"(fileHash, mac_addr, internalName, fw_ver, ipv4_addr, ipv6_addr) "
+    #    #"VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+    #    # INT     INT       TEXT    VARCHAR    TEXT
+    #    "(fileID, deviceID, fw_ver, ipv4_addr, ipv6_addr) "
+    #    "VALUES (%(fileID)s, %(deviceID)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
 
     add_device_state = (
         "INSERT INTO device_state "
@@ -228,9 +245,26 @@ class CaptureDatabase:
         #"VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
         # INT     INT       TEXT    VARCHAR    TEXT
         "(fileID, deviceID, fw_ver, ipv4_addr, ipv6_addr) "
-        "VALUES (%(fileID)s, %(deviceID)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+        "SELECT %(fileID)s, %(deviceID)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s "
+        "WHERE NOT EXISTS ( "
+        "    SELECT fileID, deviceID, fw_ver, ipv4_addr, ipv6_addr "
+        "    FROM device_state "
+        "    WHERE fileID    = %(fileID)s AND "
+        "          deviceID  = %(deviceID)s AND "
+        "          fw_ver    = %(fw_ver)s AND "
+        "          ipv4_addr = %(ipv4_addr)s AND "
+        "          ipv6_addr = %(ipv6_addr)s);")
 
     #add_device_state_unidentified = (
+    #add_device_state_unlabeled = (
+    #    "INSERT INTO device_state "
+    #    ## BINARY    VARCHAR   VARCHAR    TEXT
+    #    #"(fileHash, mac_addr, ipv4_addr, ipv6_addr) "
+    #    #"VALUES (%(fileHash)s, %(mac_addr)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+    #    # INT     INT       VARCHAR    TEXT
+    #    "(fileID, deviceID, ipv4_addr, ipv6_addr) "
+    #    "VALUES (%(fileID)s, %(deviceID)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+
     add_device_state_unlabeled = (
         "INSERT INTO device_state "
         ## BINARY    VARCHAR   VARCHAR    TEXT
@@ -238,7 +272,14 @@ class CaptureDatabase:
         #"VALUES (%(fileHash)s, %(mac_addr)s, %(ipv4_addr)s, %(ipv6_addr)s);")
         # INT     INT       VARCHAR    TEXT
         "(fileID, deviceID, ipv4_addr, ipv6_addr) "
-        "VALUES (%(fileID)s, %(deviceID)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+        "SELECT %(fileID)s, %(deviceID)s, %(ipv4_addr)s, %(ipv6_addr)s "
+        "WHERE NOT EXISTS ( "
+        "    SELECT fileID, deviceID, ipv4_addr, ipv6_addr "
+	    "    FROM device_state "
+	    "    WHERE fileID    = %(fileID)s AND "
+	    "          deviceID  = %(deviceID)s AND "
+	    "          ipv4_addr = %(ipv4_addr)s AND "
+	    "          ipv6_addr = %(ipv6_addr)s);")
 
     change_device_state = (
         "UPDATE device_state "
@@ -370,7 +411,7 @@ class CaptureDatabase:
         "        p.ip_dst=(d.ipv4_addr OR d.ipv6_addr)) \n"
         #"WHERE d.deviceID IN (%(deviceIDs)s) AND p.ew=%(ew)s LIMIT %(num_pkts)s;")
         #"WHERE p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
-        "WHERE d.deviceID IN (%(deviceIDs)s) AND p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
+        "WHERE d.deviceID IN (%(deviceIDs)s) \nAND p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
 
     drop_packet_toi = (
         "DROP TEMPORARY TABLE IF EXISTS pkt_toi;")
@@ -900,7 +941,7 @@ class CaptureDatabase:
 
     def select_device_ids_from_macs(self, deviceMACs):
         format_strings = ",".join(['%s'] * len(self.deviceMACs))
-        self.cursor.execute(query_device_ids_from_macs % format_strings, tuple(deviceMACs))
+        self.cursor.execute(self.query_device_ids_from_macs % format_strings, tuple(deviceMACs))
 
 
     # work to be done
@@ -972,7 +1013,7 @@ class CaptureDatabase:
         #print(self.create_device_toi_from_deviceID_list % format_strings, tuple(self.deviceID_list))
         #print(self.create_device_toi_from_captureID_list % format_strings, tuple(self.captureID_list))
 
-    def update_dev_toi(self):
+    def update_dev_toi(self, deviceID):
         #self.cursor.execute(self.update_device_toi, mac)
         self.cursor.execute(self.update_device_toi, deviceID)
         self.cnx.commit()
@@ -1472,7 +1513,7 @@ class CaptureDigest:
 # Database Main (for testing purposes)
 if __name__== "__main__":
 
-    connect()
+    mysql.connector.connect()
 
     fname = "/Users/ptw/Documents/GRA-MITRE-DDoS/captures/ecobee/ecobeeThermostat_iphone_setup.pcap"
     capture = CaptureDigest(fname)

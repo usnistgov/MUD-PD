@@ -229,6 +229,15 @@ class CaptureDatabase:
         #"(mfr, mac_addr) "
         #"VALUES (%(mfr)s, %(mac_addr)s)")
 
+    #add_device_state = (
+    #    "INSERT INTO device_state "
+    #    ## BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
+    #    #"(fileHash, mac_addr, internalName, fw_ver, ipv4_addr, ipv6_addr) "
+    #    #"VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+    #    # INT     INT       TEXT    VARCHAR    TEXT
+    #    "(fileID, deviceID, fw_ver, ipv4_addr, ipv6_addr) "
+    #    "VALUES (%(fileID)s, %(deviceID)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+
     add_device_state = (
         "INSERT INTO device_state "
         ## BINARY       VARCHAR   VARCHAR       TEXT    VARCHAR    TEXT
@@ -236,9 +245,26 @@ class CaptureDatabase:
         #"VALUES (%(fileHash)s, %(mac_addr)s, %(internalName)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
         # INT     INT       TEXT    VARCHAR    TEXT
         "(fileID, deviceID, fw_ver, ipv4_addr, ipv6_addr) "
-        "VALUES (%(fileID)s, %(deviceID)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+        "SELECT %(fileID)s, %(deviceID)s, %(fw_ver)s, %(ipv4_addr)s, %(ipv6_addr)s "
+        "WHERE NOT EXISTS ( "
+        "    SELECT fileID, deviceID, fw_ver, ipv4_addr, ipv6_addr "
+        "    FROM device_state "
+        "    WHERE fileID    = %(fileID)s AND "
+        "          deviceID  = %(deviceID)s AND "
+        "          fw_ver    = %(fw_ver)s AND "
+        "          ipv4_addr = %(ipv4_addr)s AND "
+        "          ipv6_addr = %(ipv6_addr)s);")
 
     #add_device_state_unidentified = (
+    #add_device_state_unlabeled = (
+    #    "INSERT INTO device_state "
+    #    ## BINARY    VARCHAR   VARCHAR    TEXT
+    #    #"(fileHash, mac_addr, ipv4_addr, ipv6_addr) "
+    #    #"VALUES (%(fileHash)s, %(mac_addr)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+    #    # INT     INT       VARCHAR    TEXT
+    #    "(fileID, deviceID, ipv4_addr, ipv6_addr) "
+    #    "VALUES (%(fileID)s, %(deviceID)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+
     add_device_state_unlabeled = (
         "INSERT INTO device_state "
         ## BINARY    VARCHAR   VARCHAR    TEXT
@@ -246,7 +272,14 @@ class CaptureDatabase:
         #"VALUES (%(fileHash)s, %(mac_addr)s, %(ipv4_addr)s, %(ipv6_addr)s);")
         # INT     INT       VARCHAR    TEXT
         "(fileID, deviceID, ipv4_addr, ipv6_addr) "
-        "VALUES (%(fileID)s, %(deviceID)s, %(ipv4_addr)s, %(ipv6_addr)s);")
+        "SELECT %(fileID)s, %(deviceID)s, %(ipv4_addr)s, %(ipv6_addr)s "
+        "WHERE NOT EXISTS ( "
+        "    SELECT fileID, deviceID, ipv4_addr, ipv6_addr "
+	    "    FROM device_state "
+	    "    WHERE fileID    = %(fileID)s AND "
+	    "          deviceID  = %(deviceID)s AND "
+	    "          ipv4_addr = %(ipv4_addr)s AND "
+	    "          ipv6_addr = %(ipv6_addr)s);")
 
     change_device_state = (
         "UPDATE device_state "
@@ -1480,7 +1513,7 @@ class CaptureDigest:
 # Database Main (for testing purposes)
 if __name__== "__main__":
 
-    connect()
+    mysql.connector.connect()
 
     fname = "/Users/ptw/Documents/GRA-MITRE-DDoS/captures/ecobee/ecobeeThermostat_iphone_setup.pcap"
     capture = CaptureDigest(fname)

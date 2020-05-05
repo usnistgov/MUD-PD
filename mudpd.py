@@ -1234,7 +1234,8 @@ class  MudCaptureApplication(tk.Frame):
         #d = self.identified_dev_list_sel
         d = self.labeled_dev_list_sel
         print("d = ",d)
-        mac = d[4]
+        #mac = d[4]
+        mac = d[5]
         deviceID = d[0]
         #self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
         self.db_handler.db.select_most_recent_fw_ver({'deviceID' : deviceID,
@@ -1252,14 +1253,16 @@ class  MudCaptureApplication(tk.Frame):
         #device_state_data = {'fileHash'     : self.cap.fileHash,
         device_state_data = {'fileID'     : self.cap.id, #self.cap.fileID,
                              'mac_addr'     : mac.upper(),
-                             #'deviceID'     : deviceID,
+                             'deviceID'     : deviceID,
                              #need to comment out the next line
                              'internalName' : d[2],
                              'fw_ver'       : fw_ver,
                              #'ipv4_addr'    : self.cap.findIP(mac),
                              #'ipv6_addr'    : self.cap.findIP(mac, v6=True)}
-                             'ipv4_addr'    : d[5],
-                             'ipv6_addr'    : d[6]}
+                             #'ipv4_addr': d[5],
+                             #'ipv6_addr': d[6]}
+                             'ipv4_addr': d[6],
+                             'ipv6_addr': d[7]}
 
         print("ipv4:",device_state_data['ipv4_addr'])
         print("ipv6:",device_state_data['ipv6_addr'])
@@ -2092,7 +2095,7 @@ class  MudCaptureApplication(tk.Frame):
                              'fileID'       : dev_in_cap_data['fileID'],
                              'mac_addr'     : mac,
                              #'deviceID'     : dev_in_cap_data['deviceID'],
-                             'deviceID'     : 'deviceID',
+                             'deviceID'     : deviceID,
                              'internalName' : device_data['internalName'],
                              'fw_ver'       : fw_ver,
                              #'ipv4_addr'    : self.cap.findIP(mac),

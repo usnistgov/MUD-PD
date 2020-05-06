@@ -402,6 +402,7 @@ class CaptureDatabase:
         #"WHERE deviceID IN (%s) AND p.ew=%s LIMIT %s;")
 
     '''
+    '''
     query_packet_toi = (
         "SELECT p.* \n"
         "FROM pkt_toi p \n"
@@ -412,6 +413,19 @@ class CaptureDatabase:
         #"WHERE d.deviceID IN (%(deviceIDs)s) AND p.ew=%(ew)s LIMIT %(num_pkts)s;")
         #"WHERE p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
         "WHERE d.deviceID IN (%(deviceIDs)s) \nAND p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
+    '''
+    query_packet_toi = (
+        "SELECT p.* \n"
+        "FROM pkt_toi p \n"
+        "    INNER JOIN (\n"
+        "        SELECT * FROM dev_toi \n"
+        "        WHERE deviceID IN (%(deviceIDs)s)) AS d \n"
+        "    ON (p.mac_addr = d.mac_addr OR \n"
+        "        p.ip_src   = d.ipv4_addr OR \n"
+        "        p.ip_src   = d.ipv6_addr OR \n"
+        "        p.ip_dst   = d.ipv4_addr OR \n"
+        "        p.ip_dst   = d.ipv6_addr) \n"
+        "WHERE p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
 
     drop_packet_toi = (
         "DROP TEMPORARY TABLE IF EXISTS pkt_toi;")
@@ -1351,7 +1365,8 @@ class CaptureDigest:
                     self.pkt_info[-1]["mac_addr"] = l.src_eth
                     #self.pkt_info[-1]["mac"] = l._all_fields["sll.src.eth"]
                 elif l.layer_name == "eth":
-                    self.pkt_info[-1]["mac_addr"] = l.addr
+                    #self.pkt_info[-1]["mac_addr"] = l.addr
+                    self.pkt_info[-1]["mac_addr"] = l.src
                 elif l.layer_name == "ip":
                     #self.pkt_info[-1]["ip_ver"] = l.ip.version
                     #self.pkt_info[-1]["ip_src"] = l.ip.src

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # Local Modules
-import _mysql_connector
+# import _mysql_connector
 
 from src.bidict import BiDict
 from src.capture_database import CaptureDatabase
@@ -2105,7 +2105,7 @@ class  MudCaptureApplication(tk.Frame):
 
         try:
             self.popup_update_device_state(device_state_data)
-        except _mysql_connector.MySQLInterfaceError as msqle:
+        except mysql.connector.MySQLInterfaceError as msqle:
             tk.Tk().withdraw()
             messagebox.showerror("Error", "Please create a unique Internal Name")
 

@@ -3,7 +3,7 @@
 
 A tool for profiling IoT devices particularly for use with MUD
 
-*N.B. This tool is still in the development phase, and has only been tested on Linux (Ubuntu 18+) and macOS (10.14).*
+*Note well: This tool is still in the development phase, and has only been tested on Linux (Ubuntu 18+) and macOS (10.14).  Windows is currently **not** supported, but is in the works.*
 
 ## Prerequisites
 0. Git
@@ -30,6 +30,10 @@ A tool for profiling IoT devices particularly for use with MUD
      * Linux
      ```sh
      shell> sudo apt-get install python3.7
+     ```
+     or
+     ```sh
+     shell> sudo apt-get install python3.8
      ```
 
 2. MySQL
@@ -81,7 +85,9 @@ A tool for profiling IoT devices particularly for use with MUD
    * macOS: readily available by default
    * Windows: follow instructions at https://nmap.org/npcap/
 
+***Important note about Wireshark:***
 
+   If Wireshark is installed, one of the required Python libraries may conflict with the application. Thus, it is best to ensure that the version of Wireshark installed is 3.2.5 or later.
 
 ## Installation
 

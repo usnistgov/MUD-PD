@@ -185,10 +185,10 @@ to change width of column drag boundary
                 if item == values:
                     unique = False
                     break
-                for i, value in enumerate(values):
-                    if value == item[i]:
-                        unique = False
-                        break
+                #for i, value in enumerate(values):
+                #    if value == item[i]:
+                #        unique = False
+                #        break
             if unique:
                 self.append(item)
 

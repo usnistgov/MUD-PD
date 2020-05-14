@@ -1,7 +1,9 @@
 # MUD-PD
-**MUD Profiling Database**
 
-A tool for profiling IoT devices particularly for use with MUD
+A tool for characterizing the network behavior of IoT devices particularly for use with MUD (Manufacturer Usage Description)
+
+MUD Specification: https://tools.ietf.org/html/rfc8520 
+
 
 *Note well: This tool is still in the development phase, and has only been tested on Linux (Ubuntu 18+) and macOS (10.14).  Windows is currently **not** supported, but is in the works.*
 

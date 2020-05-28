@@ -964,7 +964,6 @@ class MudCaptureApplication(tk.Frame):
             # self.cap.import_pkts()
             #:LKJ
             self.cap.import_pkts()
-            self.cap.extract_fingerprint(self.cap.fpath)
 
             # self.import_with_progbar(CaptureDigest(entries[0][1].get()))
 
@@ -2007,6 +2006,8 @@ class MudCaptureApplication(tk.Frame):
                 else:
                     ent = tk.Entry(row)
                     ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
+                    if field == 'Model':
+                        ent.insert(30, self.cap.modellookup[mac_addr])
 
             if not i:
                 ent.insert(30, mfr)

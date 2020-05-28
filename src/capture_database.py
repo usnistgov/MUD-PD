@@ -1169,6 +1169,7 @@ class CaptureDigest:
         self.uniqueIP = []
         self.uniqueIPv6 = []
         self.uniqueMAC = []
+        self.modellookup = {}
 
         self.newDevicesImported = False
         self.labeledDev = []
@@ -1186,7 +1187,8 @@ class CaptureDigest:
         self.pkt = []
 
         self.pkt_info = []  # needs to be a list of dictionary
-
+        self.extract_fingerprint()
+        print("Identified devices for this capture: ", self.modellookup)
         # Fastest way to get the number of packets in capture, but still slow to do
         '''
         start = datetime.now()
@@ -1493,24 +1495,24 @@ class CaptureDigest:
         self.num_pkts = 0
         self.pkt = []
 
-    def extract_fingerprint(self, fpath):
+    def extract_fingerprint(self):
         api_key = "ea870a9d966fe0eca3146961f5b1371fa48cc1e8"
-        dhcp_pkts = pyshark.FileCapture(fpath, display_filter='dhcp')
         print("Starting Fingerprint Extraction")
-        for p in dhcp_pkts:
+        for p in self.dhcp_pkts:
             dhcp_fingerprint = ""
             hostname = ""
             output = ""
             yes = True
             first = True
             try:
+                mac = p.sll.src_eth
+                mac = mac.upper()
+            except AttributeError:
+                print("AttributeError: Can't find MAC Address")
+            try:
                 hostname = p['DHCP'].option_hostname
             except AttributeError:
                 print("AttributeError: Can't find hostname")
-            try:
-                mac = p.sll.src_eth
-            except AttributeError:
-                print("AttributeError: Can't find MAC Address")
             try:
                 for f in p['DHCP'].option_request_list_item.all_fields:
                     if not first:
@@ -1527,12 +1529,15 @@ class CaptureDigest:
                 print("No fingerprint found")
             if yes:
                 output = lookup_fingerbank(dhcp_fingerprint, hostname, mac, api_key)
+                print("Fingerprint Result:", output["name"])
+                self.modellookup.update({mac: output["name"]})
         print("End Fingerprint Extraction")
-        return output
 
     # def __del__(self):
     def __exit__(self):
         self.cap.close()
+        self.dhcp_pkts.close()
+        self.cap_ew.close()
 
 
 # Database Main (for testing purposes)

@@ -1125,6 +1125,11 @@ class DatabaseHandler:
 class CaptureDigest:
 
     def __init__(self, fpath):  # , gui=False):
+        from mudpd import MudCaptureApplication
+        self.api_key = MudCaptureApplication.read_api_config(self)
+        if self.api_key != "":
+            self.api_key = self.api_key['api_key']
+            print("Fingerbank API Key: ", self.api_key)
         self.fpath = fpath
         self.fdir, self.fname = os.path.split(fpath)
         self.fsize = os.path.getsize(fpath)
@@ -1496,7 +1501,6 @@ class CaptureDigest:
         self.pkt = []
 
     def extract_fingerprint(self):
-        api_key = "ea870a9d966fe0eca3146961f5b1371fa48cc1e8"
         print("Starting Fingerprint Extraction")
         for p in self.dhcp_pkts:
             dhcp_fingerprint = ""
@@ -1528,7 +1532,7 @@ class CaptureDigest:
                 yes = False
                 print("No fingerprint found")
             if yes:
-                output = lookup_fingerbank(dhcp_fingerprint, hostname, mac, api_key)
+                output = lookup_fingerbank(dhcp_fingerprint, hostname, mac, self.api_key)
                 print("Fingerprint Result:", output["name"])
                 self.modellookup.update({mac: output["name"]})
         print("End Fingerprint Extraction")
@@ -1537,7 +1541,6 @@ class CaptureDigest:
     def __exit__(self):
         self.cap.close()
         self.dhcp_pkts.close()
-        self.cap_ew.close()
 
 
 # Database Main (for testing purposes)

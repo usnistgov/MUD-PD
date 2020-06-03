@@ -59,7 +59,6 @@ def lookup_hostname(ip_addr):
 #Fingerbank API Lookup
 def lookup_fingerbank(dhcp_fingerprint, device_hostname, mac, api_key):
     BASE_URL = "https://api.fingerbank.org/api/v2/combinations/interrogate?"
-    api_key = "ea870a9d966fe0eca3146961f5b1371fa48cc1e8"
     url = BASE_URL + 'key=' + api_key
     data = {"dhcp_fingerprint": dhcp_fingerprint, "hostname": device_hostname, "mac": mac}
     print(data)
@@ -69,7 +68,7 @@ def lookup_fingerbank(dhcp_fingerprint, device_hostname, mac, api_key):
     if r.status_code == 200:
         data = r.json()
         response = {"name": data["device"]["name"]}
-        print(device_hostname, response)
+        print("Returned web info:", device_hostname, response)
         return response
     else:
         print("Fingerprint not retrieved")

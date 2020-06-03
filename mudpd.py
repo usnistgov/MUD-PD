@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 
 # Local Modules
-import mysql.connector
+import _mysql_connector
 
 from src.bidict import BiDict
 from src.capture_database import CaptureDatabase
 # from capture_database import DatabaseHandler
 from src.capture_database import CaptureDigest
-from src.lookup import lookup_mac, lookup_hostname, lookup_fingerbank
+from src.lookup import lookup_mac, lookup_hostname
 from src.generate_mudfile import MUDgeeWrapper
 from src.generate_report import ReportGenerator
 from src.multicolumn_listbox import MultiColumnListbox
@@ -29,6 +29,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename
+from configparser import ConfigParser
 
 field2db = BiDict({'File': 'fileName', 'Activity': 'activity', 'Notes (optional)': 'details',
                    'Lifecycle Phase': 'lifecyclePhase', 'Setup': 'setup', 'Normal Operation': 'normalOperation',
@@ -47,6 +48,7 @@ field2db = BiDict({'File': 'fileName', 'Activity': 'activity', 'Notes (optional)
                    'Firmware Version': 'fw_ver', 'IP Address': 'ipv4_addr', 'IPv6 Address': 'ipv6_addr'})
 dbFields = 'host', 'database', 'user', 'passwd'
 dbNewFields = 'host', 'user', 'passwd', 'new database'
+APIFields = 'api_key'
 # dbField2Var = {'Host' : 'host', 'Database' : 'database', 'Username' : 'user', 'Password' : 'passwd'}
 # captureFields = 'File', 'Activity', 'Notes (optional)'
 captureFields = 'File', 'Notes (optional)'
@@ -123,10 +125,12 @@ class MudCaptureApplication(tk.Frame):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
         self.parent.title("MUD-PD")  # MUDdy Airwaves
-
+        self.api_key = self.read_api_config()
+        if self.api_key != "":
+            self.api_key = self.api_key['api_key']
+            print("Fingerbank API Key: ", self.api_key)
         self.window_stack = []
         self.yield_focus(self.parent)
-
         # Main menu bar
         self.fileMenu = tk.Menu(self.parent)
         self.parent.config(menu=self.fileMenu)
@@ -135,6 +139,7 @@ class MudCaptureApplication(tk.Frame):
         self.fileSubMenu.add_command(label="Connect to Database...", command=self.popup_connect2database)
         self.fileSubMenu.add_command(label="Create New Database...", command=self.popup_createNewDatabase)
         self.fileSubMenu.add_command(label="Import Capture File...", command=self.popup_import_capture)
+        self.fileSubMenu.add_command(label="Add Fingerbank API Key", command=self.popup_updateapikey)
         self.fileSubMenu.add_separator()
         self.fileSubMenu.add_command(label="Quit", command=self.__exit__)
 
@@ -578,6 +583,68 @@ class MudCaptureApplication(tk.Frame):
             messagebox.showerror("Error", "Problem connecting to database")
             '''
 
+    def make_form_api(self, fields):
+        entries = []
+        row = tk.Frame(self.w_db_new)
+        lab = tk.Label(row, width=12, text=fields, anchor='w')
+        ent = tk.Entry(row)
+        ent.insert(10, self.api_key)
+
+        row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
+        lab.pack(side=tk.LEFT)
+        ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
+        entries.append((fields, ent))
+
+        return entries
+
+    def popup_updateapikey(self):
+        self.w_db_new = tk.Toplevel()
+        self.w_db_new.wm_title("Update Fingerbank API Key")
+
+        ents = self.make_form_api(APIFields)
+
+        self.bind('<Return>', (lambda event, e=ents: self.save_api_config(e)))
+
+        b_save = tk.Button(self.w_db_new, text='Save',
+                           command=(lambda e=ents: self.save_api_config(e)))
+        b_cancel = tk.Button(self.w_db_new, text='Cancel', command=self.w_db_new.destroy)
+
+        if sys.platform == "win32":
+            b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+            b_save.pack(side=tk.RIGHT, padx=5, pady=5)
+        else:
+            b_save.pack(side=tk.RIGHT, padx=5, pady=5)
+            b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
+
+        self.yield_focus(self.w_db_new)
+
+    def save_api_config(self, entries, filename='config.ini', section='API'):
+        parser = ConfigParser()
+        parser.read(filename)
+        api_info = {}
+        for entry in entries:
+            field = entry[0]
+            text = entry[1].get()
+            # print(field, " = ", text)
+            api_info[field] = text
+            parser[section] = api_info
+        with open(filename, 'w') as configfile:
+            parser.write(configfile)
+        self.w_db_new.destroy()
+
+    def read_api_config(self, filename='config.ini', section='API'):
+        parser = ConfigParser()
+        parser.read(filename)
+        api_info = {}
+        if parser.has_section(section):
+            items = parser.items(section)
+            for item in items:
+                api_info[item[0]] = item[1]
+        else:
+            print("No Fingerbank API Key Present")
+            api_info = ""
+        return api_info
+
     def popup_confirm_save(self):
         confirm = tk.messagebox.askyesno("MUD-PD: MUD Profiling Database",
                                          "Are you sure you want to save this configuration?\n\n" +
@@ -964,6 +1031,7 @@ class MudCaptureApplication(tk.Frame):
             # self.cap.import_pkts()
             #:LKJ
             self.cap.import_pkts()
+            # self.cap.extract_fingerprint(self.cap.fpath)
 
             # self.import_with_progbar(CaptureDigest(entries[0][1].get()))
 
@@ -1329,7 +1397,6 @@ class MudCaptureApplication(tk.Frame):
                             mfr = lookup_mac(mac)
                     else:
                         mfr = lookup_mac(mac)
-
                     if mfr != "**company not found**" and mfr != "None" and mfr != None:
                         self.db_handler.db.insert_mac_to_mfr({'mac_prefix': mac_prefix, 'mfr': mfr})
 

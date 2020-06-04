@@ -1192,8 +1192,9 @@ class CaptureDigest:
         self.pkt = []
 
         self.pkt_info = []  # needs to be a list of dictionary
-        self.extract_fingerprint()
-        print("Identified devices for this capture: ", self.modellookup)
+        if self.api_key != "":
+            self.extract_fingerprint()
+            print("Identified devices for this capture: ", self.modellookup)
         # Fastest way to get the number of packets in capture, but still slow to do
         '''
         start = datetime.now()

@@ -2074,7 +2074,10 @@ class MudCaptureApplication(tk.Frame):
                     ent = tk.Entry(row)
                     ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
                     if field == 'Model':
-                        ent.insert(30, self.cap.modellookup[mac_addr])
+                        try:
+                            ent.insert(30, self.cap.modellookup[mac_addr])
+                        except KeyError as ke:
+                            print("Model not found for: ", str(ke))
 
             if not i:
                 ent.insert(30, mfr)

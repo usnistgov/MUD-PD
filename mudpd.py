@@ -3816,17 +3816,20 @@ class DatabaseHandler:
         return db
 
     def save_db_config(self, filename='config.ini', section='mysql', save_pwd=False):
-        f = open(filename, "w")
-        f.write("[%s]" % section)
-
-        for key in self.db_config:
-            if save_pwd or key != "passwd":
-                f.write("\n%s = %s" % (key, self.db_config[key]))
+        parser = ConfigParser()
+        parser.read(filename)
+        info = {}
+        for entry in self.db_config:
+            field = entry
+            text = self.db_config[entry]
+            if save_pwd or field != "passwd":
+                info[field] = text
             else:
-                f.write("\n%s = " % key)
-
-        f.write("\n")
-        f.close()
+                info[field] = ""
+            # print(field, " = ", text)
+            parser[section] = info
+        with open(filename, 'w') as configfile:
+            parser.write(configfile)
 
     def db_connect(self, entries):
         self.db_config = {}

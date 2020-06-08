@@ -1503,39 +1503,49 @@ class CaptureDigest:
 
     def extract_fingerprint(self):
         print("Starting Fingerprint Extraction")
-        for p in self.dhcp_pkts:
-            dhcp_fingerprint = ""
-            hostname = ""
-            output = ""
-            yes = True
-            first = True
-            try:
-                mac = p.sll.src_eth
-                mac = mac.upper()
-            except AttributeError:
-                print("AttributeError: Can't find MAC Address")
-            try:
-                hostname = p['DHCP'].option_hostname
-            except AttributeError:
-                print("AttributeError: Can't find hostname")
-            try:
-                for f in p['DHCP'].option_request_list_item.all_fields:
-                    if not first:
-                        dhcp_fingerprint += ","
-                    first = False
-                    dhcp_fingerprint += f.show
-            except AttributeError:
-                print("AttributeError: Unable to find DHCP options")
-                yes = False
-            except KeyError:
-                print("KeyError: Layer does not exist in packet")
-            if dhcp_fingerprint == "":
-                yes = False
-                print("No fingerprint found")
-            if yes:
-                output = lookup_fingerbank(dhcp_fingerprint, hostname, mac, self.api_key)
-                print("Fingerprint Result:", output["name"])
-                self.modellookup.update({mac: output["name"]})
+        if self.api_key != "":
+            for p in self.dhcp_pkts:
+                dhcp_fingerprint = ""
+                hostname = ""
+                output = ""
+                yes = True
+                first = True
+                try:
+                    mac = p.sll.src_eth
+                    mac = mac.upper()
+                except AttributeError:
+                    print("AttributeError: Can't find MAC Address")
+                try:
+                    if self.modellookup[mac] == "":
+                        yes = True
+                    else:
+                        yes = False
+                except KeyError as ke:
+                    print("Device not yet fingerprinted: ", ke)
+                try:
+                    hostname = p['DHCP'].option_hostname
+                except AttributeError:
+                    print("AttributeError: Can't find hostname")
+                try:
+                    for f in p['DHCP'].option_request_list_item.all_fields:
+                        if not first:
+                            dhcp_fingerprint += ","
+                        first = False
+                        dhcp_fingerprint += f.show
+                except AttributeError:
+                    print("AttributeError: Unable to find DHCP options")
+                    yes = False
+                except KeyError:
+                    print("KeyError: Layer does not exist in packet")
+                if dhcp_fingerprint == "":
+                    yes = False
+                    print("No fingerprint found")
+                if yes:
+                    output = lookup_fingerbank(dhcp_fingerprint, hostname, mac, self.api_key)
+                    print("Fingerprint Result:", output["name"])
+                    self.modellookup.update({mac: output["name"]})
+            else:
+                print("No Fingerbank API Key Present")
         print("End Fingerprint Extraction")
 
     # def __del__(self):

@@ -5,15 +5,21 @@ import hashlib
 #MySQl libraries
 from configparser import ConfigParser
 from datetime import datetime
+from functools import partial
 from datetime import timedelta
 #from lookup import *
+from IPy import IP
 from src.lookup import *
-from multiprocessing import Pool
+import logging
+import math
+from multiprocessing import Pool, Manager
 import mysql.connector
 from mysql.connector import MySQLConnection, Error
+# from multiprocessing.pool import Pool
 import os
 import pyshark
 import subprocess
+import tempfile
 
 class CaptureDatabase:
 
@@ -1131,10 +1137,59 @@ class DatabaseHandler:
         self.db.__exit__()
 #'''
 
+class Mac2IP(dict):
+
+    def __init__(self, mergelist=None):
+        if mergelist is not None:
+            for subrolodex in mergelist:
+                for mac in subrolodex:
+                    for ipver in subrolodex[mac]:
+                        for ip in subrolodex[mac][ipver]:
+                            self.add(mac, ip, ipver)
+
+    def add(self, mac, ip, ip_ver=None):
+        if mac not in self:
+            super().__setitem__(mac, dict())
+
+        if ip_ver is None:
+            ip_ver = IP(ip).version()
+
+        if ip_ver not in self[mac]:
+            self[mac][ip_ver] = set()
+        self[mac][ip_ver].add(ip)
+
+    def findIP(self, mac, ip_ver=None):
+        if mac in self:
+            if ip_ver is None:
+                return self[mac]
+            if ip_ver in self[mac]:
+                return self[mac][ip_ver]
+        return {}
+
+    def hasMultipleIP(self, mac, ip_ver=None):
+        if mac in self:
+            if ip_ver is not None:
+                if ip_ver in self[mac]:
+                    if len(self[mac][ip_ver]) > 1:
+                        return True
+            else:
+                for ver in self[mac]:
+                    if len(self[mac][ver]) > 1:
+                        return True
+        return False
+
+    def removeIP(self, mac, ip, ip_ver=None):
+        if mac in self:
+            if ip_ver is None:
+                ip_ver = IP(ip).version()
+            if ip_ver in self[mac]:
+                self[mac][ip_ver].remove(ip)
+
+
 class CaptureDigest:
 
 
-    def __init__(self, fpath):#, gui=False):
+    def __init__(self, fpath, mp=True):#, gui=False):
         self.fpath = fpath
         self.fdir, self.fname = os.path.split(fpath)
         self.fsize = os.path.getsize(fpath)
@@ -1144,137 +1199,295 @@ class CaptureDigest:
         self.fileHash = hashlib.sha256(open(fpath,'rb').read()).hexdigest()
         self.id = None
 
-        ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
-        ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
-        ew_ipv6_filter = 'ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8}'
-        ns_ipv6_filter = '!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8}'
+        mp = True
+        # Multiprocessing
+        if mp:
+            self.ip2mac = Mac2IP()
 
-        # (ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or (ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})
-        #ew_filter = ['(', ew_ip_filter, ') or (', ew_ipv6_filter, ')']
-        ew_filter = '(ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or (ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})'
-        # (!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) and (!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8})
-        ns_filter = ['(', ns_ip_filter, ') and (', ns_ipv6_filter, ')']
+            start = datetime.now()
 
-        #start = datetime.now()
-        self.cap = pyshark.FileCapture(fpath)
+            self.numProcesses = os.cpu_count() - 2  # One thread for GUI / One thread to handle I/O Queueing
+            if self.numProcesses > 1:
+                self.splitSize = math.ceil(self.fsize / self.numProcesses / math.pow(2,20))
+                self.numProcesses = math.ceil(self.fsize / (self.splitSize * math.pow(2,20)))
+                self.tempDir = "./.temp/"
+                if not os.path.exists(self.tempDir):
+                    os.makedirs(self.tempDir)
+                else:
+                    subprocess.call('rm ' + self.tempDir + '*', stderr=subprocess.PIPE, shell=True)
 
-        self.ew_index = []
-        self.cap_ew = pyshark.FileCapture(fpath, display_filter=ew_filter)
-        for p in self.cap_ew:
-            self.ew_index += p.number
-        #stop = datetime.now()
-        #print("time to open capture with pyshark = %f seconds" % (stop-start).total_seconds())
+                subprocess.call('tcpdump -r ' + self.fpath + ' -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize), stderr=subprocess.PIPE, shell=True)
+                self.files = subprocess.check_output('ls ' + self.tempDir, stderr=subprocess.STDOUT,
+                                                     shell=True).decode('ascii').split()
 
-        self.capTimeStamp = self.cap[0].sniff_timestamp
-        #self.capDate = self.cap[0].sniff_timestamp
-        #(self.capDate, self.capTime) = self.cap[0].sniff_timestamp.split()
+                if len(self.files) > self.numProcesses:
+                    print("WARNING! the file has been split into more pieces than processes.")
+
+                stop = datetime.now()
+
+                print("Time to split file:", stop - start)
+
+            else:
+                self.files = [self.fpath]
+
+            start1 = datetime.now()
+            self.import_pkts_pp()
+            stop1 = datetime.now()
+            print("Time to process file:", stop1 - start1)
+            print("Time for full process:", stop1 - start)
+        else:
+            ew_filter_start = datetime.now()
+            ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
+            ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
+            ew_ipv6_filter = 'ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8}'
+            ns_ipv6_filter = '!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8}'
+
+            # (ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or (ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})
+            # ew_filter = ['(', ew_ip_filter, ') or (', ew_ipv6_filter, ')']
+            ew_filter = '(ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or (ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})'
+            # (!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) and (!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8})
+            ns_filter = ['(', ns_ip_filter, ') and (', ns_ipv6_filter, ')']
+
+            # start = datetime.now()
+            # self.cap = pyshark.FileCapture(fpath)
+
+            self.ew_index = []
+            cap_ew = pyshark.FileCapture(fpath, display_filter=ew_filter, keep_packets=False)
+            for p in cap_ew:
+                self.ew_index += p.number
+
+            ew_filter_stop = datetime.now()
+            print("time to filter ew: ", ew_filter_stop - ew_filter_start)
+
+            start = datetime.now()
+            self.cap = pyshark.FileCapture(fpath, keep_packets=False)
+
+            self.capTimeStamp = self.cap[0].sniff_timestamp
+
+            # TODO CHANGE capDuration format from seconds to days, hours, minutes, seconds
+            self.capDuration = 0 # timedelta(0)
+
+            #(self.capDate, self.capTime) = datetime.utcfromtimestamp(float(self.capTimeStamp)).strftime(
+            #    '%Y-%m-%d %H:%M:%S').split()
+
+            #print(self.capDate)
+            #print(self.capTime)
+
+            self.uniqueIP = []
+            self.uniqueIPv6 = []
+            self.uniqueMAC = []
+
+            self.ip2mac = {}
+
+            self.uniqueIP_dst = []
+            self.uniqueIPv6_dst = []
+
+            self.protocol = []
+
+            self.num_pkts = 0
+            self.pkt = []
+
+            self.pkt_info = [] #needs to be a list of dictionary
+
+
+        # TODO: VERIFY REMOVAL
+        #self.capTimeStamp = self.cap[0].sniff_timestamp
+
         (self.capDate, self.capTime) = datetime.utcfromtimestamp(float(self.capTimeStamp)).strftime('%Y-%m-%d %H:%M:%S').split()
 
-        self.capDuration = 0#timedelta(0)
+        # TODO CHANGE capDuration format from seconds to days, hours, minutes, seconds
+        #self.capDuration = 0 # timedelta(0)
+        #self.capDuration = datetime.fromtimestamp(int(math.trunc(float(self.pkt_info[-1]['pkt_timestamp'])))) - \
+        #                   datetime.fromtimestamp(int(math.trunc(float(self.capTimeStamp))))  # 0#timedelta(0)
+        #self.capDuration = int(math.trunc(float(self.pkt_info[-1]['pkt_timestamp']) - float(self.capTimeStamp)))
 
         print(self.capDate)
         print(self.capTime)
-
-        self.uniqueIP = []
-        self.uniqueIPv6 = []
-        self.uniqueMAC = []
 
         self.newDevicesImported = False
         self.labeledDev = []
         self.unlabeledDev = []
 
-        self.ip2mac = {}
-
-        self.uniqueIP_dst = []
-        self.uniqueIPv6_dst = []
-
-        # str(first[len(first.__dict__['layers'])-1]).split()[1].strip(":")
-        self.protocol = []
-
-        self.num_pkts = 0
-        self.pkt = [] 
-
-        self.pkt_info = [] #needs to be a list of dictionary
-
-        #Fastest way to get the number of packets in capture, but still slow to do
-        '''
+    def import_pkts_pp(self):
+        print("In import_pkts_pp")
         start = datetime.now()
-        self.cap.apply_on_packets(self.count)
+
+        with Manager() as manager:
+            #pkts_m = []
+            pkts_info_m = []
+            addr_mac_src_set = []  # manager.list()
+            addr_mac_dst_set = []  # manager.list()
+            addr_ip_src_set = []  # manager.list()
+            addr_ip_dst_set = []  # manager.list()
+            addr_ipv6_src_set = []  # manager.list()
+            addr_ipv6_dst_set = []  # manager.list()
+            # TODO: Change the ip2mac variable from a dictionary to a set of tuples, or a dictionary of tuples?
+            ip2mac_m = []  # manager.list()
+
+            # Prepare shared variables and input arguments
+            import_args = []
+            for i in range(self.numProcesses):
+                #pkts_m.append(manager.list())
+                pkts_info_m.append(manager.list())
+                addr_mac_src_set.append(manager.list())
+                addr_mac_dst_set.append(manager.list())
+                addr_ip_src_set.append(manager.list())
+                addr_ip_dst_set.append(manager.list())
+                addr_ipv6_src_set.append(manager.list())
+                addr_ipv6_dst_set.append(manager.list())
+                ip2mac_m.append(manager.list())
+
+                import_args.append((i, self.tempDir + self.files[i], pkts_info_m[i],
+                                    addr_mac_src_set[i], addr_mac_dst_set[i],
+                                    addr_ip_src_set[i], addr_ip_dst_set[i],
+                                    addr_ipv6_src_set[i], addr_ipv6_dst_set[i], ip2mac_m[i]))
+
+            with Pool(self.numProcesses) as p:
+                #p.starmap_async(self.process_pkts_mp, import_args)
+                p.starmap(self.process_pkts_mp, import_args)
+
+            self.pkt_info = [item for sublist in pkts_info_m for item in sublist]
+            self.uniqueMAC = list(set([item for sublist in addr_mac_src_set for item in sublist]))
+            self.uniqueMAC_dst = list(set([item for sublist in addr_mac_dst_set for item in sublist]))
+            self.uniqueIP = list(set([item for sublist in addr_ip_src_set for item in sublist]))
+            self.uniqueIP_dst = list(set([item for sublist in addr_ip_dst_set for item in sublist]))
+            self.uniqueIPv6 = list(set([item for sublist in addr_ipv6_src_set for item in sublist]))
+            self.uniqueIPv6_dst = list(set([item for sublist in addr_ipv6_dst_set for item in sublist]))
+            #self.ip2mac = dict(set([item for sublist in ip2mac_m for item in sublist]))
+            self.ip2mac = Mac2IP([item for sublist in ip2mac_m for item in sublist])
+
+            self.capTimeStamp = self.pkt_info[0]['pkt_timestamp']
+            self.capDuration = round(float(self.pkt_info[-1]['pkt_timestamp']) - float(self.capTimeStamp))
+
         stop = datetime.now()
-        print("time to get pkt count = %f seconds" % (stop-start).total_seconds())
-        print("count = ", self.num_pkts)
-        '''
-        
-        #trying to use subprocess
-        #self.num_pkts = subprocess.check_output(["tcpdump -r " + fpath])
+        print("Time for full multi-process:", stop - start)
 
+    def process_pkts_mp(self, proc, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
+                        addr_ipv6_src, addr_ipv6_dst, ip2mac):
+        cap = pyshark.FileCapture(file, keep_packets=False)
 
+        addr_mac_src_set = set()
+        addr_mac_dst_set = set()
+        addr_ip_src_set = set()
+        addr_ip_dst_set = set()
+        addr_ipv6_src_set = set()
+        addr_ipv6_dst_set = set()
+        mac2ip = Mac2IP()
+        #ip2mac_set = set()
+        func = partial(self.extract_info_mp, pkts_info, addr_mac_src_set, addr_mac_dst_set,
+                       addr_ip_src_set, addr_ip_dst_set, addr_ipv6_src_set, addr_ipv6_dst_set, mac2ip)  # ip2mac_set)
+        cap.apply_on_packets(func)
 
+        addr_mac_src += list(addr_mac_src_set)
+        addr_mac_dst += list(addr_mac_dst_set)
+        addr_ip_src += list(addr_ip_src_set)
+        addr_ip_dst += list(addr_ip_dst_set)
+        addr_ipv6_src += list(addr_ipv6_src_set)
+        addr_ipv6_dst += list(addr_ipv6_dst_set)
+        #ip2mac += list(ip2mac_set)
+        ip2mac.append(mac2ip)
 
+    def extract_info_mp(self, pkt_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst, addr_ipv6_src,
+                        addr_ipv6_dst, ip2mac, pkt): # *args
+        p = pkt
+        pkt_dict = {"pkt_timestamp": p.sniff_timestamp,
+                    "mac_addr": '',
+                    "mac_src": '',
+                    "mac_dst": '',
+                    "protocol": p.layers[-1].layer_name.upper(),
+                    "ip_ver": None,  # changed '-1' to None and then ''
+                    "ip_src": None,
+                    "ip_dst": None,
+                    "ew": True, # TODO: Verify this works
+                    "tlp": '',
+                    "tlp_srcport": None,
+                    "tlp_dstport": None,
+                    "length": p.length}
 
-        '''
-        start = datetime.now()
-        #self.cap.apply_on_packets(self.import_pkts)
-        self.cap.apply_on_packets(self.append_pkt)
-        stop = datetime.now()
-        print("time to import_packets = %f seconds" % (stop-start).total_seconds())
-        '''
+        mac_src = None
+        mac_dst = None
+        ip_src = None
+        ip_dst = None
+        notReserved_src = True
+        notReserved_dst = True
 
-        #start = datetime.now()
-        #self.import_pkts()
-        #stop = datetime.now()
-        #print("time to import_packets = %f seconds" % (stop-start).total_seconds())
+        for l in p.layers:
+            if l.layer_name == "sll":
+                pkt_dict["mac_addr"] = l.src_eth
+                pkt_dict["mac_src"] = l.src_eth
+                pkt_dict["mac_dst"] = l.dst_eth
+                mac_src = l.src_eth
+                mac_dst = l.dst_eth
+            elif l.layer_name == "eth":
+                pkt_dict["mac_addr"] = l.src
+                pkt_dict["mac_src"] = l.src
+                pkt_dict["mac_dst"] = l.dst
+                mac_src = l.src
+                mac_dst = l.dst
+            elif l.layer_name == "ip":
+                pkt_dict["ip_ver"] = l.version
+                pkt_dict["ip_src"] = l.src
+                pkt_dict["ip_dst"] = l.dst
+                ip_src = l.src
+                ip_dst = l.dst
+                addr_ip_src.add(ip_src)
+                addr_ip_dst.add(ip_dst)
+                src_type = IP(ip_src).iptype()
+                dst_type = IP(ip_dst).iptype()
+                if src_type == 'PUBLIC' or dst_type == 'PUBLIC':
+                    pkt_dict['ew'] = False
+                if src_type == 'RESERVED' or src_type == 'LOOPBACK' or ip_src == '0.0.0.0':
+                    notReserved_src = False
+                if dst_type == 'RESERVED' or dst_type == 'LOOPBACK' or ip_dst == '0.0.0.0':
+                    notReserved_dst = False
+            elif l.layer_name == "ipv6":
+                pkt_dict["ip_ver"] = l.version
+                pkt_dict["ip_src"] = l.src
+                pkt_dict["ip_dst"] = l.dst
+                ip_src = l.src
+                ip_dst = l.src
+                src_type = IP(ip_src).iptype()
+                dst_type = IP(ip_dst).iptype()
+                if src_type == 'PUBLIC' or dst_type == 'PUBLIC':
+                    pkt_dict['ew'] = False
+                if src_type == 'RESERVED' or src_type == 'LOOPBACK' or ip_src == '::':
+                    notReserved_src = False
+                if dst_type == 'RESERVED' or dst_type == 'LOOPBACK' or ip_dst == '::':
+                    notReserved_dst = False
+            elif l.layer_name == "tcp":
+                pkt_dict["tlp"] = "tcp"
+                pkt_dict["tlp_srcport"] = l.srcport
+                pkt_dict["tlp_dstport"] = l.dstport
+            elif l.layer_name == "udp":
+                pkt_dict["tlp"] = "udp"
+                pkt_dict["tlp_srcport"] = l.srcport
+                pkt_dict["tlp_dstport"] = l.dstport
+            elif l.layer_name != p.layers[-1].layer_name:
+                pass
+                #print("Warning: Unknown/Unsupported layer seen here:", l.layer_name)
 
+        pkt_info.append(pkt_dict.copy())
 
+        addr_mac_src.add(mac_src)
+        addr_mac_dst.add(mac_dst)
 
+        if notReserved_src and (mac_src == 'FF:FF:FF:FF:FF:FF' or mac_src == '00:00:00:00:00:00'):
+            notReserved_src = False
+        if notReserved_dst and (mac_dst == 'FF:FF:FF:FF:FF:FF' or mac_dst == '00:00:00:00:00:00'):
+            notReserved_dst = False
 
-
-        #print("cap length = ", len(self.pkt))
-
-        '''
-        start = datetime.now()
-        self.cap.apply_on_packets(self.id_unique_addrs)
-        stop = datetime.now()
-        print("time to process_packets from object: %f seconds" % (stop-start).total_seconds())
-
-        '''
-        
-        #Much faster than running "self.cap.apply_on_packets(self.id_unique_addrs)", but requires slower up front processing
-        #start = datetime.now()
-
-
-
-
-
-
-        '''
-        for i, p in enumerate(self.pkt):
-            if i < 2:
-                print(p)
-            self.id_unique_addrs(p)
-        '''
-
-
-
-
-
-        #stop = datetime.now()
-        #print("time to process_packets from list: %f seconds" % (stop-start).total_seconds())
-
-        #self.id_unique_addrs()
-
-    '''
-    def count(self, *args):
-        self.num_pkts += 1;
-    '''
+        if ip_src is not None and notReserved_src:
+            ip2mac.add(mac_src, ip_src)
+        if ip_dst is not None and notReserved_dst:
+            ip2mac.add(mac_dst, ip_dst)
 
     def import_pkts(self):
         print("in import_pkts")
         start = datetime.now()
+        # TODO: Parallelize the import/append
         self.cap.apply_on_packets(self.append_pkt)
         stop_append = datetime.now()
 
-        #:LKJ
         self.extract_pkts()
         stop_xtrct = datetime.now()
         self.id_unique_addrs()
@@ -1282,13 +1495,7 @@ class CaptureDigest:
         print("Time to append:", stop_append-start)
         print("Time to extract:", stop_xtrct-stop_append)
         print("Time for full process:", stop-start)
-        '''
-        for i, p in enumerate(self.pkt):
-            #if i < 2:
-            #    print(p)
-            #self.id_unique_addrs(p)
-            self.id_addr(p)
-        '''
+
         #datetime.utcfromtimestamp(float(self.capTimeStamp)).strftime('%Y-%m-%d %H:%M:%S').split()
         #print(self.pkt[0].sniff_timestamp)
         #print(self.pkt[-1].sniff_timestamp)
@@ -1308,122 +1515,97 @@ class CaptureDigest:
         print(self.fileHash)
         print(self.capDate)
         
-#    def id_unique_addrs(self):
-#        for pkt in self.cap:
-
+    # TODO: Verify this new version is acceptable, or remove if not needed
     def findIP(self, mac, v6=False):
         if v6:
-            if (mac, "ipv6") in self.ip2mac:
-                ip = self.ip2mac[(mac, "ipv6")]
-            else:
-                ip = "Not found"
+            ip_ver = 6
         else:
-            if (mac, "ipv4") in self.ip2mac:
-                ip = self.ip2mac[(mac, "ipv4")]
-            else:
-                ip = "Not found"
+            ip_ver = 4
+        return self.ip2mac.findIP(mac, ip_ver)
 
-        return ip
+        #if v6:
+        #    if (mac, "ipv6") in self.ip2mac:
+        #        ip = self.ip2mac[(mac, "ipv6")]
+        #    else:
+        #        ip = "Not found"
+        #else:
+        #    if (mac, "ipv4") in self.ip2mac:
+        #        ip = self.ip2mac[(mac, "ipv4")]
+        #    else:
+        #        ip = "Not found"
+
+        #return ip
 
     def findIPs(self, mac):
-        if (mac, "ipv4") in self.ip2mac:
-            ip = self.ip2mac[(mac, "ipv4")]
+        ips = self.ip2mac.findIP(mac)
+        if 4 in ips:
+            ipv4_set = ips[4]
         else:
-            ip = "Not found"
-
-        if (mac, "ipv6") in self.ip2mac:
-            ipv6 = self.ip2mac[(mac, "ipv6")]
+            ipv4_set = {'Not found'}
+        if 6 in ips:
+            ipv6_set = ips[6]
         else:
-            ipv6 = "Not found"
+            ipv6_set = {'Not found'}
 
-        return (ip, ipv6)
+        hasMultiple = self.ip2mac.hasMultipleIP(mac)
+        return (ipv4_set, ipv6_set, hasMultiple)
+
+        #if (mac, "ipv4") in self.ip2mac:
+        #    ip = self.ip2mac[(mac, "ipv4")]
+        #else:
+        #    ip = "Not found"
+
+        #if (mac, "ipv6") in self.ip2mac:
+        #    ipv6 = self.ip2mac[(mac, "ipv6")]
+        #else:
+        #    ipv6 = "Not found"
+
+        #return (ip, ipv6)
 
     def extract_pkts(self):
-        # This should be parallelizeable 
+        # This should be parallelizeable
         for p in self.pkt:
-            self.pkt_info.append({"pkt_timestamp":p.sniff_timestamp,
-                                  "mac_addr":'',
-                                  "protocol":p.layers[-1].layer_name.upper(),
-                                  "ip_ver":None, # changed '-1' to None and then ''
-                                  "ip_src":None,
-                                  "ip_dst":None,
+            self.pkt_info.append({"pkt_timestamp": p.sniff_timestamp,
+                                  "mac_addr": '',
+                                  "protocol": p.layers[-1].layer_name.upper(),
+                                  "ip_ver": None,  # changed '-1' to None and then ''
+                                  "ip_src": None,
+                                  "ip_dst": None,
                                   "ew": p.number in self.ew_index,
-                                  "tlp":'',
-                                  "tlp_srcport":None,
-                                  "tlp_dstport":None,
-                                  "length":p.length})
-                                  #"raw":p})
+                                  "tlp": '',
+                                  "tlp_srcport": None,
+                                  "tlp_dstport": None,
+                                  "length": p.length})
 
-            '''
-            self.pkt_info[-1]{"time":p.sniff_timestamp,
-                              "length":p.length,
-                              "protocol":p.layers[-1].layer_name.upper(),
-                              "raw":p}
-            '''
             for l in p.layers:
                 if l.layer_name == "sll":
                     self.pkt_info[-1]["mac_addr"] = l.src_eth
-                    #self.pkt_info[-1]["mac"] = l._all_fields["sll.src.eth"]
                 elif l.layer_name == "eth":
-                    #self.pkt_info[-1]["mac_addr"] = l.addr
                     self.pkt_info[-1]["mac_addr"] = l.src
                 elif l.layer_name == "ip":
-                    #self.pkt_info[-1]["ip_ver"] = l.ip.version
-                    #self.pkt_info[-1]["ip_src"] = l.ip.src
-                    #self.pkt_info[-1]["ip_dst"] = l.ip.dst
                     self.pkt_info[-1]["ip_ver"] = l.version
                     self.pkt_info[-1]["ip_src"] = l.src
                     self.pkt_info[-1]["ip_dst"] = l.dst
-                    #self.pkt_info[-1]["ip_ver"] = l._all_fields["ip.version"]
-                    #self.pkt_info[-1]["ip_src"] = l._all_fields["ip.src"]
-                    #self.pkt_info[-1]["ip_dst"] = l._all_fields["ip.dst"]
                 elif l.layer_name == "ipv6":
                     self.pkt_info[-1]["ip_ver"] = l.version
                     self.pkt_info[-1]["ip_src"] = l.src
                     self.pkt_info[-1]["ip_dst"] = l.dst
                 elif l.layer_name == "tcp":
                     self.pkt_info[-1]["tlp"] = "tcp"
-                    #self.pkt_info[-1]["tlp_srcport"] = l.tcp.srcport
-                    #self.pkt_info[-1]["tlp_dstport"] = l.tcp.dstport
                     self.pkt_info[-1]["tlp_srcport"] = l.srcport
                     self.pkt_info[-1]["tlp_dstport"] = l.dstport
-                    #self.pkt_info[-1]["tcp_srcport"] = l.tcp.srcport
-                    #self.pkt_info[-1]["tcp_dstport"] = l.tcp.dstport
-                    ##self.pkt_info[-1]["tcp_srcport"] = l._all_fields["tcp.srcport"]
-                    ##self.pkt_info[-1]["tcp_dstport"] = l._all_fields["tcp.dstport"]
-                    #self.pkt_info[-1]["udp_srcport"] = ''
-                    #self.pkt_info[-1]["udp_dstport"] = ''
                 elif l.layer_name == "udp":
                     self.pkt_info[-1]["tlp"] = "udp"
-                    #self.pkt_info[-1]["tlp_srcport"] = l.udp.srcport
-                    #self.pkt_info[-1]["tlp_dstport"] = l.udp.dstport
                     self.pkt_info[-1]["tlp_srcport"] = l.srcport
                     self.pkt_info[-1]["tlp_dstport"] = l.dstport
-                    #self.pkt_info[-1]["udp_srcport"] = l.udp.srcport
-                    #self.pkt_info[-1]["udp_dstport"] = l.udp.dstport
-                    ##self.pkt_info[-1]["udp_srcport"] = l._all_fields["udp.srcport"]
-                    ##self.pkt_info[-1]["udp_dstport"] = l._all_fields["udp.dstport"]
-                    #self.pkt_info[-1]["tcp_srcport"] = ''
-                    #self.pkt_info[-1]["tcp_dstport"] = ''
                 elif l.layer_name != p.layers[-1].layer_name:
                     print("Warning: Unknown/Unsupported layer seen here:", l.layer_name)
-                #could add some sort of check for the direction here, potentially. Maybe add post
-                #self.pkt_info[-1]["direction"] = #n/s or e/w
-
+                # could add some sort of check for the direction here, potentially. Maybe add post
+                # self.pkt_info[-1]["direction"] = #n/s or e/w
 
     def id_unique_addrs(self):
         for p in self.pkt:
-            self.id_addr(p) #;lkj
-            
-            #:LKJ
-            '''
-            self.pkt_info[-1]["time"] = sniff_timestamp
-            #self.pkt_info[-1]["dst"] = p.ip.dst?
-            self.pkt_info[-1]["protocol"] = p.layers[-1].layer_name.upper()
-            self.pkt_info[-1]["length"] = p.length
-            #self.pkt_info[-1]["direction"] = #n/s or e/w
-            self.pkt_info[-1]["raw"] = p
-            '''
+            self.id_addr(p)
 
     def id_addr(self, pkt):
         # Try to get the MAC address
@@ -1492,6 +1674,7 @@ class CaptureDigest:
 
     #Need to check on what this is for (2020-02-20)
     #TBD in the future (2019-06-13)
+    # TODO: Update this to pull necessary information from the Database rather than opening the file again
     def load_from_db(self, fpath):
         self.fpath = fpath
         self.fdir, self.fname = os.path.split(fpath)

@@ -803,7 +803,7 @@ class  MudCaptureApplication(tk.Frame):
         progress_var = tk.IntVar()
         progress_bar = ttk.Progressbar(self.w_import_progress, variable=progress_var, maximum=self.cap.fsize)
         progress_bar.grid(row=1, column=0)
-        self.w_import_progress.pack_slaves()
+        #self.w_import_progress.pack_()
 
         progress_var.set(self.cap.progress)
         self.w_import_progress.update()
@@ -962,7 +962,8 @@ class  MudCaptureApplication(tk.Frame):
             '''
                 #self.cap.import_pkts()
             #:LKJ
-            self.cap.import_pkts()
+            # TODO: Make sure MP functions before permanent removal
+            #self.cap.import_pkts()
 
             #self.import_with_progbar(CaptureDigest(entries[0][1].get()))
             
@@ -1159,7 +1160,7 @@ class  MudCaptureApplication(tk.Frame):
 
         '''
         # Select first element of each list
-        # Try becuase the list might be empty
+        # Try because the list might be empty
         self.unidentified_dev_list.focus(0)
         self.unidentified_dev_list.selection_set(0)
         self.identified_dev_list.focus(0)
@@ -1341,7 +1342,13 @@ class  MudCaptureApplication(tk.Frame):
                     self.db_handler.db.select_last_insert_id()
                     deviceID = self.db_handler.db.cursor.fetchone()[0]
 
-                    (ip, ipv6) = self.cap.findIPs(mac)
+                    # TODO COMPLETE THE REPLACEMENT OF THE OLD findIP and findIPs functions
+                    (ip_set, ipv6_set, hasMultiple) = self.cap.findIPs(mac)
+                    if hasMultiple:
+                        print("Warning: multiple IPv4 or IPv6 addresses found, providing the first one only")
+                    ip = list(ip_set)[0]
+                    ipv6 = list(ipv6_set)[0]
+                    #(ip, ipv6) = self.cap.findIPs(mac)
 
                     # Insert device_state info into device_state table
                     self.db_handler.db.insert_device_state_unlabeled(
@@ -1380,7 +1387,13 @@ class  MudCaptureApplication(tk.Frame):
                     elif self.db_handler.db.cursor.rowcount == 0:
                         #ip = self.cap.findIP(mac)
                         #ipv6 = self.cap.findIP(mac, v6=True)
-                        (ip, ipv6) = self.cap.findIPs(mac)
+                        # TODO COMPLETE THE REPLACEMENT OF THE OLD findIP and findIPs functions
+                        (ip_set, ipv6_set, hasMultiple) = self.cap.findIPs(mac)
+                        if hasMultiple:
+                            print("Warning: multiple IPv4 or IPv6 addresses found, providing the first one only")
+                        ip = list(ip_set)[0]
+                        ipv6 = list(ipv6_set)[0]
+                        #(ip, ipv6) = self.cap.findIPs(mac)
 
                         # May want to modify this not to take the previous fw_version
                         #self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,

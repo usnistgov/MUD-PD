@@ -5,7 +5,7 @@
 
 from src.bidict import BiDict
 from src.capture_database import CaptureDatabase
-#from capture_database import DatabaseHandler
+# from capture_database import DatabaseHandler
 from src.capture_database import CaptureDigest
 from src.lookup import lookup_mac, lookup_hostname
 from src.generate_mudfile import MUDgeeWrapper
@@ -19,7 +19,7 @@ from datetime import timedelta
 import hashlib
 import math
 import multiprocessing
-#from multiprocessing import Process, Queue
+# from multiprocessing import Process, Queue
 import mysql.connector
 import pyshark
 import subprocess
@@ -29,35 +29,41 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename
+from configparser import ConfigParser
 
-field2db = BiDict( {'File':'fileName', 'Activity':'activity', 'Notes (optional)':'details',
-                    'Lifecycle Phase':'lifecyclePhase','Setup':'setup', 'Normal Operation':'normalOperation', 'Removal':'removal',
-                    'Internet':'internet', 'Human Interaction':'humanInteraction', 'Preferred DNS Enabled':'preferredDNS','Isolated':'isolated',
-                    'Duration-based':'durationBased', 'Duration':'duration', 'Action-based':'actionBased', 'Action':'deviceAction',
-                    'Date of Capture':'capDate', 'Time of Capture':'capTime',
-                    'Manufacturer':'mfr' , 'MAC':'mac_addr', 'Model':'model', 'Internal Name':'internalName',
-                    'Category':'deviceCategory', 'Notes':'notes',
-                    #'MUD':'mudCapable', 'WiFi':'wifi', 'Bluetooth':'bluetooth', 'Zigbee':'zigbee',
-                    'MUD':'mudCapable', 'WiFi':'wifi', 'Ethernet':'ethernet', 'Bluetooth':'bluetooth', 'Zigbee':'zigbee',
-                    'ZWave':'zwave', '3G':'G3', '4G':'G4', '5G':'G5', 'Other':'otherProtocols',
-                    'Firmware Version': 'fw_ver', 'IP Address' : 'ipv4_addr', 'IPv6 Address' : 'ipv6_addr'})
+field2db = BiDict({'File': 'fileName', 'Activity': 'activity', 'Notes (optional)': 'details',
+                   'Lifecycle Phase': 'lifecyclePhase', 'Setup': 'setup', 'Normal Operation': 'normalOperation',
+                   'Removal': 'removal',
+                   'Internet': 'internet', 'Human Interaction': 'humanInteraction',
+                   'Preferred DNS Enabled': 'preferredDNS', 'Isolated': 'isolated',
+                   'Duration-based': 'durationBased', 'Duration': 'duration', 'Action-based': 'actionBased',
+                   'Action': 'deviceAction',
+                   'Date of Capture': 'capDate', 'Time of Capture': 'capTime',
+                   'Manufacturer': 'mfr', 'MAC': 'mac_addr', 'Model': 'model', 'Internal Name': 'internalName',
+                   'Category': 'deviceCategory', 'Notes': 'notes',
+                   # 'MUD':'mudCapable', 'WiFi':'wifi', 'Bluetooth':'bluetooth', 'Zigbee':'zigbee',
+                   'MUD': 'mudCapable', 'WiFi': 'wifi', 'Ethernet': 'ethernet', 'Bluetooth': 'bluetooth',
+                   'Zigbee': 'zigbee',
+                   'ZWave': 'zwave', '3G': 'G3', '4G': 'G4', '5G': 'G5', 'Other': 'otherProtocols',
+                   'Firmware Version': 'fw_ver', 'IP Address': 'ipv4_addr', 'IPv6 Address': 'ipv6_addr'})
 dbFields = 'host', 'database', 'user', 'passwd'
 dbNewFields = 'host', 'user', 'passwd', 'new database'
-#dbField2Var = {'Host' : 'host', 'Database' : 'database', 'Username' : 'user', 'Password' : 'passwd'}
-#captureFields = 'File', 'Activity', 'Notes (optional)'
+APIFields = 'api_key'
+# dbField2Var = {'Host' : 'host', 'Database' : 'database', 'Username' : 'user', 'Password' : 'passwd'}
+# captureFields = 'File', 'Activity', 'Notes (optional)'
 captureFields = 'File', 'Notes (optional)'
 lifecyclePhaseFields = 'Setup', 'Normal Operation', 'Removal'
-captureEnvFields = 'Internet', 'Human Interaction', 'Preferred DNS Enabled','Isolated'
+captureEnvFields = 'Internet', 'Human Interaction', 'Preferred DNS Enabled', 'Isolated'
 captureTypeFields = 'Duration-based', 'Duration', 'Action-based', 'Action'
-#captureField2Var = {'File' : 'fileLoc', 'Activity' : 'activity', 'Details' : 'details'}
-captureInfoFields = 'Date of Capture', 'Time of Capture'#, 'Devices'
-#deviceFields = 'Model', 'Internal Name', 'Device Category', 'Communication Standards', 'Notes'
+# captureField2Var = {'File' : 'fileLoc', 'Activity' : 'activity', 'Details' : 'details'}
+captureInfoFields = 'Date of Capture', 'Time of Capture'  # , 'Devices'
+# deviceFields = 'Model', 'Internal Name', 'Device Category', 'Communication Standards', 'Notes'
 deviceFields = 'Manufacturer', 'Model', 'MAC', 'Internal Name', 'Category', 'Notes', 'Capabilities'
-#deviceField2Var = {'Model' : 'model', 'Internal Name' : 'internalName', 'Device Category' : 'deviceCategory', 'Communication Standards', 'Notes': 'notes'}
-#deviceOptions = 'WiFi', 'Bluetooth', 'Zigbee', 'ZWave', '4G', '5G', 'Other'
+# deviceField2Var = {'Model' : 'model', 'Internal Name' : 'internalName', 'Device Category' : 'deviceCategory', 'Communication Standards', 'Notes': 'notes'}
+# deviceOptions = 'WiFi', 'Bluetooth', 'Zigbee', 'ZWave', '4G', '5G', 'Other'
 deviceOptions = 'MUD', 'WiFi', 'Ethernet', 'Bluetooth', 'Zigbee', 'ZWave', '3G', '4G', '5G', 'Other'
-#deviceOptions2Var = {'WiFi' : 'wifi', 'Bluetooth' : 'bluetooth', 'Zigbee' : 'zigbee', 'ZWave' : 'zwave', '4G' : '4G', '5G' : '5G', 'Other', 'other'}
-#deviceStateFields = 'Firmware Version' #maybe include this with device fields entry and note that it will be associated with the capture only
+# deviceOptions2Var = {'WiFi' : 'wifi', 'Bluetooth' : 'bluetooth', 'Zigbee' : 'zigbee', 'ZWave' : 'zwave', '4G' : '4G', '5G' : '5G', 'Other', 'other'}
+# deviceStateFields = 'Firmware Version' #maybe include this with device fields entry and note that it will be associated with the capture only
 
 
 '''
@@ -788,27 +794,26 @@ class  MudCaptureApplication(tk.Frame):
         '''
         return entries
 
-
     def import_with_progbar(self, cap=None):
-        #tk.Tk().withdraw()
+        # tk.Tk().withdraw()
         self.w_import_progress = tk.Toplevel()
         self.w_import_progress.wm_title("Capture Import")
         self.w_import_progress.geometry("200x50")
         if cap != None:
             self.cap = cap
-        #self.cap = cap
+        # self.cap = cap
 
         tk.Label(self.w_import_progress, text="Import progress", width=20).grid(row=0, column=0)
 
         progress_var = tk.IntVar()
         progress_bar = ttk.Progressbar(self.w_import_progress, variable=progress_var, maximum=self.cap.fsize)
         progress_bar.grid(row=1, column=0)
-        #self.w_import_progress.pack_()
+        # self.w_import_progress.pack_()
 
         progress_var.set(self.cap.progress)
         self.w_import_progress.update()
-        
-        #start = datetime.now()
+
+        # start = datetime.now()
         def update_progress():
             for i, pkt in enumerate(self.cap.cap):
                 if i % 4095 == 0:
@@ -963,7 +968,7 @@ class  MudCaptureApplication(tk.Frame):
                 #self.cap.import_pkts()
             #:LKJ
             # TODO: Make sure MP functions before permanent removal
-            #self.cap.import_pkts()
+            # self.cap.import_pkts()
 
             #self.import_with_progbar(CaptureDigest(entries[0][1].get()))
             
@@ -1393,7 +1398,7 @@ class  MudCaptureApplication(tk.Frame):
                             print("Warning: multiple IPv4 or IPv6 addresses found, providing the first one only")
                         ip = list(ip_set)[0]
                         ipv6 = list(ipv6_set)[0]
-                        #(ip, ipv6) = self.cap.findIPs(mac)
+                        # (ip, ipv6) = self.cap.findIPs(mac)
 
                         # May want to modify this not to take the previous fw_version
                         #self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
@@ -2017,6 +2022,11 @@ class  MudCaptureApplication(tk.Frame):
                 else:
                     ent = tk.Entry(row)
                     ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
+                    if field == 'Model':
+                        try:
+                            ent.insert(30, self.cap.modellookup[mac_addr])
+                        except KeyError as ke:
+                            print("Model not found for: ", str(ke))
 
             if not i:
                 ent.insert(30, mfr)
@@ -3813,8 +3823,11 @@ class  MudCaptureApplication(tk.Frame):
 
 
 import time
+
+
 def epoch2datetime(epochtime):
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(epochtime))
+
 
 from configparser import ConfigParser
 

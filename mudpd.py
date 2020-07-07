@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # Local Modules
-import _mysql_connector
+# import _mysql_connector
 
 from src.bidict import BiDict
 from src.capture_database import CaptureDatabase
@@ -1029,8 +1029,8 @@ class MudCaptureApplication(tk.Frame):
                 self.import_with_progbar()
             '''
             # self.cap.import_pkts()
-            #:LKJ
-            self.cap.import_pkts()
+            # :LKJ
+            # self.cap.import_pkts()
             # self.cap.extract_fingerprint(self.cap.fpath)
 
             # self.import_with_progbar(CaptureDigest(entries[0][1].get()))
@@ -1225,7 +1225,7 @@ class MudCaptureApplication(tk.Frame):
 
         '''
         # Select first element of each list
-        # Try becuase the list might be empty
+        # Try because the list might be empty
         self.unidentified_dev_list.focus(0)
         self.unidentified_dev_list.selection_set(0)
         self.identified_dev_list.focus(0)
@@ -1409,7 +1409,13 @@ class MudCaptureApplication(tk.Frame):
                     self.db_handler.db.select_last_insert_id()
                     deviceID = self.db_handler.db.cursor.fetchone()[0]
 
-                    (ip, ipv6) = self.cap.findIPs(mac)
+                    # TODO COMPLETE THE REPLACEMENT OF THE OLD findIP and findIPs functions
+                    (ip_set, ipv6_set, hasMultiple) = self.cap.findIPs(mac)
+                    if hasMultiple:
+                        print("Warning: multiple IPv4 or IPv6 addresses found, providing the first one only")
+                    ip = list(ip_set)[0]
+                    ipv6 = list(ipv6_set)[0]
+                    #(ip, ipv6) = self.cap.findIPs(mac)
 
                     # Insert device_state info into device_state table
                     self.db_handler.db.insert_device_state_unlabeled(
@@ -1437,9 +1443,8 @@ class MudCaptureApplication(tk.Frame):
                     print(deviceID, type(deviceID))
                     self.db_handler.db.select_device(deviceID)
 
-                    (
-                    _, mfr, model, _, internalName, category, mudCapable, wifi, ethernet, bluetooth, G3, G4, G5, zigbee,
-                    zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
+                    (_, mfr, model, _, internalName, category, mudCapable, wifi, ethernet, bluetooth,
+                     G3, G4, G5, zigbee, zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
 
                     # Get device state info
                     # self.db_handler.db.select_device_state(self.cap.fileHash, mac)
@@ -1450,7 +1455,13 @@ class MudCaptureApplication(tk.Frame):
                     elif self.db_handler.db.cursor.rowcount == 0:
                         # ip = self.cap.findIP(mac)
                         # ipv6 = self.cap.findIP(mac, v6=True)
-                        (ip, ipv6) = self.cap.findIPs(mac)
+                        # TODO COMPLETE THE REPLACEMENT OF THE OLD findIP and findIPs functions
+                        (ip_set, ipv6_set, hasMultiple) = self.cap.findIPs(mac)
+                        if hasMultiple:
+                            print("Warning: multiple IPv4 or IPv6 addresses found, providing the first one only")
+                        ip = list(ip_set)[0]
+                        ipv6 = list(ipv6_set)[0]
+                        # (ip, ipv6) = self.cap.findIPs(mac)
 
                         # May want to modify this not to take the previous fw_version
                         # self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
@@ -1552,9 +1563,9 @@ class MudCaptureApplication(tk.Frame):
                         self.db_handler.db.select_device_state(self.cap.id, deviceID)
                         (deviceStateID, _, _, fw_ver, ip, ipv6) = self.db_handler.db.cursor.fetchone()
 
-                        # self.labeled_dev_list.append((deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
-                        self.labeled_dev_list.append_unique(
-                            (deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
+                        #self.labeled_dev_list.append((deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
+                        self.labeled_dev_list.append_unique((deviceID, mfr, model, internalName,
+                                                             category, mac_addr, ip, ipv6))
 
                         self.cap.labeledDev.append(deviceID)
             else:
@@ -1562,10 +1573,10 @@ class MudCaptureApplication(tk.Frame):
 
                     # Collect necessary information about device and place it into unlabeled_dev_list listbox
                     self.db_handler.db.select_device(deviceID)
-                    print("deviceID", deviceID)
-                    # (_, mfr, model, mac_addr, internalName, category, mudCapable, wifi, ethernet, bluetooth, G3, G4, G5, zigbee, zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
-                    (_, mfr, _, mac_addr, _, _, _, _, _, _, _, _, _, _, _, _, _,
-                     unlabeled) = self.db_handler.db.cursor.fetchone()
+                    print("deviceID",deviceID)
+                    #(_, mfr, model, mac_addr, internalName, category, mudCapable, wifi, ethernet, bluetooth, G3, G4, G5, zigbee, zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
+                    (_, mfr, _, mac_addr, _, _, _, _, _, _, _, _, _, _, _, _, _, unlabeled) = \
+                        self.db_handler.db.cursor.fetchone()
 
                     self.db_handler.db.select_device_state(self.cap.id, deviceID)
                     # (deviceStateID, _, _, fw_ver, ip, ipv6) = self.db_handler.db.cursor.fetchone()
@@ -1588,15 +1599,15 @@ class MudCaptureApplication(tk.Frame):
                     if deviceID not in labeledDeviceIDs:
                         # Collect necessary information about device and move it into the labeled_dev_list listbox
                         self.db_handler.db.select_device(deviceID)
-                        (_, mfr, model, mac_addr, internalName, category, mudCapable, wifi, ethernet, bluetooth, G3, G4,
-                         G5, zigbee, zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
+                        (_, mfr, model, mac_addr, internalName, category, mudCapable, wifi, ethernet, bluetooth,
+                         G3, G4, G5, zigbee, zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
 
                         self.db_handler.db.select_device_state(self.cap.id, deviceID)
                         (deviceStateID, _, _, fw_ver, ip, ipv6) = self.db_handler.db.cursor.fetchone()
 
                         # self.labeled_dev_list.append((deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
-                        self.labeled_dev_list.append_unique(
-                            (deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
+                        self.labeled_dev_list.append_unique((deviceID, mfr, model, internalName,
+                                                             category, mac_addr, ip, ipv6))
 
                         # self.cap.labeledDev.append(deviceID)
             else:
@@ -1605,8 +1616,8 @@ class MudCaptureApplication(tk.Frame):
                     # Collect necessary information about device and place it into labeled_dev_list listbox
                     self.db_handler.db.select_device(deviceID)
                     # (_, mfr, model, mac_addr, internalName, category, mudCapable, wifi, ethernet, bluetooth, G3, G4, G5, zigbee, zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
-                    (_, mfr, model, mac_addr, internalName, category, _, _, _, _, _, _, _, _, _, _, _,
-                     unlabeled) = self.db_handler.db.cursor.fetchone()
+                    (_, mfr, model, mac_addr, internalName, category, _, _, _, _, _, _, _, _, _, _, _, unlabeled) = \
+                        self.db_handler.db.cursor.fetchone()
 
                     self.db_handler.db.select_device_state(self.cap.id, deviceID)
                     (deviceStateID, _, _, fw_ver, ip, ipv6) = self.db_handler.db.cursor.fetchone()
@@ -1614,9 +1625,9 @@ class MudCaptureApplication(tk.Frame):
                     if unlabeled:
                         print("ERROR with populating labeled device list (device is unlabeled)")
                         return
-                    # self.labeled_dev_list.append((deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
-                    self.labeled_dev_list.append_unique(
-                        (deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
+                    #self.labeled_dev_list.append((deviceID, mfr, model, internalName, category, mac_addr, ip, ipv6))
+                    self.labeled_dev_list.append_unique((deviceID, mfr, model, internalName,
+                                                         category, mac_addr, ip, ipv6))
 
             # if unlabeled:
             #    #self.unlabeled_dev_list.append((lookup_mac(mac), mac.upper(), self.cap.findIP(mac), self.cap.findIP(mac, v6=True)))
@@ -1673,7 +1684,6 @@ class MudCaptureApplication(tk.Frame):
                                                             "ipv6_addr":ipv6})
                 else:
                     print("ERROR, something went horribly wrong with the database")
-
 
             else:
                 # Insert device info into device table
@@ -2038,8 +2048,8 @@ class MudCaptureApplication(tk.Frame):
         # dev_in_cap_data['imported'] = True
 
         b_import = tk.Button(self.w_dev, text='Import',
-                             command=(
-                                 lambda e=ents, d=dev_in_cap_data, i=(ipv4, ipv6): self.import_dev_and_close(e, d, i)))
+                                  command=(lambda e=ents, d=dev_in_cap_data, i=(ipv4, ipv6):
+                                           self.import_dev_and_close(e,d,i)))
 
         b_cancel = tk.Button(self.w_dev, text='Cancel', command=self.w_dev.destroy)
 
@@ -2165,21 +2175,20 @@ class MudCaptureApplication(tk.Frame):
         except TypeError as te:
             fw_ver = ''
 
-        device_state_data = {  # 'fileHash'     : dev_in_cap_data['fileHash'],
-            'fileID': dev_in_cap_data['fileID'],
-            'mac_addr': mac,
-            # 'deviceID'     : dev_in_cap_data['deviceID'],
-            'deviceID': deviceID,
-            'internalName': device_data['internalName'],
-            'fw_ver': fw_ver,
-            # 'ipv4_addr'    : self.cap.findIP(mac),
-            # 'ipv6_addr'    : self.cap.findIP(mac, v6=True)}
-            'ipv4_addr': ips[0],
-            'ipv6_addr': ips[1]}
+        device_state_data = {'fileID': dev_in_cap_data['fileID'],
+                             'mac_addr': mac,
+                             # 'deviceID'     : dev_in_cap_data['deviceID'],
+                             'deviceID': deviceID,
+                             'internalName': device_data['internalName'],
+                             'fw_ver': fw_ver,
+                             # 'ipv4_addr'    : self.cap.findIP(mac),
+                             # 'ipv6_addr'    : self.cap.findIP(mac, v6=True)}
+                             'ipv4_addr': ips[0],
+                             'ipv6_addr': ips[1]}
 
         try:
             self.popup_update_device_state(device_state_data)
-        except _mysql_connector.MySQLInterfaceError as msqle:
+        except mysql.connector.MySQLInterfaceError as msqle:
             tk.Tk().withdraw()
             messagebox.showerror("Error", "Please create a unique Internal Name")
 
@@ -2191,8 +2200,8 @@ class MudCaptureApplication(tk.Frame):
 
         ents = self.make_form_device_state(device_state_data)
 
-        self.w_dev_state.bind('<Return>',
-                              (lambda event, d=device_state_data, e=ents: self.import_dev_state_and_close(d, e)))
+        self.w_dev_state.bind('<Return>', (lambda event, d=device_state_data, e=ents:
+                                           self.import_dev_state_and_close(d, e)))
 
         b_update = tk.Button(self.w_dev_state, text='Update',
                              command=(lambda d=device_state_data, e=ents: self.import_dev_state_and_close(d, e)))
@@ -2265,8 +2274,7 @@ class MudCaptureApplication(tk.Frame):
             text = entry[1].get()
             print('%s: "%s"' % (field, text))
 
-            # Uses Treeview
-
+    # Uses Treeview
     def populate_capture_list(self):
         # clear previous list
         self.cap_list.clear()
@@ -2878,9 +2886,8 @@ class MudCaptureApplication(tk.Frame):
         # TO BE COMPLETED
         self.b_internal_addr_modify = tk.Button(botFrame, text='Modify', state='disabled',
                                                 # command=(lambda d=self.identified_dev_list.get_selected_row(): self.prep_popup_update_device_state(d)))
-                                                command=(lambda
-                                                             d=self.labeled_dev_list.get_selected_row(): self.prep_popup_update_device_state(
-                                                    d)))
+                                                command=(lambda d=self.labeled_dev_list.get_selected_row():
+                                                         self.prep_popup_update_device_state(d)))
 
         self.b_internal_addr_close.pack(side=tk.LEFT, padx=5, pady=5)
         self.b_internal_addr_new.pack(side=tk.RIGHT, padx=5, pady=5)
@@ -3078,8 +3085,8 @@ class MudCaptureApplication(tk.Frame):
 
             if pcap[1] == "All...":
                 # self.db_handler.db.select_imported_captures_with({"dev_mac":self.dev_mac, "gateway_mac":self.gateway_mac})
-                self.db_handler.db.select_imported_captures_with(
-                    {"deviceID": self.deviceID, "gatewayID": self.gatewayID})
+                self.db_handler.db.select_imported_captures_with({"deviceID":self.deviceID,
+                                                                  "gatewayID":self.gatewayID})
                 # for (id, fileName, fileLoc, fileHash, capDate, activity, details) in self.db_handler.db.cursor:
 
                 for (id, fileName, fileLoc, fileHash, capDate, capDuration, lifecyclePhase,
@@ -3281,7 +3288,7 @@ class MudCaptureApplication(tk.Frame):
         gate_select_label = tk.Label(self.row_gate, width=20, text="Select the network gateway:", anchor='w')
         gate_select_label.pack(side=tk.LEFT)
 
-
+        
 
         self.mud_gate_list = ['--']
         self.mud_gate_var = tk.StringVar(self.w_gen_mud)
@@ -3488,7 +3495,7 @@ class MudCaptureApplication(tk.Frame):
 
         ## Bot PCAP Frame
         # Title
-        self.report_pcap_title_var = tk.StringVar()
+        self.report_pcap_title_var=tk.StringVar()
         self.report_pcap_title_var.set("Select Packet Captures (PCAPs):")
         self.report_pcap_title = tk.Label(self.botReportPCAPFrame, textvariable=self.report_pcap_title_var,
                                           bg="#eeeeee", bd=1, relief="flat")

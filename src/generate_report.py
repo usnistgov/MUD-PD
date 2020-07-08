@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
-## Datatypes
+#############
+# Datatypes #
+#############
 # device_info = {'name':<internal_name>, 'mac':<mac_address>}
 #
 # capture_info = {'filename':<internal_name>,
@@ -10,7 +12,7 @@
 #                 'start_time':<time capture started>,
 #                 'end_time':<time capture stopped>,
 #                 'capDuration':<duration of capture>,
-##                 'internet':<Boolean state of internet access>, #DEPRECATED
+#                # 'internet':<Boolean state of internet access>, #DEPRECATED
 #                 'other_devices':
 #                     [{'name':<internal name_0>, 'mac':<mac address_0>},
 #                      {'name':<internal name_1>, 'mac':<mac address_1>},
@@ -45,17 +47,16 @@
 from datetime import datetime
 from datetime import timedelta
 
-class ReportGenerator():
+
+class ReportGenerator:
 
     def __init__(self, device_info):
-        self.header = 'This document serves to indicate the devices and operations captured in addition to any specific procedures or environmental details of the captures that differs from the general procedure found in the main README.txt'
+        self.header = 'This document serves to indicate the devices and operations captured ' \
+                      'in addition to any specific procedures or environmental details of the captures ' \
+                      'that differs from the general procedure found in the main README.txt'
         self.date = datetime.today().date()
         self.device_info = device_info
-        #self.file = '../reports/' + device_info['name'] + '_' + str(self.date)
         self.file = 'reports/' + self.device_info['name'] + '_' + str(self.date) + '.txt'
-        '''
-        self.comm_info{'devices':[],'serv':[]}
-        '''
 
     def write_header(self):
         with open(self.file, 'w') as f:
@@ -80,8 +81,7 @@ class ReportGenerator():
             if capture_info['actionBased']:
                 f.write('    Action:\t%s\n' % capture_info['deviceAction'])
             f.write('Duration-based Capture:\t%s\n' % bool(capture_info['durationBased']))
-            #f.write('Activity:\t%s\n' % capture_info['activity'])
-            #f.write('Modifiers:\t%s\n' % capture_info['modidifiers'])
+
             if capture_info['durationBased']:
                 f.write('    Intended Duration:\t%s\n' % capture_info['duration'])
                 f.write('    Actual Duration:\t%s\n' % str(timedelta(seconds=capture_info['capDuration'])))
@@ -91,14 +91,14 @@ class ReportGenerator():
                 f.write('Start Time:\t%s\n' % str(capture_info['start_time']))
                 f.write('End Time:\t%s\n' % str(capture_info['end_time']))
                 f.write('Actual Duration:\t%s\n' % str(timedelta(seconds=capture_info['capDuration'])))
-            #f.write('Duration:\t%s\n' % str(capture_info['capDuration']))
+
             f.write('Other Devices:\n')
 
             for dev in capture_info['other_devices']:
-                print("dev:",dev)
+                print("dev:", dev)
                 f.write('    Name:  %s\n' % str(dev['name']))
                 f.write('     MAC:  %s\n' % dev['mac'])
-                #f.write('\n')
+
             f.write('Notes:\n\t%s\n' % capture_info['details'])
 
     '''
@@ -109,12 +109,10 @@ class ReportGenerator():
             self.comm_info{'serv'}.append(communication_info)
     '''
 
-    #def write_communication_info(self):
     def write_communication_info(self, communication_info):
         with open(self.file, 'a') as f:
             f.write('\n')
             f.write('Devices (E/W):\n')
-            #for dev in self.comm_info['devices']:
             for dev in communication_info['devices']:
                 f.write('Name:\t%s\n' % dev['other_devices']['name'])
                 f.write('MAC Address:\t%s\n' % dev['other_devices']['mac'])
@@ -135,12 +133,10 @@ class ReportGenerator():
                     f.write('  Port Out:\t%s\n' % protocol['egress']['port_out'])
                     f.write('\n')
 
-                           
             f.write('Servers/Services (N/S):')
-            #for serv in self.comm_info['serv']:
             for serv in communication_info['serv']:
                 f.write('Hostname:\t%s\n' % serv['hostname'])
-                f.write('MAC:\t%s\n' %  serv['mac'])
+                f.write('MAC:\t%s\n' % serv['mac'])
                 
                 f.write('IP Addresses:')
                 for ip in dev['ip']:
@@ -156,4 +152,3 @@ class ReportGenerator():
                     f.write('  Port In:\t%s\n' % protocol['egress']['port_in'])
                     f.write('  Port Out:\t%s\n' % protocol['egress']['port_out'])
                     f.write('\n')
-                           

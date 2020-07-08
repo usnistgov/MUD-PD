@@ -5,23 +5,23 @@ import os
 import tempfile
 
         
-class MUDgeeWrapper():
+class MUDgeeWrapper:
     def __init__(self, **kwargs):
 
-        self.config = {}
+        self.config = dict()
         self.config["defaultGatewayConfig"] = {}
         self.config["deviceConfig"] = {}
         self.config["pcapLocation"] = ''
 
         if len(kwargs) == 0:
-            self.config={
+            self.config = {
                 "defaultGatewayConfig": {
-                    "macAddress" : '',
+                    "macAddress": '',
                     "ipAddress": "192.168.1.1",
                     "ipv6Address": "fe80::1"
                     },
 
-                "deviceConfig":{
+                "deviceConfig": {
                     "device": '',
                     "deviceName": ''
                     },
@@ -48,7 +48,7 @@ class MUDgeeWrapper():
         self.config["deviceConfig"]["device"] = mac
         self.config["deviceConfig"]["deviceName"] = name
 
-    def set_pcapLocation(self, pcap_path='./temp_config.json'):
+    def set_pcap_location(self, pcap_path='./temp_config.json'):
         self.config["pcapLocation"] = pcap_path
 
     def write_config(self, dest_path="./mud_config.json"):
@@ -58,27 +58,28 @@ class MUDgeeWrapper():
     def gen_mudfile(self, capture_files):
         print("capture_files:", capture_files)
         print("len(cap_files):", len(capture_files))
-        with tempfile.TemporaryDirectory() as dir:
+        with tempfile.TemporaryDirectory() as temp_dir:
             # Merge capture files
-            merge_command = 'mergecap -w ' + dir + '/merged_caps.pcap' + ' %s'*len(capture_files) % tuple(capture_files)
+            merge_command = 'mergecap -w ' + temp_dir + '/merged_caps.pcap' + \
+                            ' %s'*len(capture_files) % tuple(capture_files)
             print('merge_command', merge_command)
             os.system(merge_command)
 
             # Create configuration file for MUDGEE
-            #self.set_pcapLocation(pcap_path = (os.getcwd() + '/' + dir + '/merged_caps.pcap'))
-            self.set_pcapLocation(pcap_path = (dir + '/merged_caps.pcap'))
-            self.write_config(dest_path = (dir + '/temp_config.json') )
+            self.set_pcap_location(pcap_path=(temp_dir + '/merged_caps.pcap'))
+            self.write_config(dest_path=(temp_dir + '/temp_config.json'))
 
             # Generate MUD File with MUDGEE
             print("Generating MUD file using MUDgee")
-            config_command = 'java -jar ../mudgee/target/mudgee-1.0.0-SNAPSHOT.jar ' + dir + '/temp_config.json'
+            config_command = 'java -jar ../mudgee/target/mudgee-1.0.0-SNAPSHOT.jar ' + temp_dir + '/temp_config.json'
             os.system(config_command)
 
             # Move MUD File from MUDGEE
             print("Moving MUD file from MUDgee to mudpi/mudpd")
-            #mv_command = 'mv ../mudgee/result/* mudfiles/'
             mv_command = 'mv result/ mudfiles/'
             os.system(mv_command)
+
+
 '''
 def merge_captures(capture_files):
     path = os.getcwd() + '/tmp'
@@ -89,8 +90,6 @@ def merge_captures(capture_files):
         print("Creation of the directory %s failed" % path)
         return
 '''
-
-
 
 '''
 def gen_mudfile(config, capture_files):
@@ -112,5 +111,4 @@ def gen_mudfile(config, capture_files):
 
         # Move MUD File from MUDGEE
         mv_command = 'mv ../mudgee/results/* mudfiles/'
-        
 '''

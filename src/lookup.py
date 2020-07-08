@@ -3,6 +3,7 @@
 import json
 import requests
 from socket import gethostbyname, gaierror
+
 #from socket import *
 
 def lookup_mac(mac):
@@ -34,6 +35,8 @@ def lookup_mac(mac):
 
 # Hostname Lookup
 import socket
+
+
 def lookup_hostname(ip_addr):
     try:
         r = socket.gethostbyaddr(ip_addr)
@@ -52,3 +55,20 @@ def lookup_hostname(ip_addr):
     else:
         print(r[0])
         return r[0]
+
+#Fingerbank API Lookup
+def lookup_fingerbank(dhcp_fingerprint, device_hostname, mac, api_key):
+    BASE_URL = "https://api.fingerbank.org/api/v2/combinations/interrogate?"
+    url = BASE_URL + 'key=' + api_key
+    data = {"dhcp_fingerprint": dhcp_fingerprint, "hostname": device_hostname, "mac": mac}
+    print(data)
+    url = BASE_URL + 'key=' + api_key
+    print("Fingerbank request sent")
+    r = requests.get(url, data)
+    if r.status_code == 200:
+        data = r.json()
+        response = {"name": data["device"]["name"]}
+        print("Returned web info:", device_hostname, response)
+        return response
+    else:
+        print("Fingerprint not retrieved")

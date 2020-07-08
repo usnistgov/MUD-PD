@@ -867,7 +867,7 @@ class MudCaptureApplication(tk.Frame):
         progress_var = tk.IntVar()
         progress_bar = ttk.Progressbar(self.w_import_progress, variable=progress_var, maximum=self.cap.fsize)
         progress_bar.grid(row=1, column=0)
-        self.w_import_progress.pack_slaves()
+        self.w_import_progress.pack()
 
         progress_var.set(self.cap.progress)
         self.w_import_progress.update()

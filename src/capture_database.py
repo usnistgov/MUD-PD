@@ -1177,7 +1177,6 @@ class Mac2IP(dict):
 
 class CaptureDigest:
 
-
     def __init__(self, fpath, mp=True):  # , gui=False):
         from mudpd import MudCaptureApplication
         self.api_key = MudCaptureApplication.read_api_config(self)

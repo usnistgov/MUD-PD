@@ -804,10 +804,10 @@ class CaptureDatabase:
         self.cursor.execute(self.create_protocol)
         self.cnx.commit()
 
-    # SQL Insertion Commands
+    ##########################
+    # SQL Insertion Commands #
+    ##########################
     def insert_capture(self, data_capture):
-        # self.cap = CaptureDigest(data_capture.get(fpath, "none"))
-
         self.cursor.execute(self.add_capture, data_capture)
         self.cnx.commit()
 
@@ -815,8 +815,6 @@ class CaptureDatabase:
         self.cursor.execute(self.add_device, data_device)
         self.cnx.commit()
 
-    # def insert_device_unidentified(self, data_device):
-    #    self.cursor.execute(self.add_device_unidentified, data_device)
     def insert_device_unlabeled(self, data_device):
         self.cursor.execute(self.add_device_unlabeled, data_device)
         self.cnx.commit()
@@ -841,8 +839,6 @@ class CaptureDatabase:
         self.cursor.execute(self.add_device_state, data_device_state)
         self.cnx.commit()
 
-    # def insert_device_state_unidentified(self, data_device_state):
-    #    self.cursor.execute(self.add_device_state_unidentified, data_device_state)
     def insert_device_state_unlabeled(self, data_device_state):
         self.cursor.execute(self.add_device_state_unlabeled, data_device_state)
         self.cnx.commit()
@@ -863,97 +859,106 @@ class CaptureDatabase:
         self.cursor.execute(self.add_protocol, data_protocol)
         self.cnx.commit()
 
-    # SQL Query Commands
+    ######################
+    # SQL Query Commands #
+    ######################
     def select_unique_captures(self):
         self.cursor.execute(self.query_unique_capture)
+        return self.cursor.fetchall()
 
     def select_imported_captures(self):
         self.cursor.execute(self.query_imported_capture)
+        return self.cursor.fetchall()
 
-    # def select_imported_captures_with(self, device, gateway):
-    #    self.cursor.execute(self.query_imported_capture_with, devices)
-
-    # def select_imported_captures_with(self, devices):
-    #    self.cursor.execute(self.query_imported_capture_with, devices)
     def select_imported_captures_with(self, deviceIDs):
         self.cursor.execute(self.query_imported_capture_with, deviceIDs)
+        return self.cursor.fetchall()
 
-    # def select_imported_captures_with_device(self, device):
-    #    self.cursor.execute(self.query_imported_capture_with_device, device)
     def select_imported_captures_with_device(self, deviceID):
         self.cursor.execute(self.query_imported_capture_with_device, deviceID)
+        return self.cursor.fetchall()
 
-    # def select_devices_from_cap(self, capture):
-    #    self.cursor.execute(self.query_device_from_capture, (capture,))
     def select_devices_from_caplist(self, captureIDs):
-        # self.cursor.execute(self.query_device_from_capture_list, (",".join( map(str, captureIDs) ),) )
         format_strings = ",".join(['%s'] * len(captureIDs))
         self.cursor.execute(self.query_device_from_capture_list % format_strings, tuple(captureIDs))
-        self.cnx.commit()
-
-    def select_devices_from_cap(self, captureID):
-        self.cursor.execute(self.query_device_from_capture, (captureID,))
+        return self.cursor.fetchall()
 
     # def select_identified_devices_from_cap(self, fileHash):
     #    self.cursor.execute(self.query_identified_devices_from_capture, (fileHash,))
     # def select_identified_devices_from_cap(self, fileID):
     #    self.cursor.execute(self.query_identified_devices_from_capture, (fileID,))
-    def select_labeled_devices_from_cap(self, fileID):
-        self.cursor.execute(self.query_labeled_devices_from_capture, (fileID,))
+
+    # Deprecated
+    # def select_labeled_devices_from_cap(self, fileID):
+    #    self.cursor.execute(self.query_labeled_devices_from_capture, (fileID,))
 
     # def select_most_recent_fw_ver(self, macdatemac):
     #    self.cursor.execute(self.query_most_recent_fw_ver, macdatemac)
     def select_most_recent_fw_ver(self, deviceID_date_deviceID):
         self.cursor.execute(self.query_most_recent_fw_ver, deviceID_date_deviceID)
+        try:
+            (fw_ver,) = self.cursor.fetchone()
+        except TypeError as te:
+            fw_ver = ''
+        return fw_ver
 
     def select_mac_to_mfr(self):
         self.cursor.execute(self.query_mac_to_mfr)
+        return self.cursor.fetchall()
 
     def select_devices(self):
         self.cursor.execute(self.query_devices)
+        return self.cursor.fetchall()
 
     def select_devices_imported(self):
         self.cursor.execute(self.query_devices_imported)
+        return self.cursor.fetchall()
 
-    # def select_devices_imported_ignore(self, ignored_dev):
-    #    self.cursor.execute(self.query_devices_imported_ignore, ignored_dev)
     def select_devices_imported_ignore(self, ignored_deviceID):
         self.cursor.execute(self.query_devices_imported_ignore, ignored_deviceID)
+        return self.cursor.fetchall()
 
-    # def select_gateway_ips(self, gateway):
-    #    self.cursor.execute(self.query_gateway_ips, gateway)
     def select_gateway_ips(self, gatewayID):
         self.cursor.execute(self.query_gateway_ips, gatewayID)
+        return self.cursor.fetchall()
 
     def select_devices_in_caps_except(self, condition_data):
         self.cursor.execute(self.query_devices_in_caps_except, condition_data)
+        return self.cursor.fetchall()
 
     # unknown if needs to be changed
     def select_caps_with_device_where(self, mac_addr_data, conditions):
         self.cursor.execute(self.query_caps_with_device_where + conditions, mac_addr_data)
+        return self.cursor.fetchall()
 
-    def select_capID_where_capName(self, capName):
-        self.cursor.execute(self.query_capID_where_capName, (capName,))
+    # Deprecated
+    # def select_capID_where_capName(self, capName):
+    #    self.cursor.execute(self.query_capID_where_capName, (capName,))
 
     # def select_device(self, mac):
     #    self.cursor.execute(self.query_device_info, (mac,))
     def select_device(self, deviceID):
         self.cursor.execute(self.query_device_info, (deviceID,))
+        return self.cursor.fetchall()
 
     # def select_device_state(self, hash, mac):
     #    self.cursor.execute(self.query_device_state, (hash, mac))
     def select_device_state(self, fileID, deviceID):
         self.cursor.execute(self.query_device_state, (fileID, deviceID))
+        return self.cursor.fetchall()
 
-    def select_device_state_exact(self, device_state_data):
-        self.cursor.execute(self.query_device_state_exact, device_state_data)
+    # Deprecated
+    # def select_device_state_exact(self, device_state_data):
+    #    self.cursor.execute(self.query_device_state_exact, device_state_data)
 
     def select_device_macs(self):
         self.cursor.execute(self.query_device_macs)
+        return self.cursor.fetchall()
 
-    def select_device_ids_from_macs(self, deviceMACs):
-        format_strings = ",".join(['%s'] * len(self.deviceMACs))
-        self.cursor.execute(self.query_device_ids_from_macs % format_strings, tuple(deviceMACs))
+    # Deprecated
+    # def select_device_ids_from_macs(self, deviceMACs):
+    #    format_strings = ",".join(['%s'] * len(self.deviceMACs))
+    #    self.cursor.execute(self.query_device_ids_from_macs % format_strings, tuple(deviceMACs))
 
     # work to be done
     def select_packets(self):
@@ -981,6 +986,7 @@ class CaptureDatabase:
 
     def select_last_insert_id(self):
         self.cursor.execute(self.query_last_insert_id)
+        return self.cursor.fetchone()
 
     # Capture table of interest
     def drop_cap_toi(self):
@@ -1050,6 +1056,7 @@ class CaptureDatabase:
         # print(ew)
         # print(num_pkts)
         # print(self.query_packet_toi % {"deviceIDs":format_strings, **ew, "num_pkts":num_pkts} % tuple(self.deviceID_list))
+        return self.cursor.fetchall()
 
     def drop_pkt_toi(self):
         self.cursor.execute(self.drop_packet_toi)

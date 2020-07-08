@@ -2219,9 +2219,9 @@ class MudCaptureApplication(tk.Frame):
 
         for i, (label, value) in enumerate(device_state_data.items()):
             # if not i:
-            if (label == 'fileID') or (label == 'deviceID'):
+            if label == 'fileID' or label == 'deviceID':
                 continue
-            if (value == None):
+            if value == None:
                 value = ''
             row = tk.Frame(self.w_dev_state)
             row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
@@ -3107,7 +3107,7 @@ class MudCaptureApplication(tk.Frame):
             print("ipv6_addr:", ipv6_addr)
             print("ipv6:", ipv6)
 
-            if (ip != None and ip != ipv4_addr):
+            if ip != None and ip != ipv4_addr:
                 if ip == "Not found" or ip == "0.0.0.0":
                     if ipv4_addr != "Not found" and ipv4_addr != "0.0.0.0":
                         ip = ipv4_addr
@@ -3118,7 +3118,7 @@ class MudCaptureApplication(tk.Frame):
             else:
                 ip = ipv4_addr
 
-            if (ipv6 != None and ipv6 != ipv6_addr):
+            if ipv6 != None and ipv6 != ipv6_addr:
                 if ipv6 == "Not found" or ipv6 == "::":
                     if ipv6_addr != "Not found" and ipv6_addr != "::":
                         ipv6 = ipv6_addr
@@ -3129,15 +3129,15 @@ class MudCaptureApplication(tk.Frame):
             else:
                 ipv6 = ipv6_addr
 
-        if (ip == "Not found" or ip == "0.0.0.0"):
-            if (ipv6 == "Not found" or ipv6 == "::"):
+        if ip == "Not found" or ip == "0.0.0.0":
+            if ipv6 == "Not found" or ipv6 == "::":
                 messagebox.showwarning("MUD Gateway Selection Warning",
                                        "The selected gateway does not have valid IPv4 or IPV6 addresses.")
             else:
                 messagebox.showwarning("MUD Gateway Selection Warning",
                                        "The selected gateway does not have a valid IPv4 address.")
                 # return
-        elif (ipv6 == "Not found" or ipv6 == "::"):
+        elif ipv6 == "Not found" or ipv6 == "::":
             messagebox.showwarning("Problem with MUD Gateway Selection",
                                    "The selected gateway does not have a valid IPv6 address.")
             # return
@@ -3184,7 +3184,6 @@ class MudCaptureApplication(tk.Frame):
         print("self.deviceID:")
         print("\t", self.deviceID)
 
-        # if (ignored_dev == '--'):
         if self.dev_mac == None or self.deviceID == None or self.deviceID == 0:
             print("Returning from gate selection early")
             return
@@ -3419,7 +3418,7 @@ class MudCaptureApplication(tk.Frame):
         print("Populating mud gate list")
         self.mud_gate_list = ['--']
 
-        if (ignored_dev == '--'):
+        if ignored_dev == '--':
             print("Ignored device:", ignored_dev)
             print("Returning")
             return

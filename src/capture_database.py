@@ -1430,7 +1430,6 @@ class CaptureDigest:
                 pkt_dict["mac_addr"] = l.src_eth
                 pkt_dict["mac_src"] = l.src_eth  # TODO: Figure out if the destination MAC is retrievable
                 mac_src = l.src_eth
-                mac_dst = l.dst_eth
             elif l.layer_name == "eth":
                 pkt_dict["mac_addr"] = l.src
                 pkt_dict["mac_src"] = l.src

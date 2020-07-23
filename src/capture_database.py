@@ -1216,13 +1216,13 @@ class CaptureDigest:
             if self.numProcesses > 1:
                 self.splitSize = math.ceil(self.fsize / self.numProcesses / math.pow(2,20))
                 self.numProcesses = math.ceil(self.fsize / (self.splitSize * math.pow(2,20)))
-                self.tempDir = "./.temp/"
+                self.tempDir = './.temp/'
                 if not os.path.exists(self.tempDir):
                     os.makedirs(self.tempDir)
                 else:
-                    subprocess.call('rm ' + self.tempDir + '*', stderr=subprocess.PIPE, shell=True)
+                    subprocess.call('rm ' + self.tempDir + '*', shell=True)
 
-                subprocess.call('tcpdump -r ' + self.fpath + ' -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize), stderr=subprocess.PIPE, shell=True)
+                subprocess.call('tcpdump -r "' + self.fpath + '" -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize), stderr=subprocess.PIPE, shell=True)
                 self.files = subprocess.check_output('ls ' + self.tempDir, stderr=subprocess.STDOUT,
                                                      shell=True).decode('ascii').split()
 

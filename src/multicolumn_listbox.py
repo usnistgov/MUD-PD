@@ -16,23 +16,23 @@ PAD_X = 5
 
 class MultiColumnListbox(object):
     # use a ttk.TreeView as a multicolumn ListBox
-    def __init__(self, parent, header, input_list, selectmode="extended", keep1st=False, exclusionList=[]):
+    def __init__(self, parent, header, input_list, select_mode="extended", keep_first=False, exclusion_list=list()):
         self.parent = parent
         self.header = header
-        self.exclusionList = exclusionList
-        self.displaycolumns = []
+        self.exclusion_list = exclusion_list
+        self.display_columns = list()
 
         self.tree = None
         self.num_nodes = 0
-        self._setup_widgets(selectmode)
+        self._setup_widgets(select_mode)
         self._build_tree(input_list)
-        self.keep1st = keep1st
+        self.keep_first = keep_first
 
-    def _setup_widgets(self, selectmode):
+    def _setup_widgets(self, select_mode):
         container = ttk.Frame(self.parent)
         container.pack(fill='both', expand=True)
         # create a treeview with dual scrollbars
-        self.tree = ttk.Treeview(container, columns=self.header, show="headings", selectmode=selectmode)
+        self.tree = ttk.Treeview(container, columns=self.header, show="headings", selectmode=select_mode)
         vsb = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview)
         hsb = ttk.Scrollbar(container, orient="horizontal", command=self.tree.xview)
 
@@ -45,9 +45,9 @@ class MultiColumnListbox(object):
 
     def _build_tree(self, input_list):
         for col in self.header:
-            if col in self.exclusionList:
+            if col in self.exclusion_list:
                 continue
-            self.displaycolumns.append(col)
+            self.display_columns.append(col)
             self.tree.heading(col, text=col, command=lambda c=col: self._sortby(c, 0))
 
             # adjust the column's width to the header string
@@ -72,27 +72,27 @@ class MultiColumnListbox(object):
         data = [(self.tree.set(child, col), child) for child in self.tree.get_children('')]
 
         # now sort the data in place
-        if self.keep1st:
+        if self.keep_first:
             first = data.pop(0)
         data.sort(reverse=descending)
-        if self.keep1st:
+        if self.keep_first:
             data.insert(0, first)
 
         for ix, item in enumerate(data):
-            if self.keep1st and ix == 0:
+            if self.keep_first and ix == 0:
                 continue
             self.tree.move(item[1], '', ix)
         # switch the heading so it will sort in the opposite direction
         self.tree.heading(col, command=lambda col=col: self._sortby(col, int(not descending)))
 
     def _update_displayColumns(self):
-        self.displaycolumns = list()
+        self.display_columns = list()
 
         for h in self.header:
-            if h not in self.exclusionList:
-                self.displaycolumns.append(h)
+            if h not in self.exclusion_list:
+                self.display_columns.append(h)
 
-        self.tree["displaycolumns"] = self.displaycolumns
+        self.tree["displaycolumns"] = self.display_columns
 
     def bind(self, *args, **kwargs):
         self.tree.bind(*args, **kwargs)
@@ -176,13 +176,13 @@ class MultiColumnListbox(object):
                     self.append(item)
 
     def exclude_column(self, exclusion):
-        if exclusion not in self.exclusionList:
-            self.exclusionList.append(exclusion)
+        if exclusion not in self.exclusion_list:
+            self.exclusion_list.append(exclusion)
         self._update_displayColumns
 
     def include_column(self, inclusion):
-        if inclusion in self.exclusionList:
-            self.exclusionList.remove(inclusion)
+        if inclusion in self.exclusion_list:
+            self.exclusion_list.remove(inclusion)
         self._update_displayColumns
 
     def is_empty(self):
@@ -252,7 +252,7 @@ if __name__ == '__main__':
         (9, 'BMW', 'seat'),
         (10, 'test',)
     ]
-    listbox = MultiColumnListbox(root, car_header, car_list, exclusionList=["ID"])
+    listbox = MultiColumnListbox(root, car_header, car_list, exclusion_list=["ID"])
     mazda = (11, 'Mazda', 'window')
     # listbox.append((11, 'Mazda', 'window'))
 

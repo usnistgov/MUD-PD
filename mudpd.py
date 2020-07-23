@@ -197,7 +197,8 @@ class MudCaptureApplication(tk.Frame):
         # capture list
         self.cap_header = ["id", "Date", "Capture Name", "Activity", "Duration", "Details", "Capture File Location"]
         # self.cap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
-        self.cap_list = MultiColumnListbox(self.capFrame, self.cap_header, list(), keep1st=True, exclusionList=["id"])
+        self.cap_list = MultiColumnListbox(parent=self.capFrame, header=self.cap_header, input_list=list(),
+                                           keep_first=True, exclusion_list=["id"])
         # self.cap_list.bind("<<ListboxSelect>>", self.update_dev_list)
         self.cap_list.bind("<<TreeviewSelect>>", self.update_dev_list)
         '''
@@ -239,7 +240,8 @@ class MudCaptureApplication(tk.Frame):
 
         # device list
         self.dev_header = ["id", "Manufacturer", "Model", "Internal Name", "MAC", "Category"]
-        self.dev_list = MultiColumnListbox(self.devFrame, self.dev_header, list(), keep1st=True, exclusionList=["id"])
+        self.dev_list = MultiColumnListbox(parent=self.devFrame, header=self.dev_header, input_list=list(),
+                                           keep_first=True, exclusion_list=["id"])
         # self.dev_list.bind("<<ListboxSelect>>", self.update_comm_list)
         self.dev_list.bind("<<TreeviewSelect>>", self.update_comm_list)
 
@@ -266,8 +268,8 @@ class MudCaptureApplication(tk.Frame):
                             # "Destination Port", "Length", "Direction", "Raw"] #Direction being NS or EW
                             # "Destination Port", "Length", "Raw"] #Direction being NS or EW
                             "Destination Port", "Length"]  # Direction being NS or EW
-        self.comm_list = MultiColumnListbox(self.commFrame, self.comm_header, list(),
-                                            exclusionList=["id", "fileID"])  # , keep1st=True)
+        self.comm_list = MultiColumnListbox(parent=self.commFrame, header=self.comm_header, input_list=list(),
+                                            exclusion_list=["id", "fileID"])  # , keep1st=True)
         # self.comm_list.bind("<<ListboxSelect>>", self.update_comm_list)
 
         '''
@@ -948,7 +950,7 @@ class MudCaptureApplication(tk.Frame):
         print("packets per process =", ppp)
         # subprocess.call("rm -f ./.temp/*", stderr=subprocess.STDOUT, shell=True))
         # subprocess.call(["rm", temp+"*"], stderr=subprocess.STDOUT, shell=True)
-        subprocess.call("rm " + temp + "*", stderr=subprocess.PIPE, shell=True)
+        subprocess.call("rm " + temp + "*", shell=True)
 
         # subprocess.call(["editcap", "-c", str(ppp), fname, " ./.temp/split.pcap"], stderr=subprocess.STDOUT, shell=True)
         # subprocess.call(["editcap", "-c", str(ppp), self.cap.fpath, temp+"split.pcap"], stderr=subprocess.STDOUT, shell=True)
@@ -1168,36 +1170,23 @@ class MudCaptureApplication(tk.Frame):
         # self.unidentified_title.pack(side="top", fill=tk.X)
         self.unlabeled_title.pack(side="top", fill=tk.X)
 
-        # self.unidentified_dev_header = ["id","Manufacturer", "MAC", "IPv4", "IPv6"]
         self.unlabeled_dev_header = ["id", "Manufacturer", "MAC", "IPv4", "IPv6"]
-        # self.unidentified_dev_list = MultiColumnListbox(parent=self.unidentifiedDevFrame,
-        self.unlabeled_dev_list = MultiColumnListbox(parent=self.unlabeledDevFrame,
-                                                     # header=self.unidentified_dev_header,
-                                                     header=self.unlabeled_dev_header,
-                                                     list=list(), selectmode="browse",
-                                                     exclusionList=["id"])
-        # self.unidentified_dev_list.bind("<<TreeviewSelect>>", self.update_unidentified_list_selection)
+        self.unlabeled_dev_list = MultiColumnListbox(parent=self.unlabeledDevFrame, header=self.unlabeled_dev_header,
+                                                     input_list=list(), select_mode="browse", exclusion_list=["id"])
         self.unlabeled_dev_list.bind("<<TreeviewSelect>>", self.update_unlabeled_list_selection)
 
-        ## Right (Identified) Dev Frame
-        # self.identifiedDevFrame = tk.Frame(self.botDevFrame, width=300)#, bd=1, bg="#dfdfdf")
+        ## Right (Labeled) Dev Frame
         self.labeledDevFrame = tk.Frame(self.botDevFrame, width=300)  # , bd=1, bg="#dfdfdf")
 
         self.labeled_title_var = tk.StringVar()
         self.labeled_title_var.set("Labeled")
-        # self.identified_title = tk.Label(self.identifiedDevFrame, textvariable=self.identified_title_var, bg="#eeeeee", bd=1, relief="flat")
         self.labeled_title = tk.Label(self.labeledDevFrame, textvariable=self.labeled_title_var, bg="#eeeeee", bd=1,
                                       relief="flat")
         self.labeled_title.pack(side="top", fill=tk.X)
 
         self.labeled_dev_header = ["id", "Manufacturer", "Model", "Internal Name", "Category", "MAC", "IPv4", "IPv6"]
-        # self.identified_dev_list = MultiColumnListbox(parent=self.identifiedDevFrame,
-        # self.identified_dev_list = MultiColumnListbox(parent=self.labeledDevFrame,
-        self.labeled_dev_list = MultiColumnListbox(parent=self.labeledDevFrame,
-                                                   header=self.labeled_dev_header,
-                                                   list=list(), selectmode="browse",
-                                                   exclusionList=["id"])
-        # self.identified_dev_list.bind("<<TreeviewSelect>>", self.update_identified_list_selection)
+        self.labeled_dev_list = MultiColumnListbox(parent=self.labeledDevFrame, header=self.labeled_dev_header,
+                                                   input_list=list(), select_mode="browse", exclusion_list=["id"])
         self.labeled_dev_list.bind("<<TreeviewSelect>>", self.update_identified_list_selection)
 
         # Grid placements #
@@ -2844,9 +2833,8 @@ class MudCaptureApplication(tk.Frame):
         botFrame = tk.Frame(self.w_internal_addr, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
 
         addr_range_list_header = ["Lower Bound", "Upper Bound", "IP Version"]
-        addr_range_list = MultiColumnListbox(parent=botFrame,
-                                             header=addr_range_list_header,
-                                             list=list(), selectmode="browse")
+        addr_range_list = MultiColumnListbox(parent=botFrame, header=addr_range_list_header, input_list=list(),
+                                             select_mode="browse")
         # To be aded later
         # self.unidentified_dev_list.bind("<<TreeviewSelect>>", self.update_unidentified_list_selection)
 
@@ -2973,10 +2961,8 @@ class MudCaptureApplication(tk.Frame):
 
         # self.mud_dev_header = ["Manufacturer", "Model", "MAC Address", "Internal Name", "Category"]
         self.mud_dev_header = ["id", "Internal Name", "Manufacturer", "Model", "MAC Address", "Category"]
-        self.mud_dev_list = MultiColumnListbox(parent=self.topMudDevFrame,
-                                               header=self.mud_dev_header,
-                                               list=list(), selectmode="browse",
-                                               exclusionList=["id"])
+        self.mud_dev_list = MultiColumnListbox(parent=self.topMudDevFrame, header=self.mud_dev_header,
+                                               input_list=list(), select_mode="browse", exclusion_list=["id"])
         # unidentified_list_selection
         # self.mud_dev_list.bind("<<TreeviewSelect>>", self.update_gateway_list_selection)
         self.mud_dev_list.bind("<<TreeviewSelect>>", self.populate_mud_gate_list)
@@ -2990,10 +2976,8 @@ class MudCaptureApplication(tk.Frame):
 
         self.mud_gate_header = ["id", "Internal Name", "Manufacturer", "Model", "Category",
                                 "MAC Address", "IPv4", "IPv6"]
-        self.mud_gate_list = MultiColumnListbox(parent=self.midMudGateFrame,
-                                                header=self.mud_gate_header,
-                                                list=list(), selectmode="browse",
-                                                exclusionList=["id"])
+        self.mud_gate_list = MultiColumnListbox(parent=self.midMudGateFrame, header=self.mud_gate_header,
+                                                input_list=list(), select_mode="browse", exclusion_list=["id"])
         # identified_list_selection
         # self.mud_gate_list.bind("<<TreeviewSelect>>", self.update_pcap_list_selection)
         self.mud_gate_list.bind("<<TreeviewSelect>>", self.populate_mud_pcap_list)
@@ -3008,10 +2992,8 @@ class MudCaptureApplication(tk.Frame):
         self.mud_pcap_header = ["id", "Date", "Capture Name", "Activity", "Duration (seconds)", "Details",
                                 "Capture File Location"]
         # self.mud_pcap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
-        self.mud_pcap_list = MultiColumnListbox(parent=self.botMudPCAPFrame,
-                                                header=self.mud_pcap_header,
-                                                list=list(), keep1st=True,
-                                                exclusionList=["id"])
+        self.mud_pcap_list = MultiColumnListbox(parent=self.botMudPCAPFrame, header=self.mud_pcap_header,
+                                                input_list=list(), keep_first=True, exclusion_list=["id"])
         # identified_list_selection
         self.mud_pcap_list.bind("<<TreeviewSelect>>", self.select_mud_pcaps)
 
@@ -3466,10 +3448,8 @@ class MudCaptureApplication(tk.Frame):
 
         # Listbox
         self.report_dev_header = ["id", "Internal Name", "Manufacturer", "Model", "MAC Address", "Category"]
-        self.report_dev_list = MultiColumnListbox(parent=self.topReportDevFrame,
-                                                  header=self.report_dev_header,
-                                                  list=list(), keep1st=True,
-                                                  exclusionList=["id"])
+        self.report_dev_list = MultiColumnListbox(parent=self.topReportDevFrame, header=self.report_dev_header,
+                                                  input_list=list(), keep_first=True, exclusion_list=["id"])
         self.report_dev_list.bind("<<TreeviewSelect>>", self.populate_report_pcap_list)
 
         ## Bot PCAP Frame
@@ -3483,11 +3463,8 @@ class MudCaptureApplication(tk.Frame):
         # Listbox
         self.report_pcap_header = ["id", "Date", "Capture Name", "Activity", "Duration (seconds)", "Details",
                                    "Capture File Location", "ID"]
-        # self.report_pcap_header = ["Date","Capture Name","Activity", "Details", "Capture File Location", "ID"]
-        self.report_pcap_list = MultiColumnListbox(parent=self.botReportPCAPFrame,
-                                                   header=self.report_pcap_header,
-                                                   list=list(), keep1st=True,
-                                                   exclusionList=["id"])
+        self.report_pcap_list = MultiColumnListbox(parent=self.botReportPCAPFrame, header=self.report_pcap_header,
+                                                   input_list=list(), keep_first=True, exclusion_list=["id"])
         self.report_pcap_list.bind("<<TreeviewSelect>>", self.select_report_pcaps)
 
         # Grid placements #

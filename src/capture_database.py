@@ -3,22 +3,23 @@
 import hashlib
 
 # MySQl libraries
-from configparser import ConfigParser
+# from configparser import ConfigParser
 from datetime import datetime
 from functools import partial
 from datetime import timedelta
 # from lookup import *
 from IPy import IP
 from src.lookup import *
-import logging
+# import logging
 import math
 from multiprocessing import Pool, Manager
 import mysql.connector
-from mysql.connector import MySQLConnection, Error
+# from mysql.connector import MySQLConnection, Error
+from mysql.connector import Error
 import os
 import pyshark
 import subprocess
-import tempfile
+# import tempfile
 
 
 class CaptureDatabase:
@@ -517,13 +518,13 @@ class CaptureDatabase:
                     "VALUES (%(fileID)s, %(deviceID)s, %(protocol), %(src_port)s, %(dst_ip_addr)s, %(ipv6)s, %(dst_url)s, %(dst_port)s, %(notes)s);")
 
     # Queries
-    query_unique_capture = ("SELECT fileHash FROM capture;")
+    # TODO: CHECKS  QUERY IS NECESSARY OR SHOULD BE REPLACED WITH FOLLOWING LINE
+    query_unique_capture = "SELECT fileHash FROM capture;"
     # query_unique_capture = ("SELECT id FROM capture;")
 
-    query_imported_capture = ("SELECT * FROM capture;")
+    query_imported_capture = "SELECT * FROM capture;"
 
     query_imported_capture_with = (
-        # "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, cap.activity, cap.details "
         "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, "
         "    cap.lifecyclePhase, cap.internet, cap.humanInteraction, cap.preferredDNS, cap.isolated, "
         "    cap.durationBased, cap.duration, cap.actionBased, cap.deviceAction, cap.details "
@@ -596,14 +597,15 @@ class CaptureDatabase:
                                 "     ) AS q2 ON ds.fileID=q2.fileID "
                                 " WHERE ds.deviceID = %(deviceID)s;")
 
-    query_mac_to_mfr = ("SELECT * FROM mac_to_mfr;")
+    query_mac_to_mfr = "SELECT * FROM mac_to_mfr;"
 
-    query_devices = ("SELECT * FROM device;")
+    query_devices = "SELECT * FROM device;"
 
     # query_devices_imported = ("SELECT * FROM device WHERE not ISNULL(internalName);")
-    query_devices_imported = ("SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
-                              "FROM device "
-                              "WHERE NOT ISNULL(internalName);")
+    query_devices_imported = (
+        "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
+        "FROM device "
+        "WHERE NOT ISNULL(internalName);")
 
     query_devices_imported_ignore_noIPs = (
         "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
@@ -683,47 +685,49 @@ class CaptureDatabase:
         "    ON c.fileHash=d.fileHash")
     '''
 
-    query_capID_where_capName = ("SELECT id FROM capture WHERE fileName=%s;")
+    query_capID_where_capName = "SELECT id FROM capture WHERE fileName=%s;"
 
     # query_device_info =  ("SELECT * FROM device WHERE mac_addr=%s;")
-    query_device_info = ("SELECT * FROM device WHERE id=%s;")
+    query_device_info = "SELECT * FROM device WHERE id=%s;"
 
     # query_device_macs = ("SELECT mac_addr FROM device;")
     # query_device_macs = ("SELECT id, mac_addr FROM device;")
-    query_device_macs = ("SELECT id, mac_addr, unlabeled FROM device;")
+    query_device_macs = "SELECT id, mac_addr, unlabeled FROM device;"
 
-    query_device_ids_from_macs = ("SELECT id, mac_addr FROM device WHERE mac_addr IN (%s);")
+    query_device_ids_from_macs = "SELECT id, mac_addr FROM device WHERE mac_addr IN (%s);"
 
     # query_device_state = ("SELECT * FROM device_state WHERE fileHash=%s AND mac_addr=%s;")
-    query_device_state = ("SELECT * FROM device_state WHERE fileID=%s AND deviceID=%s;")
+    query_device_state = "SELECT * FROM device_state WHERE fileID=%s AND deviceID=%s;"
 
-    query_device_state_exact = ("SELECT * FROM device_state WHERE "
-                                # " fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s AND "
-                                # " internalName=%(internalName)s AND fw_ver=%(fw_ver)s AND "
-                                # " ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
-                                " fileID=%(fileID)s AND deviceID=%(deviceID)s AND "
-                                " fw_ver=%(fw_ver)s AND ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
+    query_device_state_exact = (
+        "SELECT * FROM device_state WHERE "
+        # " fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s AND "
+        # " internalName=%(internalName)s AND fw_ver=%(fw_ver)s AND "
+        # " ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
+        " fileID=%(fileID)s AND deviceID=%(deviceID)s AND "
+        " fw_ver=%(fw_ver)s AND ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
 
     # query_device_communication = ("SELECT * FROM protocol WHERE device=%s;")
-    query_device_communication = ("SELECT * FROM protocol WHERE deviceID=%s;")
+    query_device_communication = "SELECT * FROM protocol WHERE deviceID=%s;"
 
     # query_device_communication_by_capture = ("SELECT * FROM protocol WHERE device=%(device)s AND fileHash=%(fileHash)s;")
     query_device_communication_by_capture = (
-        "SELECT * FROM protocol WHERE deviceID=%(deviceID)s AND fileID=%(fileID)s;")
+        "SELECT * FROM protocol "
+        "WHERE deviceID=%(deviceID)s AND fileID=%(fileID)s;")
 
-    query_pkts = ("SELECT * FROM packet;")
+    query_pkts = "SELECT * FROM packet;"
 
     # query_pkts_by_capture = ("SELECT * FROM packet WHERE fileHash=%(fileHash)s;")
-    query_pkts_by_capture = ("SELECT * FROM packet WHERE fileID=%(fileID)s;")
+    query_pkts_by_capture = "SELECT * FROM packet WHERE fileID=%(fileID)s;"
 
     # query_pkts_by_capture_and_device = ("SELECT * FROM packet WHERE fileHash=%(fileHash)s AND dev...;")
 
     # query_pkts_by_device = ("SELECT * FROM packet WEHRE dev...;")
 
     # query_device_strings = ("SELECT * FROM strings WHERE device=%s;")
-    query_device_strings = ("SELECT * FROM strings WHERE deviceID=%s;")
+    query_device_strings = "SELECT * FROM strings WHERE deviceID=%s;"
 
-    query_last_insert_id = ("SELECT last_insert_id();")
+    query_last_insert_id = "SELECT last_insert_id();"
 
     def __init__(self, db_config):  # =None, new_db=False):
         # if new_db:
@@ -804,10 +808,10 @@ class CaptureDatabase:
         self.cursor.execute(self.create_protocol)
         self.cnx.commit()
 
-    # SQL Insertion Commands
+    ##########################
+    # SQL Insertion Commands #
+    ##########################
     def insert_capture(self, data_capture):
-        # self.cap = CaptureDigest(data_capture.get(fpath, "none"))
-
         self.cursor.execute(self.add_capture, data_capture)
         self.cnx.commit()
 
@@ -815,8 +819,6 @@ class CaptureDatabase:
         self.cursor.execute(self.add_device, data_device)
         self.cnx.commit()
 
-    # def insert_device_unidentified(self, data_device):
-    #    self.cursor.execute(self.add_device_unidentified, data_device)
     def insert_device_unlabeled(self, data_device):
         self.cursor.execute(self.add_device_unlabeled, data_device)
         self.cnx.commit()
@@ -841,8 +843,6 @@ class CaptureDatabase:
         self.cursor.execute(self.add_device_state, data_device_state)
         self.cnx.commit()
 
-    # def insert_device_state_unidentified(self, data_device_state):
-    #    self.cursor.execute(self.add_device_state_unidentified, data_device_state)
     def insert_device_state_unlabeled(self, data_device_state):
         self.cursor.execute(self.add_device_state_unlabeled, data_device_state)
         self.cnx.commit()
@@ -863,97 +863,106 @@ class CaptureDatabase:
         self.cursor.execute(self.add_protocol, data_protocol)
         self.cnx.commit()
 
-    # SQL Query Commands
+    ######################
+    # SQL Query Commands #
+    ######################
     def select_unique_captures(self):
         self.cursor.execute(self.query_unique_capture)
+        return self.cursor.fetchall()
 
     def select_imported_captures(self):
         self.cursor.execute(self.query_imported_capture)
+        return self.cursor.fetchall()
 
-    # def select_imported_captures_with(self, device, gateway):
-    #    self.cursor.execute(self.query_imported_capture_with, devices)
-
-    # def select_imported_captures_with(self, devices):
-    #    self.cursor.execute(self.query_imported_capture_with, devices)
     def select_imported_captures_with(self, deviceIDs):
         self.cursor.execute(self.query_imported_capture_with, deviceIDs)
+        return self.cursor.fetchall()
 
-    # def select_imported_captures_with_device(self, device):
-    #    self.cursor.execute(self.query_imported_capture_with_device, device)
     def select_imported_captures_with_device(self, deviceID):
         self.cursor.execute(self.query_imported_capture_with_device, deviceID)
+        return self.cursor.fetchall()
 
-    # def select_devices_from_cap(self, capture):
-    #    self.cursor.execute(self.query_device_from_capture, (capture,))
     def select_devices_from_caplist(self, captureIDs):
-        # self.cursor.execute(self.query_device_from_capture_list, (",".join( map(str, captureIDs) ),) )
         format_strings = ",".join(['%s'] * len(captureIDs))
         self.cursor.execute(self.query_device_from_capture_list % format_strings, tuple(captureIDs))
-        self.cnx.commit()
-
-    def select_devices_from_cap(self, captureID):
-        self.cursor.execute(self.query_device_from_capture, (captureID,))
+        return self.cursor.fetchall()
 
     # def select_identified_devices_from_cap(self, fileHash):
     #    self.cursor.execute(self.query_identified_devices_from_capture, (fileHash,))
     # def select_identified_devices_from_cap(self, fileID):
     #    self.cursor.execute(self.query_identified_devices_from_capture, (fileID,))
-    def select_labeled_devices_from_cap(self, fileID):
-        self.cursor.execute(self.query_labeled_devices_from_capture, (fileID,))
+
+    # Deprecated
+    # def select_labeled_devices_from_cap(self, fileID):
+    #    self.cursor.execute(self.query_labeled_devices_from_capture, (fileID,))
 
     # def select_most_recent_fw_ver(self, macdatemac):
     #    self.cursor.execute(self.query_most_recent_fw_ver, macdatemac)
     def select_most_recent_fw_ver(self, deviceID_date_deviceID):
         self.cursor.execute(self.query_most_recent_fw_ver, deviceID_date_deviceID)
+        try:
+            (fw_ver,) = self.cursor.fetchone()
+        except TypeError as te:
+            fw_ver = ''
+        return fw_ver
 
     def select_mac_to_mfr(self):
         self.cursor.execute(self.query_mac_to_mfr)
+        return self.cursor.fetchall()
 
     def select_devices(self):
         self.cursor.execute(self.query_devices)
+        return self.cursor.fetchall()
 
     def select_devices_imported(self):
         self.cursor.execute(self.query_devices_imported)
+        return self.cursor.fetchall()
 
-    # def select_devices_imported_ignore(self, ignored_dev):
-    #    self.cursor.execute(self.query_devices_imported_ignore, ignored_dev)
     def select_devices_imported_ignore(self, ignored_deviceID):
         self.cursor.execute(self.query_devices_imported_ignore, ignored_deviceID)
+        return self.cursor.fetchall()
 
-    # def select_gateway_ips(self, gateway):
-    #    self.cursor.execute(self.query_gateway_ips, gateway)
     def select_gateway_ips(self, gatewayID):
         self.cursor.execute(self.query_gateway_ips, gatewayID)
+        return self.cursor.fetchall()
 
     def select_devices_in_caps_except(self, condition_data):
         self.cursor.execute(self.query_devices_in_caps_except, condition_data)
+        return self.cursor.fetchall()
 
     # unknown if needs to be changed
     def select_caps_with_device_where(self, mac_addr_data, conditions):
         self.cursor.execute(self.query_caps_with_device_where + conditions, mac_addr_data)
+        return self.cursor.fetchall()
 
-    def select_capID_where_capName(self, capName):
-        self.cursor.execute(self.query_capID_where_capName, (capName,))
+    # Deprecated
+    # def select_capID_where_capName(self, capName):
+    #    self.cursor.execute(self.query_capID_where_capName, (capName,))
 
     # def select_device(self, mac):
     #    self.cursor.execute(self.query_device_info, (mac,))
     def select_device(self, deviceID):
         self.cursor.execute(self.query_device_info, (deviceID,))
+        return self.cursor.fetchall()
 
     # def select_device_state(self, hash, mac):
     #    self.cursor.execute(self.query_device_state, (hash, mac))
     def select_device_state(self, fileID, deviceID):
         self.cursor.execute(self.query_device_state, (fileID, deviceID))
+        return self.cursor.fetchall()
 
-    def select_device_state_exact(self, device_state_data):
-        self.cursor.execute(self.query_device_state_exact, device_state_data)
+    # Deprecated
+    # def select_device_state_exact(self, device_state_data):
+    #    self.cursor.execute(self.query_device_state_exact, device_state_data)
 
     def select_device_macs(self):
         self.cursor.execute(self.query_device_macs)
+        return self.cursor.fetchall()
 
-    def select_device_ids_from_macs(self, deviceMACs):
-        format_strings = ",".join(['%s'] * len(self.deviceMACs))
-        self.cursor.execute(self.query_device_ids_from_macs % format_strings, tuple(deviceMACs))
+    # Deprecated
+    # def select_device_ids_from_macs(self, deviceMACs):
+    #    format_strings = ",".join(['%s'] * len(self.deviceMACs))
+    #    self.cursor.execute(self.query_device_ids_from_macs % format_strings, tuple(deviceMACs))
 
     # work to be done
     def select_packets(self):
@@ -981,6 +990,7 @@ class CaptureDatabase:
 
     def select_last_insert_id(self):
         self.cursor.execute(self.query_last_insert_id)
+        return self.cursor.fetchone()
 
     # Capture table of interest
     def drop_cap_toi(self):
@@ -1050,6 +1060,7 @@ class CaptureDatabase:
         # print(ew)
         # print(num_pkts)
         # print(self.query_packet_toi % {"deviceIDs":format_strings, **ew, "num_pkts":num_pkts} % tuple(self.deviceID_list))
+        return self.cursor.fetchall()
 
     def drop_pkt_toi(self):
         self.cursor.execute(self.drop_packet_toi)
@@ -1177,6 +1188,7 @@ class Mac2IP(dict):
 
 class CaptureDigest:
 
+    IPS_2_IGNORE = ['RESERVED', 'UNSPECIFIED', 'LOOPBACK', 'UNASSIGNED', 'DOCUMENTATION']  # 'LINKLOCAL'
 
     def __init__(self, fpath, mp=True):  # , gui=False):
         from mudpd import MudCaptureApplication
@@ -1204,13 +1216,13 @@ class CaptureDigest:
             if self.numProcesses > 1:
                 self.splitSize = math.ceil(self.fsize / self.numProcesses / math.pow(2,20))
                 self.numProcesses = math.ceil(self.fsize / (self.splitSize * math.pow(2,20)))
-                self.tempDir = "./.temp/"
+                self.tempDir = './.temp/'
                 if not os.path.exists(self.tempDir):
                     os.makedirs(self.tempDir)
                 else:
-                    subprocess.call('rm ' + self.tempDir + '*', stderr=subprocess.PIPE, shell=True)
+                    subprocess.call('rm ' + self.tempDir + '*', shell=True)
 
-                subprocess.call('tcpdump -r ' + self.fpath + ' -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize), stderr=subprocess.PIPE, shell=True)
+                subprocess.call('tcpdump -r "' + self.fpath + '" -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize), stderr=subprocess.PIPE, shell=True)
                 self.files = subprocess.check_output('ls ' + self.tempDir, stderr=subprocess.STDOUT,
                                                      shell=True).decode('ascii').split()
 
@@ -1222,6 +1234,8 @@ class CaptureDigest:
                 print("Time to split file:", stop - start)
 
             else:
+                print("cpu_count is only %i. Need 4+ for multiprocessing the pcap files" % os.cpu_count())
+                self.numProcesses = 1
                 self.files = [self.fpath]
 
             start1 = datetime.now()
@@ -1414,10 +1428,8 @@ class CaptureDigest:
         for l in p.layers:
             if l.layer_name == "sll":
                 pkt_dict["mac_addr"] = l.src_eth
-                pkt_dict["mac_src"] = l.src_eth
-                pkt_dict["mac_dst"] = l.dst_eth
+                pkt_dict["mac_src"] = l.src_eth  # TODO: Figure out if the destination MAC is retrievable
                 mac_src = l.src_eth
-                mac_dst = l.dst_eth
             elif l.layer_name == "eth":
                 pkt_dict["mac_addr"] = l.src
                 pkt_dict["mac_src"] = l.src
@@ -1436,10 +1448,15 @@ class CaptureDigest:
                 dst_type = IP(ip_dst).iptype()
                 if src_type == 'PUBLIC' or dst_type == 'PUBLIC':
                     pkt_dict['ew'] = False
-                if src_type == 'RESERVED' or src_type == 'LOOPBACK' or ip_src == '0.0.0.0':
+                # TODO: DOUBLE CHECK THAT THIS NEW CHECK WORKS
+                if src_type in self.IPS_2_IGNORE:
                     notReserved_src = False
-                if dst_type == 'RESERVED' or dst_type == 'LOOPBACK' or ip_dst == '0.0.0.0':
+                # if src_type == 'RESERVED' or src_type == 'LOOPBACK' or ip_src == '0.0.0.0':
+                #    notReserved_src = False
+                if dst_type in self.IPS_2_IGNORE:
                     notReserved_dst = False
+                # if dst_type == 'RESERVED' or dst_type == 'LOOPBACK' or ip_dst == '0.0.0.0':
+                #    notReserved_dst = False
             elif l.layer_name == "ipv6":
                 pkt_dict["ip_ver"] = l.version
                 pkt_dict["ip_src"] = l.src
@@ -1448,12 +1465,18 @@ class CaptureDigest:
                 ip_dst = l.src
                 src_type = IP(ip_src).iptype()
                 dst_type = IP(ip_dst).iptype()
+                # TODO: CHECK IF PUTTING THIS CHECK INTO THE IPS_2_IGNORE if true
                 if src_type == 'PUBLIC' or dst_type == 'PUBLIC':
                     pkt_dict['ew'] = False
-                if src_type == 'RESERVED' or src_type == 'LOOPBACK' or ip_src == '::':
+                # TODO: DOUBLE CHECK THAT THIS NEW CHECK WORKS
+                if src_type in self.IPS_2_IGNORE:
                     notReserved_src = False
-                if dst_type == 'RESERVED' or dst_type == 'LOOPBACK' or ip_dst == '::':
+                # if src_type == 'RESERVED' or src_type == 'LOOPBACK' or ip_src == '::':
+                #    notReserved_src = False
+                if dst_type in self.IPS_2_IGNORE:
                     notReserved_dst = False
+                # if dst_type == 'RESERVED' or dst_type == 'LOOPBACK' or ip_dst == '::':
+                #    notReserved_dst = False
             elif l.layer_name == "tcp":
                 pkt_dict["tlp"] = "tcp"
                 pkt_dict["tlp_srcport"] = l.srcport
@@ -1522,19 +1545,6 @@ class CaptureDigest:
             ip_ver = 4
         return self.ip2mac.findIP(mac, ip_ver)
 
-        #if v6:
-        #    if (mac, "ipv6") in self.ip2mac:
-        #        ip = self.ip2mac[(mac, "ipv6")]
-        #    else:
-        #        ip = "Not found"
-        #else:
-        #    if (mac, "ipv4") in self.ip2mac:
-        #        ip = self.ip2mac[(mac, "ipv4")]
-        #    else:
-        #        ip = "Not found"
-
-        #return ip
-
     def findIPs(self, mac):
         ips = self.ip2mac.findIP(mac)
         if 4 in ips:
@@ -1548,18 +1558,6 @@ class CaptureDigest:
 
         hasMultiple = self.ip2mac.hasMultipleIP(mac)
         return (ipv4_set, ipv6_set, hasMultiple)
-
-        #if (mac, "ipv4") in self.ip2mac:
-        #    ip = self.ip2mac[(mac, "ipv4")]
-        #else:
-        #    ip = "Not found"
-
-        #if (mac, "ipv6") in self.ip2mac:
-        #    ipv6 = self.ip2mac[(mac, "ipv6")]
-        #else:
-        #    ipv6 = "Not found"
-
-        #return (ip, ipv6)
 
     def extract_pkts(self):
         # This should be parallelizeable

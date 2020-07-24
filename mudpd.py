@@ -2052,7 +2052,11 @@ class MudCaptureApplication(tk.Frame):
 
     def make_form_device(self, fields, options, mfr, mac_addr):
         entries = []
-
+        dev_name = self.cap.modellookup[mac_addr]
+        print("Device Name: ", dev_name)
+        cache_data = self.db_handler.db.select_cache_device({'model': dev_name})
+        print("Cache Data: ", cache_data)
+        print("Options: ", options)
         for i, field in enumerate(fields):
             row = tk.Frame(self.w_dev)
             row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
@@ -2071,7 +2075,7 @@ class MudCaptureApplication(tk.Frame):
                     ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
                     if field == 'Model':
                         try:
-                            ent.insert(30, self.cap.modellookup[mac_addr])
+                            ent.insert(30, dev_name)
                         except KeyError as ke:
                             print("Model not found for: ", str(ke))
 
@@ -2090,7 +2094,8 @@ class MudCaptureApplication(tk.Frame):
                 # lab.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
                 lab.pack(side=tk.LEFT)
                 ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
-
+                if cache_data:
+                    ent.insert(30, cache_data[0][i+1])
                 entries.append((option, ent))
             else:
                 if i % 5 == 0:
@@ -2101,9 +2106,9 @@ class MudCaptureApplication(tk.Frame):
                 ckb = tk.Checkbutton(row, text=option, width=10, justify=tk.LEFT, variable=checkvar)
                 ckb.pack(side=tk.LEFT, anchor="w")
 
-                if option == "wifi" or option == "WiFi":
-                    checkvar.set(True)
-
+                if cache_data:
+                    if cache_data[0][i + 1] == 1:
+                        checkvar.set(True)
                 entries.append((option, checkvar))
 
         return entries

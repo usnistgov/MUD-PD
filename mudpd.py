@@ -2052,7 +2052,11 @@ class MudCaptureApplication(tk.Frame):
 
     def make_form_device(self, fields, options, mfr, mac_addr):
         entries = []
-        dev_name = self.cap.modellookup[mac_addr]
+        dev_name = ""
+        try:
+            dev_name = self.cap.modellookup[mac_addr]
+        except KeyError as ke:
+            print("Model not found for: ", str(ke))
         print("Device Name: ", dev_name)
         cache_data = self.db_handler.db.select_cache_device({'model': dev_name})
         print("Cache Data: ", cache_data)

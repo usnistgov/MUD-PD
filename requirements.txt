@@ -1,3 +1,5 @@
-mysql-connector-python
-pyshark
-requests
+mysql-connector-python~=8.0.21
+pyshark~=0.4.2.11
+requests~=2.24.0
+
+IPy~=1.0

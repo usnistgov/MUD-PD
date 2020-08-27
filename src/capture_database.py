@@ -30,6 +30,7 @@ class CaptureDatabase:
 
     drop_tables = (
         "DROP TABLE IF EXISTS "
+        "    cache, "
         "    capture, "
         "    device_in_capture, "
         "    mac_to_mfr, "
@@ -93,6 +94,20 @@ class CaptureDatabase:
         "    notes TEXT DEFAULT NULL, "
         # "    unidentified BOOL DEFAULT TRUE);")
         "    unlabeled BOOL DEFAULT TRUE);")
+
+    create_cache = (
+        "CREATE TABLE cache ( "
+        "    model VARCHAR(200) PRIMARY KEY, "
+        "    mudCapable BOOL DEFAULT FALSE, "
+        "    wifi BOOL DEFAULT FALSE, "
+        "    ethernet BOOL DEFAULT FALSE, "
+        "    bluetooth BOOL DEFAULT FALSE, "
+        "    zigbee BOOL DEFAULT FALSE, "
+        "    zwave BOOL DEFAULT FALSE, "
+        "    3G BOOL DEFAULT FALSE, "
+        "    4G BOOL DEFAULT FALSE, "
+        "    5G BOOL DEFAULT FALSE, "
+        "    otherProtocols TEXT DEFAULT NULL);")
 
     create_device_state = (
         "CREATE TABLE device_state ( "
@@ -197,6 +212,16 @@ class CaptureDatabase:
         "deviceCategory=%(deviceCategory)s, mudCapable=%(mudCapable)s, wifi=%(wifi)s, ethernet=%(ethernet)s, "
         "3G=%(G3)s, 4G=%(G4)s, 5G=%(G5)s, bluetooth=%(bluetooth)s, zigbee=%(zigbee)s, zwave=%(zwave)s, "
         "otherProtocols=%(otherProtocols)s, notes=%(notes)s, unlabeled=%(unlabeled)s;")
+
+    add_to_cache = (
+        "INSERT INTO cache "
+        "(model, mudCapable, wifi, ethernet, bluetooth, zigbee, zwave, 3G, 4G, 5G, otherProtocols) "
+        "VALUES (%(model)s, %(mudCapable)s, %(wifi)s, "
+        "%(ethernet)s, %(bluetooth)s, %(zigbee)s, %(zwave)s, %(G3)s, %(G4)s, %(G5)s, %(otherProtocols)s) "
+        "ON DUPLICATE KEY UPDATE "
+        "model=%(model)s, mudCapable=%(mudCapable)s, wifi=%(wifi)s, ethernet=%(ethernet)s, bluetooth=%(bluetooth)s, "
+        "zigbee=%(zigbee)s, zwave=%(zwave)s, 3G=%(G3)s, 4G=%(G4)s, 5G=%(G5)s, otherProtocols=%(otherProtocols)s;"
+    )
 
     add_device_unlabeled = (
         "INSERT INTO device "
@@ -555,6 +580,9 @@ class CaptureDatabase:
 
     query_last_insert_id = "SELECT last_insert_id();"
 
+    query_cache_device = (
+        "SELECT * FROM cache WHERE model=%(model)s;")
+
     def __init__(self, db_config):  # =None, new_db=False):
         # if new_db:
         #    pass
@@ -608,6 +636,8 @@ class CaptureDatabase:
         self.cnx.commit()
         self.cursor.execute(self.create_protocol)
         self.cnx.commit()
+        self.cursor.execute(self.create_cache)
+        self.cnx.commit()
 
     def reinit_database(self, db_name):
         # Use new database
@@ -633,6 +663,8 @@ class CaptureDatabase:
         self.cnx.commit()
         self.cursor.execute(self.create_protocol)
         self.cnx.commit()
+        self.cursor.execute(self.create_cache)
+        self.cnx.commit()
 
     ##########################
     # SQL Insertion Commands #
@@ -643,6 +675,8 @@ class CaptureDatabase:
 
     def insert_device(self, data_device):
         self.cursor.execute(self.add_device, data_device)
+        self.cnx.commit()
+        self.cursor.execute(self.add_to_cache, data_device)
         self.cnx.commit()
 
     def insert_device_unlabeled(self, data_device):
@@ -738,6 +772,10 @@ class CaptureDatabase:
 
     def select_devices(self):
         self.cursor.execute(self.query_devices)
+        return self.cursor.fetchall()
+
+    def select_cache_device(self, model):
+        self.cursor.execute(self.query_cache_device, model)
         return self.cursor.fetchall()
 
     def select_devices_imported(self):
@@ -1372,8 +1410,9 @@ class CaptureDigest:
         print(self.fname)
         print(self.fdir)
         print(self.fileHash)
+        #print(self.capDate)
         print(self.cap_date)
-        
+
     # TODO: Verify this new version is acceptable, or remove if not needed
     def findIP(self, mac, v6=False):
         if v6:

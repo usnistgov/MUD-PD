@@ -2480,7 +2480,8 @@ class MudCaptureApplication(tk.Frame):
         # Listbox
         self.report_dev_header = ["id", "Internal Name", "Manufacturer", "Model", "MAC Address", "Category"]
         self.report_dev_list = MultiColumnListbox(parent=self.topReportDevFrame, header=self.report_dev_header,
-                                                  input_list=list(), keep_first=True, exclusion_list=["id"])
+                                                  input_list=list(), keep_first=True, exclusion_list=["id"],
+                                                  select_mode="browse")
         self.report_dev_list.bind("<<TreeviewSelect>>", self.populate_report_pcap_list)
 
         # ** Bot PCAP Frame ** #
@@ -2546,7 +2547,9 @@ class MudCaptureApplication(tk.Frame):
         # clear previous list
         self.report_pcap_list.clear()
 
-        self.report_device = self.report_dev_list.get(self.report_dev_list.selection())
+        # self.report_device = self.report_dev_list.get(self.report_dev_list.selection())
+        # self.report_device = self.report_dev_list.get_selection_set()
+        self.report_device = self.report_dev_list.get_selection_set().pop()
         if self.report_device is not None and len(self.report_device) >= 5:
             self.dev_mac = self.report_device[4]
             self.device_id = self.report_device[0]
@@ -2557,7 +2560,7 @@ class MudCaptureApplication(tk.Frame):
         print("device:", self.dev_mac)
         print("device_id:", self.device_id)
 
-        self.report_pcap_list.append(("All...",))
+        self.report_pcap_list.append((0, "All...",))
 
         # Get and insert all captures currently added to database
         if self.report_device[1] == "All...":
@@ -2589,7 +2592,7 @@ class MudCaptureApplication(tk.Frame):
             pcap = self.report_pcap_list.get(pcap_item)
             print("pcap:", pcap)
 
-            if pcap[0] != "All...":
+            if pcap[1] != "All...":
                 if first:
                     self.report_pcap_where = " WHERE c.id = %s" % pcap[6]
                     first = False

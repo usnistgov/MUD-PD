@@ -109,6 +109,15 @@ class MultiColumnListbox(object):
     def get(self, item):
         return self.tree.item(item)["values"]
 
+    def get_selection_set(self):
+        sel = self.selection()
+
+        sel_val = list()
+        for s in sel:
+            sel_val.append(self.get(s))
+
+        return sel_val
+
     def get_list(self):
         temp_list = []
         for child in self.tree.get_children():

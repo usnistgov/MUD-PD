@@ -489,7 +489,7 @@ class CaptureDatabase:
         # "WHERE d.mac_addr!=%(ignored_dev)s;")
         # "WHERE d.mac_addr!=%(ignored_dev)s AND s.ipv4_addr!='Not found';")
         # "WHERE d.mac_addr!=%(ignored_dev)s AND "
-        "WHERE d.id!=%(ignored_deviceID)s AND "
+        "WHERE d.id!=%(ignored_device_id)s AND "
         "s.ipv4_addr!='Not found' AND s.ipv4_addr!='0.0.0.0' AND "
         "s.ipv6_addr!='Not found' AND s.ipv6_addr!='::';")
 

@@ -368,6 +368,17 @@ class CaptureDatabase:
         "    %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
         "    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s; ")
 
+    add_device_protocol = (
+                    "INSERT INTO protocol "
+                    # INT     INT       TEXT      INT       TEXT         INT
+                    "(fileID, deviceID, protocol, src_port, dst_ip_addr, dst_port) "
+                    "SELECT DISTINCT p.fileID, d.id, p.tlp, p.tlp_srcport, p.ip_dst, tlp_dstport "
+                    "FROM packet p INNER JOIN device d ON p.mac_addr=d.mac_addr "
+                    "WHERE NOT EXISTS "
+                    "(SELECT fileID, deviceID, protocol, src_port, dst_ip_addr, dst_port FROM protocol WHERE p.fileID=protocol.fileID AND d.id=protocol.deviceID AND p.tlp=protocol.protocol AND p.tlp_srcport=protocol.src_port AND p.ip_dst=protocol.dst_ip_addr AND tlp_dstport=protocol.dst_port)"
+                    "AND d.unlabeled=0 AND p.tlp!='';"
+                    )
+
     # Not yet in use...
     add_protocol = ("INSERT INTO protocol "
                     # INT     INT       TEXT      INT       TEXT         BOOL  TEXT     INT       TEXT
@@ -721,6 +732,10 @@ class CaptureDatabase:
 
     def insert_protocol(self, data_protocol):
         self.cursor.execute(self.add_protocol, data_protocol)
+        self.cnx.commit()
+
+    def insert_protocol_device(self):
+        self.cursor.execute(self.add_device_protocol)
         self.cnx.commit()
 
     ######################

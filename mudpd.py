@@ -12,6 +12,11 @@ from src.generate_mudfile import MUDgeeWrapper
 from src.generate_report import ReportGenerator
 from src.multicolumn_listbox import MultiColumnListbox
 
+from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_acls, make_support_info
+from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
+import random
+import json
+
 # External Modules
 # import concurrent
 from datetime import datetime
@@ -80,6 +85,8 @@ class MudCaptureApplication(tk.Frame):
             print("Fingerbank API Key: ", self.api_key)
         self.window_stack = []
         self.yield_focus(self.parent)
+
+        self.test = "testing"
 
         # ** Initialize class variables ** #
         # TODO: Handle these variables better
@@ -215,6 +222,12 @@ class MudCaptureApplication(tk.Frame):
         self.b_main_generate_report = tk.Button(self.menuFrame, state="disabled", text="Generate Report", wraplength=80,
                                                 command=self.generate_report_wizard)  # , anchor=tk.N+tk.W)
         self.b_main_generate_report.pack(side="left")
+
+        #start_muddy = MUDWizard()
+
+        #self.b_MUDdy = tk.Button(self.menuFrame, text="MUDdy", command=lambda: start_muddy.mainloop())
+        self.b_MUDdy = tk.Button(self.menuFrame, text="MUDdy", command=lambda p=self: MUDWizard(parent=p))
+        self.b_MUDdy.pack(side="left")
 
         # *** Left (capture) frame *** #
         self.capFrame = tk.Frame(self.parent, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
@@ -2371,11 +2384,6 @@ class MudCaptureApplication(tk.Frame):
 
         self.yield_focus(self.w_gen_mud)
 
-
-
-
-
-
     def update_mud_device_selection():
         print("update_mud_device_selection")
         self.mud_dev = {name:"internalName", mac:"mac"}
@@ -2737,6 +2745,504 @@ class MudCaptureApplication(tk.Frame):
         self.parent.quit()
 
 
+#class MUDWizard(tk.Tk):
+class MUDWizard(tk.Toplevel):
+
+    def __init__(self, parent, *args, **kwargs):
+        #tk.Tk.__init__(self, *args, **kwargs)
+        tk.Toplevel.__init__(self, *args, **kwargs)
+        self.wm_title("MUD Wizard")
+        #self.w_db = tk.Toplevel()
+        #self.w_db.wm_title("Connect to Database")
+        self.parent = parent
+        self.parent.b_MUDdy.config(state='disabled')
+
+        self.mud_name = f'mud-{random.randint(10000, 99999)}'
+        self.acl = []
+        self.policies = {}
+        #self.cb_v_list = []
+        self.cb_v_list = list()
+        self.db_handler = self.parent.db_handler
+
+        self.support_info = {}
+
+        print("self.parent.test", self.parent.test)
+
+
+
+        container = tk.Frame(self)
+
+        container.pack(side="top", fil="both", expand = True)
+
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
+
+        self.frames = {}
+        self.frame_list = []
+
+        for F in (MUDStartPage, MUDPageTwo, MUDPageThree, MUDPageFour, MUDPageFive, MUDPageSix, MUDPageSeven):
+            self.frame_list.append(F)
+            frame = F(container, self)
+            self.frames[F] = frame
+            frame.grid(row=0, column=0, sticky="nsew")
+
+        print(self.frames)
+        self.current_page = 0
+        self.show_frame(MUDStartPage)
+
+        #self.mainloop()
+
+    def show_frame(self, cont):
+        frame = self.frames[cont]
+        frame.tkraise()
+
+    def next_page(self):#, current_page): #TODO: Fix this
+
+        #support_info = make_support_info(1, 'https://lighting.example.com/hvac1.json', 48, True, 'Test Device',
+        #                                 'https://jci.example.com/doc/hvac1', mfg_name='Test Manufacturer')
+        #options = []
+        for i, v in enumerate(self.cb_v_list):
+            if i and v.get() and i>self.current_page:
+                self.current_page = i
+                self.show_frame(self.frame_list[i])
+                return
+
+        tk.messagebox.showinfo("Generating MUD File", "Note this is just a placeholder")
+
+    def prev_page(self): # TODO: Fix this
+        for i, v in reversed(list(enumerate(self.cb_v_list))):
+            if i and v.get() and i<self.current_page:
+                self.current_page = i
+                self.show_frame(self.frame_list[i])
+                return
+
+        self.current_page = 0
+        self.show_frame(self.frame_list[0])
+
+    def add_rule(self, max_row):
+        pass
+
+    def remove_rule(self, row_number):
+        pass
+
+    def exit(self):
+        self.parent.b_MUDdy.config(state='normal')
+        self.destroy()
+
+
+# TODO: MUD Start page
+class MUDStartPage(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        #self.controller.cb_v_list.append(0)
+        #print("controller.cb_v_list: ", self.controller.cb_v_list)
+
+        # l_page = tk.Label(self, text="MUD Start Page")
+        # l_page.grid(columnspan=5, sticky="new")
+
+        # Device Selection
+        l_device = tk.Label(self, text="Select a Device:")
+        l_device.grid(row=0, sticky="nw")
+
+        #lb_device = MultiColumnListbox() # TODO: setup actual multiColumnListbox
+        self.lb_device = tk.Label(self, text="Placeholder for device listbox")
+        self.lb_device.grid(row=1, columnspan=5, sticky="nesw")
+
+        #self.dev_header = ["id", "Manufacturer", "Model", "Internal Name", "MAC", "Category"]
+        #self.dev_list = MultiColumnListbox(parent=self, header=self.dev_header, input_list=list(),
+        #                                   keep_first=False, select_mode="browse", exclusion_list=["id"])
+        #self.dev_list.bind("<<TreeviewSelect>>", self.update_mfr)
+        #self.dev_list.grid(row=1, columnspan=5, sticky="nesw")
+
+        # Support URL
+        l_support_url = tk.Label(self, text="Support URL")
+        self.sv_support_url = tk.StringVar()
+        e_support_url = tk.Entry(self, textvariable=self.sv_support_url)#, expand="y", fill="x")
+        #ent = tk.Entry(self, expand="y", fill="x")
+        #ent.insert(50, value)
+
+        l_support_url.grid(row=2, column=0, sticky="w")
+        e_support_url.grid(row=2, column=1, columnspan=4, sticky="ew")
+
+        # Manufacturer
+        l_mfr = tk.Label(self, text="Manufacturer")
+        self.sv_mfr = tk.StringVar()
+        e_mfr = tk.Entry(self, textvariable=self.sv_mfr)#, expand="y", fill="x")
+
+        l_mfr.grid(row=3, column=0, sticky="w")
+        e_mfr.grid(row=3, column=1, columnspan=4, sticky="ew")
+
+        v_mfr = "MANUFACTURER TO BE AUTOFILLED FROM DB" # TODO: setup actual query
+        e_mfr.insert(50, v_mfr)
+
+        # Documentation URL
+        l_doc_url = tk.Label(self, text="Documentation URL")
+        self.sv_doc_url = tk.StringVar()
+        e_doc_url = tk.Entry(self, textvariable=self.sv_doc_url)#, expand="y", fill="x")
+
+        l_doc_url.grid(row=4, column=0, sticky="w")
+        e_doc_url.grid(row=4, column=1, columnspan=4, sticky="ew")
+
+        # Device Description
+        l_desc = tk.Label(self, text="Device Description")
+        self.sv_desc = tk.StringVar()
+        e_desc = tk.Entry(self, textvariable=self.sv_desc)#, expand="y", fill="x")
+
+        l_desc.grid(row=5, column=0, sticky="w")
+        e_desc.grid(row=6, column=0, columnspan=5, sticky="nesw")
+
+        # Communication types to Define [checkbox]
+        l_comm_types = tk.Label(self, text="Select types of communication to define:")
+        l_comm_types.grid(row=7, columnspan=4, sticky='w')
+
+        #self.cb_v_list = list()
+        # reset list because it keeps getting filled
+        #self.controller.cb_v_list = []
+
+        self.sv_toggle = tk.StringVar(value="All")
+        v_toggle = tk.BooleanVar()
+        #self.cb_v_list.append(v_toggle)
+        self.controller.cb_v_list.append(v_toggle)
+        cb_toggle = tk.Checkbutton(self, textvariable=self.sv_toggle, variable=v_toggle, command=self.cb_toggle)
+        cb_toggle.grid(row=7, column=4, columnspan=2, sticky="w")
+
+        v_internet = tk.BooleanVar()
+        #self.cb_v_list.append(v_internet)
+        self.controller.cb_v_list.append(v_internet)
+        cb_internet = tk.Checkbutton(self, text="Internet", variable=v_internet)
+        cb_internet.grid(row=9, columnspan=5, sticky="w")
+
+        v_local = tk.BooleanVar()
+        #self.cb_v_list.append(v_local)
+        self.controller.cb_v_list.append(v_local)
+        cb_local = tk.Checkbutton(self, text="Local", variable=v_local)
+        cb_local.grid(row=10, columnspan=5, sticky="w")
+
+        v_mfr_same = tk.BooleanVar()
+        #self.cb_v_list.append(v_mfr_same)
+        self.controller.cb_v_list.append(v_mfr_same)
+        cb_mfr_same = tk.Checkbutton(self, text="Same Manufacturer", variable=v_mfr_same)
+        cb_mfr_same.grid(row=11, columnspan=5, sticky="w")
+
+        v_mfr_other = tk.BooleanVar()
+        #self.cb_v_list.append(v_mfr_other)
+        self.controller.cb_v_list.append(v_mfr_other)
+        cb_mfr_other = tk.Checkbutton(self, text="Other Named Manufacturers", variable=v_mfr_other)
+        cb_mfr_other.grid(row=12, columnspan=5, sticky="w")
+
+        v_controller_my = tk.BooleanVar()
+        #self.cb_v_list.append(v_controller_my)
+        self.controller.cb_v_list.append(v_controller_my)
+        cb_controller_my = tk.Checkbutton(self, text="Network-Defined Controller", variable=v_controller_my)
+        cb_controller_my.grid(row=13, columnspan=5, sticky="w")
+
+        v_controller = tk.BooleanVar()
+        #self.cb_v_list.append(v_controller)
+        self.controller.cb_v_list.append(v_controller)
+        cb_controller = tk.Checkbutton(self, text="Controller", variable=v_controller)
+        cb_controller.grid(row=14, columnspan=5, sticky="w")
+
+        b_help = tk.Button(self, text=" ? ", command=lambda: self.comm_help())
+        b_help.grid(row=15, column=0, sticky="sw")
+        # Future:
+        # Best guess: more open (use mostly "any")
+        # Best guess: more closed (use mostly specific protocols and ports)
+
+        b_cancel = tk.Button(self, text="Cancel", command=lambda: controller.exit())
+        #b_cancel.pack()
+
+        #v_next = tk.StringVar()
+        #v_next.set("Generate")
+        #b_next = tk.Button(self, text="Next", command=lambda: controller.show_frame(MUDPageTwo))
+        #b_next = tk.Button(self, text="Next", command=lambda: self.next_page(controller))
+        b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
+        #b_next.pack()
+
+        b_cancel.grid(row=15, column=4, sticky="se")
+        b_next.grid(row=15, column=5, sticky="se")
+
+        #self.populate_device_list()
+
+    def cb_toggle(self):#, event):
+        toggle = False
+        for i, cb in enumerate(self.controller.cb_v_list):#self.cb_v_list):
+            if not i:
+                toggle = cb.get()
+                if toggle:
+                    self.sv_toggle.set("None")
+                else:
+                    self.sv_toggle.set("All")
+            else:
+                cb.set(toggle)
+
+    # def next_page(self, controller):
+    #
+    #     controller.support_info = make_support_info(1, self.sv_support_url.get() + '/' + self.lb_device.cget("text"),
+    #                                                 48, True,
+    #                                                 self.sv_desc, self.sv_doc_url, mfg_name=self.sv_mfr)
+    #
+    #     if self.cb_v_list[1].get():
+    #         controller.show_frame(MUDPageTwo)
+    #     elif self.cb_v_list[2].get():
+    #         controller.show_frame(MUDPageThree)
+    #     elif self.cb_v_list[3].get():
+    #         controller.show_frame(MUDPageFour)
+    #     elif self.cb_v_list[4].get():
+    #         controller.show_frame(MUDPageTwo)
+    #     elif self.cb_v_list[5].get():
+    #         controller.show_frame(MUDPageThree)
+    #     elif self.cb_v_list[5].get():
+    #         controller.show_frame(MUDPageFour)
+    #     else:
+    #         tk.messagebox.showinfo("Generating MUD File", "Note this is just a placeholder")
+
+    def comm_help(self):
+        tk.messagebox.showinfo("Defining Communcation",
+                               "Internet: Select this type to enter domain names of services that you want this "
+                               "device to access.\n\n"
+                               "Local: Access to/from any local host for specific services (like COAP or HTTP)\n\n"
+                               "Same Manufacturer: Access to devices to/from the same manufacturer based on the "
+                               "domain name in the MUD URL.\n\n"
+                               "Other Manufacturer: Access to  of devices that are identified by the domain names in "
+                               "their MUD URLs\n\n"
+                               "Device-Specific Controller: Access to controllers specific to this device (no need to "
+                               "name a class). This is \"my-controller\".\n\n"
+                               "Controller Access: Access to classes of devices that are known to be controllers.  "
+                               "Use this when you want different types of devices to access the same controller.")
+
+    # def populate_device_list(self):  # , append=False):
+    #     # clear previous list
+    #     self.dev_list.clear()
+    #
+    #     # Get and insert all captures currently added to database
+    #     devices = self.db_handler.db.select_devices() #TODO: Replace with query to select labeled devices
+    #
+    #     for (dev_id, mfr, model, mac_addr, internalName, deviceCategory, mudCapable, wifi, ethernet, bluetooth,
+    #          G3, G4, G5, zigbee, zwave, otherProtocols, notes, unlabeled) in devices:
+    #         self.dev_list.append((dev_id, mfr, model, internalName, mac_addr, deviceCategory))  # for early stages
+    #
+    #     self.dev_list.focus(0)
+    #     self.dev_list.selection_set(0)
+
+    def update_mfr(self):
+        pass
+
+
+# TODO: Internet and Local
+#class MUDPageTwo(tk.Frame):
+class MUDPageTwo(MUDStartPage, tk.Frame):
+
+    def __init__(self, parent, controller):
+        MUDStartPage.__init__(self, parent, controller)
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+
+        #self.controller.cb_v_list.append(2)
+        #print("controller.cb_v_list: ", self.controller.cb_v_list)
+
+        label = tk.Label(self, text="Internet Hosts")
+        #label.pack(pady=10, padx=10)
+        label.grid(row=0, sticky='w')
+
+        self.row_start_internet = 1
+        self.row_cnt_internet = 0
+        self.row_start_local = 1000
+        self.row_cnt_local = 0
+
+        v_internet_host = list()
+        v_internet_host.append(tk.IntVar())
+        e_internet = tk.Entry(self, textvariable=v_internet_host)
+        e_internet.grid(row=self.row_start_internet, sticky="w")
+        b_internet = tk.Button(self, text = " + ", command=lambda: self.add_internet())
+
+        #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDStartPage))
+        b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
+        #b_back.pack()
+
+        #b_next = tk.Button(self, text="Next", command=lambda: self.controller.show_frame(MUDPageThree))
+        b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
+        #b_next.pack()
+
+        b_back.grid(row=2000, column=4, sticky="se")
+        b_next.grid(row=2000, column=5, sticky="se")
+
+    def add_internet(self):
+        self.row_cnt_internet += 2
+
+
+# TODO: Local
+#class MUDPageTwo(tk.Frame):
+class MUDPageThree(MUDStartPage, tk.Frame):
+
+    def __init__(self, parent, controller):
+        MUDStartPage.__init__(self, parent, controller)
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+
+        #self.controller.cb_v_list.append(2)
+        #print("controller.cb_v_list: ", self.controller.cb_v_list)
+
+        label = tk.Label(self, text="Local Hosts")
+        #label.pack(pady=10, padx=10)
+        label.grid(row=0, sticky='w')
+
+        self.row_start_internet = 1
+        self.row_cnt_internet = 0
+        self.row_start_local = 1000
+        self.row_cnt_local = 0
+
+        v_local_host = list()
+        v_local_host.append(tk.IntVar())
+        e_local = tk.Entry(self, textvariable=v_local_host)
+        e_local.grid(row=self.row_start_internet, sticky="w")
+        b_internet = tk.Button(self, text = " + ", command=lambda: self.add_local())
+
+        #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDStartPage))
+        b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
+        #b_back.pack()
+
+        #b_next = tk.Button(self, text="Next", command=lambda: self.controller.show_frame(MUDPageThree))
+        b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
+        #b_next.pack()
+
+        b_back.grid(row=2000, column=4, sticky="se")
+        b_next.grid(row=2000, column=5, sticky="se")
+
+    def add_local(self):
+        self.row_cnt_internet += 2
+
+
+# TODO: Smae Manufacturers
+class MUDPageFour(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+
+        #self.controller.cb_v_list.append(3)
+        #print("controller.cb_v_list: ", self.controller.cb_v_list)
+
+        label = tk.Label(self, text="Manufacturers")
+        #label.pack(pady=10, padx=10)
+        label.grid(row=0, sticky='w')
+
+        v_mfr_same = tk.IntVar()
+        cb_mfr_same = tk.Checkbutton(self, text="Same Manufacturer", variable=v_mfr_same)
+        cb_mfr_same.grid(row=11, sticky="w")
+
+        #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDPageTwo))
+        b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
+        #b_back.pack()
+
+        #b_next = tk.Button(self, text="Next", command=lambda: self.controller.show_frame(MUDPageFour))
+        b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
+        #b_next.pack()
+
+        b_back.grid(row=15, column=4, sticky="se")
+        b_next.grid(row=15, column=5, sticky="se")
+
+
+# TODO: Named Manufacturers
+class MUDPageFive(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+
+        #self.controller.cb_v_list.append(3)
+        #print("controller.cb_v_list: ", self.controller.cb_v_list)
+
+        label = tk.Label(self, text="Named Manufacturers")
+        #label.pack(pady=10, padx=10)
+        label.grid(row=0, sticky='w')
+
+        v_mfr_other = tk.IntVar()
+        cb_mfr_other = tk.Checkbutton(self, text="Other Named Manufacturers", variable=v_mfr_other)
+        cb_mfr_other.grid(row=12, sticky="w")
+
+        #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDPageTwo))
+        b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
+        #b_back.pack()
+
+        #b_next = tk.Button(self, text="Next", command=lambda: self.controller.show_frame(MUDPageFour))
+        b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
+        #b_next.pack()
+
+        b_back.grid(row=15, column=4, sticky="se")
+        b_next.grid(row=15, column=5, sticky="se")
+
+
+# TODO: Controllers
+class MUDPageSix(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+
+        #self.controller.cb_v_list.append(4)
+        #print("controller.cb_v_list: ", self.controller.cb_v_list)
+
+        label = tk.Label(self, text="Network-Specific Controllers (my-controller)")
+        #label.pack(pady=10, padx=10)
+        label.grid(row=0, sticky='w')
+
+        v_controller_my = tk.IntVar()
+        cb_controller_my = tk.Checkbutton(self, text="Network-Defined Controller", variable=v_controller_my)
+        cb_controller_my.grid(row=13, sticky="w")
+
+        #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDPageTwo))
+        b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
+        #b_back.pack()
+
+        #b_next = tk.Button(self, text="Next", command=lambda: self.controller.show_frame(MUDPageFour))
+        b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
+        #b_next.pack()
+
+        b_back.grid(row=15, column=4, sticky="se")
+        b_next.grid(row=15, column=5, sticky="se")
+
+
+# TODO: Controllers
+class MUDPageSeven(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+
+        #self.controller.cb_v_list.append(4)
+        #print("controller.cb_v_list: ", self.controller.cb_v_list)
+
+        label = tk.Label(self, text="Controllers")
+        #label.pack(pady=10, padx=10)
+        label.grid(row=0, sticky='w')
+
+        v_controller = tk.IntVar()
+        cb_controller = tk.Checkbutton(self, text="Controller", variable=v_controller)
+        cb_controller.grid(row=14, sticky="w")
+
+        #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDPageThree))
+        b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
+        #b_back.pack()
+
+        b_generate = tk.Button(self, text="Generate")#, command=lambda: controller.show_frame(MUDPageFour))
+        #b_generate.pack()
+
+        b_back.grid(row=15, column=4, sticky="se")
+        b_generate.grid(row=15, column=5, sticky="se")
+
+
 def epoch2datetime(epochtime):
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(epochtime))
 
@@ -2845,4 +3351,17 @@ def importFileWindow(entry):
 if __name__ == '__main__':
     root = tk.Tk()
     gui = MudCaptureApplication(root)
+
+    # Gets the requested values of the height and width.
+    #windowWidth = 800#root.winfo_reqwidth()
+    #windowHeight = 500#root.winfo_reqheight()
+    #print("Width", windowWidth, "Height", windowHeight)
+
+    # Gets both half the screen width/height and window width/height
+    #positionRight = int(root.winfo_screenwidth() / 2 - windowWidth / 2)
+    #positionDown = int(root.winfo_screenheight() / 2 - windowHeight / 2)
+
+    # Positions the window in the center of the page.
+    #root.geometry("+{}+{}".format(positionRight, positionDown))
+
     root.mainloop()

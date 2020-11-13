@@ -2886,6 +2886,7 @@ class MUDStartPage(tk.Frame):
         l_mfr.grid(row=3, column=0, sticky="w")
         e_mfr.grid(row=3, column=1, columnspan=4, sticky="ew")
 
+        # TODO: To autofilll from DB Query
         v_mfr = "MANUFACTURER TO BE AUTOFILLED FROM DB" # TODO: setup actual query
         e_mfr.insert(50, v_mfr)
 
@@ -2963,14 +2964,7 @@ class MUDStartPage(tk.Frame):
         # Best guess: more closed (use mostly specific protocols and ports)
 
         b_cancel = tk.Button(self, text="Cancel", command=lambda: controller.exit())
-        #b_cancel.pack()
-
-        #v_next = tk.StringVar()
-        #v_next.set("Generate")
-        #b_next = tk.Button(self, text="Next", command=lambda: controller.show_frame(MUDPageTwo))
-        #b_next = tk.Button(self, text="Next", command=lambda: self.next_page(controller))
         b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
-        #b_next.pack()
 
         b_cancel.grid(row=15, column=4, sticky="se")
         b_next.grid(row=15, column=5, sticky="se")
@@ -3059,6 +3053,9 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
         #label.pack(pady=10, padx=10)
         label.grid(row=0, sticky='w')
 
+        # TODO: Grab stuff from DB
+        temp_var = self.controller.db_handler()
+
         self.row_start_internet = 1
         self.row_cnt_internet = 0
         self.row_start_local = 1000
@@ -3083,6 +3080,12 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
 
     def add_internet(self):
         self.row_cnt_internet += 2
+
+    def next_page(self):
+        # TODO: ADD INTERNET ACL
+        self.controller.acl.append('stuff')
+
+        self.controller.next_page()
 
 
 # TODO: Local

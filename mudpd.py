@@ -176,6 +176,7 @@ class MudCaptureApplication(tk.Frame):
         self.fileSubMenu.add_command(label="Create New Database...", command=self.popup_create_new_database)
         self.fileSubMenu.add_command(label="Import Capture File...", command=self.popup_import_capture)
         self.fileSubMenu.add_command(label="Add Fingerbank API Key", command=self.popup_update_api_key)
+        self.fileSubMenu.add_command(label="Update Labeled Device Info", command=self.popup_update_labeled_device_info)
         self.fileSubMenu.add_separator()
         self.fileSubMenu.add_command(label="Quit", command=self.__exit__)
 
@@ -619,6 +620,13 @@ class MudCaptureApplication(tk.Frame):
             tk.messagebox.showerror("Error", "Problem connecting to database")
             #entries.append((save_name, save_var))
             self.db_cnx_entries.append((save_name, save_var))
+
+    def popup_update_labeled_device_info(self):
+        try:
+            self.db_handler.db.insert_protocol_device()
+            messagebox.showinfo("Success!", "Labeled Device Info Updated")
+        except AttributeError:
+            messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
 
     def make_form_api(self, fields):
         #entries = list()
@@ -1197,8 +1205,8 @@ class MudCaptureApplication(tk.Frame):
 
                         # May want to modify this not to take the previous fw_version
                         fw_ver = self.db_handler.db.select_most_recent_fw_ver({'deviceID': device_id, 'capDate':
-                                                                              self.cap.cap_date + " " +
-                                                                              self.cap.cap_time})
+                            self.cap.cap_date + " " +
+                            self.cap.cap_time})
                         self.db_handler.db.insert_device_state({"fileID": self.cap.id,
                                                                 "deviceID": device_id,
                                                                 "fw_ver": fw_ver,
@@ -1431,7 +1439,7 @@ class MudCaptureApplication(tk.Frame):
                 ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
 
                 if cache_data:
-                    ent.insert(30, cache_data[0][i+1])
+                    ent.insert(30, cache_data[0][i + 1])
                 #entries.append((option, ent))
                 self.device_entries.append((option, ent))
             else:

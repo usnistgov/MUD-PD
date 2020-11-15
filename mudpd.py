@@ -22,6 +22,7 @@ import json
 from datetime import datetime
 from datetime import timedelta
 import hashlib
+from functools import partial
 # import math
 # import multiprocessing
 # from multiprocessing import Process, Queue
@@ -2832,44 +2833,121 @@ class MUDWizard(tk.Toplevel):
         self.current_page = 0
         self.show_frame(self.frame_list[0])
 
-    def add_rule(self, frame):
+    def add_rule(self, frame, first_entry=False):
         frame.max_row += 1
-        if frame.communication == "controller":
-            self.rules[frame.communication] = {frame.max_row: {"val": tk.StringVar(),
-                                                               "protocol": tk.StringVar(),
-                                                               "port_local": tk.StringVar(),
-                                                               "port_remote": tk.StringVar()}}
+        v_host = tk.StringVar()
+        v_protocol = tk.StringVar()
+        v_port_local = tk.StringVar()
+        v_port_remote = tk.StringVar()
+        v_initiation_direction = tk.StringVar()
+
+        # Host
+        l_host = tk.Label(frame, text="Host")
+        l_host.grid(row=frame.max_row, column=0, sticky='w')
+        e_host = tk.Entry(frame, width=50, textvariable=v_host)
+        e_host.grid(row=frame.max_row, column=0, columnspan=4, sticky="w")
+
+        # Protocol
+        l_protocol = tk.Label(frame, text="Protocol")
+        l_protocol.grid(row=frame.max_row, column=4, sticky='w')
+        c_protocol = self.create_combobox(frame)
+        c_protocol.grid(row=frame.max_row, column=5, sticky='w')
+
+        # Button to Add or Remove entry
+        v_modify = tk.StringVar()
+        if first_entry:
+            v_modify.set(" + ")
+            #modify_command = partial(self.add_rule, frame)
+            modify_command = self.add_rule
         else:
-            self.rules[frame.communication] = {frame.max_row: {"val": tk.StringVar(),
-                                                               "protocol": tk.StringVar(),
-                                                               "port_local": tk.StringVar(),
-                                                               "port_remote": tk.StringVar(),
-                                                               "initiate_direction": tk.StringVar()}}
+            v_modify.set(" - ")
+            #modify_command = partial(self.remove_rule, frame)#, row=frame.max_row)
+            modify_command = self.remove_rule
+
+        b_modify = tk.Button(frame, textvariable=v_modify, command=modify_command)
+        b_modify.grid(row=frame.max_row, column=6, sticky='w')
+
+        frame.max_row += 1
+
+        # Local Ports
+        l_port_local = tk.Label(frame, text="Local Port")
+        l_port_local.grid(row=frame.max_row, column=0, sticky='w')
+        e_port_local = tk.Entry(frame, width=10, textvariable=v_port_local)
+        e_port_local.grid(row=frame.max_row, column=1, sticky="w")
+
+        # Remote Ports
+        l_port_remote = tk.Label(frame, text="Remote Port")
+        l_port_remote.grid(row=frame.max_row, column=2, sticky='w')
+        e_port_remote = tk.Entry(frame, width=10, textvariable=v_port_remote)
+        e_port_remote.grid(row=frame.max_row, column=3, sticky="w")
+
+        # Initiation Direction
+        l_initiation_direction = tk.Label(frame, text="Initiated by")
+        l_initiation_direction.grid(row=frame.max_row, column=4, sticky='w')
+        c_initiation_direction = self.create_combobox(frame, rule_type='initiated')
+        c_initiation_direction.grid(row=frame.max_row, column=5, sticky='w')
+
+        # Save rules to shared dictionary
+        self.rules[frame.communication] = {frame.max_row: {"host": v_host,
+                                                           "protocol": v_protocol,
+                                                           "port_local": v_port_local,
+                                                           "port_remote": v_port_remote}}
+        if frame.communication != "controller":
+            self.rules[frame.communication][frame.max_row]['initiation_direction'] = v_initiation_direction
+
+        # if frame.communication == "controller":
+        #     self.rules[frame.communication] = {frame.max_row: {"host": tk.StringVar(),
+        #                                                        "protocol": tk.StringVar(),
+        #                                                        "port_local": tk.StringVar(),
+        #                                                        "port_remote": tk.StringVar()}}
+        # else:
+        #     self.rules[frame.communication] = {frame.max_row: {"host": tk.StringVar(),
+        #                                                        "protocol": tk.StringVar(),
+        #                                                        "port_local": tk.StringVar(),
+        #                                                        "port_remote": tk.StringVar(),
+        #                                                        "initiate_direction": tk.StringVar()}}
+
         frame.grid(row=frame.max_row)
 
-    def remove_rule(self, frame, row_number):
-        self.rules[frame.communication].pop(row_number, None)
-        frame.grid.forget(row_number)
+    def remove_rule(self, frame, row=None):
+        if row == None:
+            row = frame.max_row
 
-    def create_combobox(self, frame, rule_type, text_var=None):
-        if text_var == None:
-            combobox = ttk.Combobox(frame, width=10,
-                                    textvariable=self.rules[frame.communication][frame.max_row]["protocol"])
-        else:
-            combobox = ttk.Combobox(frame, width=10, textvariable=text_var)
+        self.rules[frame.communication].pop(row, None)
+        frame.forget(row)
+        self.rules[frame.communication].pop(row-1, None)
+        frame.forget(row-1)
 
+    def create_combobox(self, frame, rule_type="protocol", row=None):#, text_var=None):
         if rule_type == "protocol":
-            combobox['values'] = ('Any',
-                                  'TCP',
-                                  'UDP')
+            values = ('Any', 'TCP', 'UDP')
         elif rule_type == "initiated":
-            combobox['values'] = ('Either',
-                                  'Thing',
-                                  'Remote')
+            values = ('Any', 'TCP', 'UDP')
         else:
-            print("Error: invalid option")
+            print('Error: invalid rule_type')
+            return
 
+        if row == None: #if text_var == None:
+            combobox = ttk.Combobox(frame, width=10,
+                                    textvariable=self.rules[frame.communication][frame.max_row][rule_type])
+        else:
+            combobox = ttk.Combobox(frame, width=10,
+                                    #textvariable=text_var)
+                                    textvariable=self.rules[frame.communication][frame.row][rule_type])
+
+        combobox['values'] = values
         combobox.current(0)
+
+        # if rule_type == "protocol":
+        #     combobox['values'] = ('Any',
+        #                           'TCP',
+        #                           'UDP')
+        # elif rule_type == "initiated":
+        #     combobox['values'] = ('Either',
+        #                           'Thing',
+        #                           'Remote')
+        # else:
+        #     print("Error: invalid option")
 
         return combobox
 
@@ -3121,6 +3199,7 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
         self.row_start_internet = 1
         self.row_cnt_internet = 0
 
+        button_row_dict = dict()
         v_internet_host = list()
         v_internet_host.append(tk.IntVar())
         e_internet = tk.Entry(self, textvariable=v_internet_host)
@@ -3147,6 +3226,9 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
         self.controller.acl.append('stuff')
 
         self.controller.next_page()
+
+    def add_internet(self):
+        pass
 
 
 # TODO: Local

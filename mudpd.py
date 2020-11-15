@@ -32,7 +32,7 @@ from mysql.connector import errorcode
 import sys
 import time
 import tkinter as tk
-# from tkinter import ttk
+from tkinter import ttk
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename
 from configparser import ConfigParser
@@ -2774,9 +2774,14 @@ class MUDWizard(tk.Toplevel):
 
         self.support_info = {}
 
+        self.rules = {"internet": dict(),
+                      "local": dict(),
+                      "mfr_same": dict(),
+                      "mfr_named": dict(),
+                      "controller_my": dict(),
+                      "controller": dict()}
+
         print("self.parent.test", self.parent.test)
-
-
 
         container = tk.Frame(self)
 
@@ -2827,11 +2832,61 @@ class MUDWizard(tk.Toplevel):
         self.current_page = 0
         self.show_frame(self.frame_list[0])
 
-    def add_rule(self, max_row):
-        pass
+    def add_rule(self, frame):
+        frame.max_row += 1
+        if frame.communication == "controller":
+            self.rules[frame.communication] = {frame.max_row: {"val": tk.StringVar(),
+                                                               "protocol": tk.StringVar(),
+                                                               "port_local": tk.StringVar(),
+                                                               "port_remote": tk.StringVar()}}
+        else:
+            self.rules[frame.communication] = {frame.max_row: {"val": tk.StringVar(),
+                                                               "protocol": tk.StringVar(),
+                                                               "port_local": tk.StringVar(),
+                                                               "port_remote": tk.StringVar(),
+                                                               "initiate_direction": tk.StringVar()}}
+        frame.grid(row=frame.max_row)
 
-    def remove_rule(self, row_number):
-        pass
+    def remove_rule(self, frame, row_number):
+        self.rules[frame.communication].pop(row_number, None)
+        frame.grid.forget(row_number)
+
+    def create_combobox(self, frame, rule_type, text_var=None):
+        if text_var == None:
+            combobox = ttk.Combobox(frame, width=10,
+                                    textvariable=self.rules[frame.communication][frame.max_row]["protocol"])
+        else:
+            combobox = ttk.Combobox(frame, width=10, textvariable=text_var)
+
+        if rule_type == "protocol":
+            combobox['values'] = ('Any',
+                                  'TCP',
+                                  'UDP')
+        elif rule_type == "initiated":
+            combobox['values'] = ('Either',
+                                  'Thing',
+                                  'Remote')
+        else:
+            print("Error: invalid option")
+
+        combobox.current(0)
+
+        return combobox
+
+    def create_port_entries(self, frame, row=None):
+        if row == None:
+            e_port_local = tk.Entry(frame, width=10,
+                                    textvariable=self.rules[frame.communication][frame.max_row]['port_local'])
+            e_port_remote = tk.Entry(frame, width=10,
+                                     textvariable=self.rules[frame.communication][frame.max_row]['port_remote'])
+        else:
+            e_port_local = tk.Entry(frame, width=10, textvariable=self.rules[frame.communication][row]['port_local'])
+            e_port_remote = tk.Entry(frame, width=10, textvariable=self.rules[frame.communication][row]['port_remote'])
+
+        e_port_local.insert(0, 'any')
+        e_port_remote.insert(0, 'any')
+
+        return (e_port_local, e_port_remote)
 
     def exit(self):
         self.parent.b_MUDdy.config(state='normal')
@@ -2859,8 +2914,12 @@ class MUDStartPage(tk.Frame):
         l_device.grid(row=0, sticky="nw")
 
         #lb_device = MultiColumnListbox() # TODO: setup actual multiColumnListbox
+        temp_var = self.controller.db_handler.db.select_devices_imported()
+        print(temp_var)
+
         self.lb_device = tk.Label(self, text="Placeholder for device listbox")
         self.lb_device.grid(row=1, columnspan=5, sticky="nesw")
+
 
         #self.dev_header = ["id", "Manufacturer", "Model", "Internal Name", "MAC", "Category"]
         #self.dev_list = MultiColumnListbox(parent=self, header=self.dev_header, input_list=list(),
@@ -2888,7 +2947,7 @@ class MUDStartPage(tk.Frame):
 
         # TODO: To autofilll from DB Query
         v_mfr = "MANUFACTURER TO BE AUTOFILLED FROM DB" # TODO: setup actual query
-        e_mfr.insert(50, v_mfr)
+        e_mfr.insert(0, v_mfr)
 
         # Documentation URL
         l_doc_url = tk.Label(self, text="Documentation URL")
@@ -3045,6 +3104,8 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
+        self.communication = "internet"
+        self.max_row = 1
 
         #self.controller.cb_v_list.append(2)
         #print("controller.cb_v_list: ", self.controller.cb_v_list)
@@ -3054,17 +3115,17 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
         label.grid(row=0, sticky='w')
 
         # TODO: Grab stuff from DB
-        temp_var = self.controller.db_handler()
+        temp_var = self.controller.db_handler.db.select_devices_imported()
+        print(temp_var)
 
         self.row_start_internet = 1
         self.row_cnt_internet = 0
-        self.row_start_local = 1000
-        self.row_cnt_local = 0
 
         v_internet_host = list()
         v_internet_host.append(tk.IntVar())
         e_internet = tk.Entry(self, textvariable=v_internet_host)
-        e_internet.grid(row=self.row_start_internet, sticky="w")
+        e_internet.grid(row=self.max_row, sticky="w")
+
         b_internet = tk.Button(self, text = " + ", command=lambda: self.add_internet())
 
         #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDStartPage))
@@ -3097,6 +3158,9 @@ class MUDPageThree(MUDStartPage, tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
+        self.communication = "lcoal"
+        self.max_row = 0
+
 
         #self.controller.cb_v_list.append(2)
         #print("controller.cb_v_list: ", self.controller.cb_v_list)
@@ -3131,13 +3195,16 @@ class MUDPageThree(MUDStartPage, tk.Frame):
         self.row_cnt_internet += 2
 
 
-# TODO: Smae Manufacturers
+# TODO: Same Manufacturers
 class MUDPageFour(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
+        self.communication = "mfr_same"
+        self.max_row = 0
+
 
         #self.controller.cb_v_list.append(3)
         #print("controller.cb_v_list: ", self.controller.cb_v_list)
@@ -3169,6 +3236,8 @@ class MUDPageFive(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
+        self.communication = "mfr_named"
+        self.max_row = 0
 
         #self.controller.cb_v_list.append(3)
         #print("controller.cb_v_list: ", self.controller.cb_v_list)
@@ -3193,13 +3262,15 @@ class MUDPageFive(tk.Frame):
         b_next.grid(row=15, column=5, sticky="se")
 
 
-# TODO: Controllers
+# TODO: My-Controller
 class MUDPageSix(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
+        self.communication = "controller_my"
+        self.max_row = 0
 
         #self.controller.cb_v_list.append(4)
         #print("controller.cb_v_list: ", self.controller.cb_v_list)
@@ -3231,6 +3302,8 @@ class MUDPageSeven(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
+        self.communication = "controller"
+        self.max_row = 0
 
         #self.controller.cb_v_list.append(4)
         #print("controller.cb_v_list: ", self.controller.cb_v_list)

@@ -505,11 +505,6 @@ class CaptureDatabase:
         "s.ipv4_addr!='Not found' AND s.ipv4_addr!='0.0.0.0' AND "
         "s.ipv6_addr!='Not found' AND s.ipv6_addr!='::';")
 
-    query_device_communication_info = (
-        "SELECT DISTINCT deviceID, protocol, dst_ip_addr, ipv6, dst_port, src_port "
-        "FROM protocol "
-        "WHERE deviceID=%(new_deviceID)s;")
-
     query_gateway_ips = (
         "SELECT DISTINCT ipv4_addr, ipv6_addr "
         "FROM device_state "
@@ -807,10 +802,6 @@ class CaptureDatabase:
         self.cursor.execute(self.query_devices_imported_ignore, ignored_deviceID)
         return self.cursor.fetchall()
 
-    def select_device_communication_info(self, new_deviceID):
-        self.cursor.execute(self.query_device_communication_info, new_deviceID)
-        return self.cursor.fetchall()
-
     def select_gateway_ips(self, gatewayID):
         self.cursor.execute(self.query_gateway_ips, gatewayID)
         return self.cursor.fetchall()
@@ -1104,9 +1095,6 @@ class CaptureDigest:
         self.fileHash = hashlib.sha256(open(fpath, 'rb').read()).hexdigest()
         self.id = None
 
-        self.pkt = []
-        self.pkt_info = []  # needs to be a list of dictionary
-
         #self.cap_envi_metadata = dict()
 
         # Multiprocessing
@@ -1121,16 +1109,15 @@ class CaptureDigest:
                 self.tempDir = './.temp/'
                 self.tempFullCapDir = self.tempDir + 'full_cap/'
                 self.tempSplitCapDir = self.tempDir + 'split_cap/'
-                if os.path.exists(self.tempDir) and os.path.exists(self.tempFullCapDir) and os.path.exists(self.tempSplitCapDir):
+                if not os.path.exists(self.tempDir):
+                    os.makedirs(self.tempDir)
+                    # os.makedirs(self.tempDir + 'full_cap/')
+                    os.makedirs(self.tempFullCapDir)
+                    # os.makedirs(self.tempDir + 'split_cap/')
+                    os.makedirs(self.tempSplitCapDir)
+                else:
                     # Should handle the error more gracefully than ignoring
                     subprocess.call('rm ' + self.tempDir + '*/*', shell=True)
-                else:
-                    if not os.path.exists(self.tempDir):
-                        os.makedirs(self.tempDir)
-                    if not os.path.exists(self.tempFullCapDir):
-                        os.makedirs(self.tempFullCapDir)
-                    if not os.path.exists(self.tempSplitCapDir):
-                        os.makedirs(self.tempSplitCapDir)
 
 
                 # Check filetype
@@ -1242,10 +1229,12 @@ class CaptureDigest:
             self.uniqueIP_dst = []
             self.uniqueIPv6_dst = []
 
-            #self.protocol = []
+            self.protocol = []
 
-            #self.num_pkts = 0
+            self.num_pkts = 0
+            self.pkt = []
 
+            self.pkt_info = [] #needs to be a list of dictionary
 
         self.dhcp_pkts = pyshark.FileCapture(fpath, display_filter='dhcp')
         self.modellookup = {}
@@ -1421,8 +1410,7 @@ class CaptureDigest:
                 src_type = IP(ip_src).iptype()
                 dst_type = IP(ip_dst).iptype()
                 # TODO: CHECK IF PUTTING THIS CHECK INTO THE IPS_2_IGNORE if true
-                #if src_type == 'PUBLIC' or dst_type == 'PUBLIC':
-                if src_type == 'GLOBAL-UNICAST' or dst_type == 'GLOBAL-UNICAST':
+                if src_type == 'PUBLIC' or dst_type == 'PUBLIC':
                     pkt_dict['ew'] = False
                 # TODO: DOUBLE CHECK THAT THIS NEW CHECK WORKS
                 if src_type in self.IPS_2_IGNORE:
@@ -1652,9 +1640,9 @@ class CaptureDigest:
         self.uniqueIP_dst = []
         self.uniqueIPv6_dst = []
 
-        #self.protocol = []
+        self.protocol = []
 
-        #self.num_pkts = 0
+        self.num_pkts = 0
         self.pkt = []
 
     def extract_fingerprint(self):
@@ -1699,11 +1687,8 @@ class CaptureDigest:
                     print("No fingerprint found")
                 if yes:
                     output = lookup_fingerbank(dhcp_fingerprint, hostname, mac, self.api_key)
-                    #print("Fingerprint Result:", output["name"])
-                    #self.modellookup.update({mac: output["name"]})
-                    if output.get("name") is not None:
-                        print("Fingerprint Result:", output.get("name"))
-                        self.modellookup.update({mac: output.get("name")})
+                    print("Fingerprint Result:", output["name"])
+                    self.modellookup.update({mac: output["name"]})
             else:
                 print("No Fingerbank API Key Present")
         print("End Fingerprint Extraction")

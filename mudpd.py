@@ -11,6 +11,7 @@ from src.lookup import lookup_mac  # , lookup_hostname
 from src.generate_mudfile import MUDgeeWrapper
 from src.generate_report import ReportGenerator
 from src.multicolumn_listbox import MultiColumnListbox
+import src.pcapng_comment as capMeta
 
 from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_acls, make_support_info
 from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
@@ -24,7 +25,7 @@ from datetime import timedelta
 import hashlib
 from functools import partial
 # import math
-# import multiprocessing
+import multiprocessing as mp
 # from multiprocessing import Process, Queue
 import mysql.connector
 from mysql.connector import errorcode
@@ -89,6 +90,15 @@ class MudCaptureApplication(tk.Frame):
 
         self.test = "testing"
 
+        # Multiprocessing
+        self.p_file = None
+        #self.p_list = list()
+        #nself.p_count = 0
+        self.m = mp.Manager()
+        self.q = self.m.Queue()
+        #self.event = self.Event()
+        self.filename_prev = ""
+
         # ** Initialize class variables ** #
         # TODO: Handle these variables better
         # Future windows (i.e. set self.w_XXXX objects to None
@@ -119,6 +129,7 @@ class MudCaptureApplication(tk.Frame):
         self.db_cnx_entries = None
         self.api_key_entries = None
         self.capture_entries = None
+        self.cap_envi_metadata = None
         self.device_entries = None
         self.device_state_entries = None
         self.capture_devices_entries = None
@@ -754,13 +765,77 @@ class MudCaptureApplication(tk.Frame):
 
         self.yield_focus(self.w_cap)
 
-    @staticmethod
-    def open_file_callback(entry):
+    #@staticmethod
+    def open_file_callback(self, sv_entry):
         tk.Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
 
         filename = askopenfilename()  # show an "Open" dialog box and return the path to the selected file
-        entry.delete(0, tk.END)
-        entry.insert(0, filename)
+        sv_entry.set(filename)
+        #entry.delete(0, tk.END)
+        #entry.insert(0, filename)
+
+        # TODO: Check if selected file is the previously selected one
+        if filename != self.filename_prev:
+            self.filename_prev = filename
+
+            if filename.lower().endswith(".pcapng"):
+                # Check for metadata embedded in the comment field
+                self.cap_envi_metadata = capMeta.extract_comment(filename)
+
+                # 'File': 'fileName', 'Activity': 'activity', 'Notes (optional)': 'details',
+                #                    'Lifecycle Phase': 'lifecyclePhase', 'Setup': 'setup', 'Normal Operation': 'normalOperation',
+                #                    'Removal': 'removal',
+                #                    'Internet': 'internet', 'Human Interaction': 'humanInteraction',
+                #                    'Preferred DNS Enabled': 'preferredDNS', 'Isolated': 'isolated',
+                #                    'Duration-based': 'durationBased', 'Duration': 'duration', 'Action-based': 'actionBased',
+                #                    'Action': 'deviceAction',
+                # field2db[self.capture_entries[2][0].cget('text')]:
+                #                     field2db[lifecyclePhaseFields[self.capture_entries[2][1].get()]]
+                if len(self.cap_envi_metada) > 0:
+                    for i, (x, y) in enumerate (self.capture_entries):
+                        # Skip first entry
+                        if i:
+                            if i == 2:
+                                try:
+                                    if self.cap_envi_metadata[ field2db[x] ].lower() == "setup":
+                                        y.set(1)
+                                    elif self.cap_envi_metadata[ field2db[x] ].lower() == "normal operation":
+                                        y.set(2)
+                                    elif self.cap_envi_metadata[field2db[x]].lower() == "removal":
+                                        y.set(3)
+                                    else:
+                                        print("Warning unexpected phase provided")
+
+                                    print("Phase", x.cget("text"), y.get())
+                                except:
+                                    print("Warning: Likely field missing in file comment")
+                            else:
+                                try:
+                                    if type(y) == type(tk.IntVar()):
+                                        if self.cap_env_envi_metadata[ field2db[x] ].lower() == "true":
+                                            y.set(1)
+                                        elif self.cap_envi_metadata[ field2db[x] ].lower() == "false":
+                                            y.set(0)
+                                        else:
+                                            print("Warning! non true/false value provided")
+                                    elif type(y) == type(tk.StringVar()):
+                                        y.set(self.cap_env_envi_metadata[ field2db[x] ])
+                                    else:
+                                        print("Warning! Unexpected variable type")
+                                    #self.cap_envi_metadata[field2db[x.cget: y.get()]]
+
+                                    print(x, field2db[x], y.get())
+                                except:
+                                    print("Warning! Likely environmental variable missing")
+            else:
+                self.cap_envi_metadata = dict()
+
+            # TODO: Kill any/all existing worker threads if a new file was selected
+            #self.q.put("kill")
+
+            # TODO: Restart worker threads to process file
+            #self.p_file = mp.Process(target=self.import_and_close_proc, args=(self.q))
+
 
     def make_form_capture(self, fields_general, fields_phase, fields_env, fields_type):
         #entries = list()
@@ -768,11 +843,13 @@ class MudCaptureApplication(tk.Frame):
         for i, field in enumerate(fields_general):
             row = tk.Frame(self.w_cap)
             lab = tk.Label(row, width=15, text=field, anchor='w')
-            ent = tk.Entry(row)
+            sv_ent = tk.StringVar()
+            ent = tk.Entry(row, textvariable=sv_ent)
 
             if i == 0:
                 b_open = tk.Button(row, text='...',
-                                   command=(lambda e=ent: self.open_file_callback(e)))
+                                   command=(lambda e=sv_ent: self.open_file_callback(e)))
+                                   #command=(lambda e=ent: self.open_file_callback(e)))
                 row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
                 lab.pack(side=tk.LEFT)
                 ent.pack(side=tk.LEFT, fill=tk.X)
@@ -783,7 +860,8 @@ class MudCaptureApplication(tk.Frame):
                 ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
 
             #entries.append((field, ent))
-            self.capture_entries.append((field, ent))
+            #self.capture_entries.append((field, ent))
+            self.capture_entries.append((field, sv_ent))
 
         # Device Phase (Setup, Normal Operation, Removal)
         # lifecyclePhaseFields = 'Setup', 'Normal Operation', 'Removal'
@@ -853,11 +931,12 @@ class MudCaptureApplication(tk.Frame):
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
         lab = tk.Label(row, padx=5, width=9, text=fields_type[i], anchor='w')
         lab.pack(side=tk.LEFT)
-        e_dur = tk.Entry(row)
+        sv_dur = tk.StringVar()
+        e_dur = tk.Entry(row, textvariable=sv_dur)
         e_dur.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
         e_dur.config(state='disabled')
         #entries.append((fields_type[i], e_dur))
-        self.capture_entries.append((fields_type[i], e_dur))
+        self.capture_entries.append((fields_type[i], sv_dur))
 
         def activate_check_action():
             if v_act.get() == 1:  # whenever checked
@@ -881,11 +960,12 @@ class MudCaptureApplication(tk.Frame):
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
         lab = tk.Label(row, padx=5, width=9, text=fields_type[i], anchor='w')
         lab.pack(side=tk.LEFT)
-        e_act = tk.Entry(row)
+        sv_act = tk.StringVar()
+        e_act = tk.Entry(row, textvariable=sv_act)
         e_act.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
         e_act.config(state='disabled')
         #entries.append((fields_type[i], e_act))
-        self.capture_entries.append((fields_type[i], e_act))
+        self.capture_entries.append((fields_type[i], sv_act))
 
         #return entries
 
@@ -893,9 +973,7 @@ class MudCaptureApplication(tk.Frame):
     def import_and_close(self):
 
         # Check if capture is already in database (using sha256)
-        #filehash = hashlib.sha256(open(entries[0][1].get(), 'rb').read()).hexdigest()
         file_path = self.capture_entries[0][1].get()
-        #filehash = hashlib.sha256(open(self.capture_entries[0][1].get(), 'rb').read()).hexdigest()
         filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
         captures = self.db_handler.db.select_unique_captures()
 
@@ -943,6 +1021,25 @@ class MudCaptureApplication(tk.Frame):
             temp_file_id = self.db_handler.db.select_last_insert_id()
             self.cap.id = temp_file_id[0]
 
+            # Embed capture environment metadata into pcapng file
+            for i, (x, y) in enumerate(self.capture_entries):
+                # Skip first entry
+                if i:
+                    if i == 2:
+                        if y.get() == 1:
+                            self.cap_envi_metadata[ field2db[x.cget("text")] ] = "setup"
+                        elif y.get() == 2:
+                            self.cap_envi_metadata[ field2db[x.cget("text")] ] = "normal operation"
+                        elif y.get() == 3:
+                            self.cap_envi_metadata[ field2db[x.cget("text")] ] = "removal"
+                    else:
+                        if type(y) == type(tk.IntVar()):
+                            self.cap_envi_metadata[ field2db[x] ] = str(bool(y.get()))
+                        else:
+                            self.cap_envi_metadata[ field2db[x] ] = y.get()
+
+            self.cap.embed_meta(self.cap_envi_metadata)
+
             # Potentially threadable code
 
             # Popup window
@@ -959,6 +1056,64 @@ class MudCaptureApplication(tk.Frame):
 
             print("(E) destroying import capture window")
             self.w_cap.destroy()
+
+
+    def import_and_close_proc(self, q):
+
+        # Check if capture is already in database (using sha256)
+        file_path = self.capture_entries[0][1].get()
+        filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
+        captures = self.db_handler.db.select_unique_captures()
+
+        if any(filehash in cap_hash for cap_hash in captures):
+            tk.Tk().withdraw()
+            messagebox.showerror("Error", "Capture file already imported into database")
+        else:
+            self.cap = CaptureDigest(file_path, api_key=self.api_key, mp=True)  # , q=q)
+            print("finished importing")
+
+            data_capture = {
+                "fileName": self.cap.fname,
+                "fileLoc": self.cap.fdir,
+                "fileHash": self.cap.fileHash,
+                "capDate": epoch2datetime(float(self.cap.cap_timestamp)),  # epoch2datetime(float(self.cap.cap_date)),
+                "capDuration": self.cap.capDuration,
+                "details": self.capture_entries[1][1].get(),
+                field2db[self.capture_entries[2][0].cget('text')]:
+                    field2db[lifecyclePhaseFields[self.capture_entries[2][1].get()]]
+            }
+
+            for i in range(3, 11):
+                data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
+                print(i, self.capture_entries[i][1].get())
+
+            print('data_capture:', data_capture)
+
+            print("(A) inserting capture file into database")
+            self.db_handler.db.insert_capture(data_capture)
+            temp_file_id = self.db_handler.db.select_last_insert_id()
+            self.cap.id = temp_file_id[0]
+
+            # Embed capture environment metadata into pcapng file
+            self.cap.embed_meta(data_capture)
+
+            # Potentially threadable code
+
+            # Popup window
+            # self.yield_focus(self.w_cap)
+            # print("(A) popup_import_capture_devices")
+            print("(B) popup_import_capture_devices")
+            self.popup_import_capture_devices(self.cap)
+
+            print("(C) populate_capture_list")
+            self.populate_capture_list()
+
+            print("(D) import_packets")
+            self.import_packets(self.cap)
+
+            print("(E) destroying import capture window")
+            self.w_cap.destroy()
+
 
     def pre_popup_import_capture_devices(self):
         # sel_cap_path = self.cap_list.get_selected_row()[5] + "/" + self.cap_list.get_selected_row()[2]
@@ -2852,6 +3007,7 @@ class MUDWizard(tk.Toplevel):
         l_protocol.grid(row=frame.max_row, column=4, sticky='w')
         c_protocol = self.create_combobox(frame)
         c_protocol.grid(row=frame.max_row, column=5, sticky='w')
+        c_protocol.bind("<<ComboboxSelected>>", lambda f=frame, r=frame.max_row: self.protocol_updated(f, r))
 
         # Button to Add or Remove entry
         v_modify = tk.StringVar()
@@ -2888,12 +3044,30 @@ class MUDWizard(tk.Toplevel):
         c_initiation_direction.grid(row=frame.max_row, column=5, sticky='w')
 
         # Save rules to shared dictionary
-        self.rules[frame.communication] = {frame.max_row: {"host": v_host,
-                                                           "protocol": v_protocol,
-                                                           "port_local": v_port_local,
-                                                           "port_remote": v_port_remote}}
-        if frame.communication != "controller":
-            self.rules[frame.communication][frame.max_row]['initiation_direction'] = v_initiation_direction
+        self.rules[frame.communication] = {frame.max_row: {"host": (v_host, l_host, e_host),
+                                                           "protocol": (v_protocol, l_protocol, c_protocol),
+                                                           "port_local": (v_port_local, l_port_local, e_port_local),
+                                                           "port_remote": (v_port_remote, l_port_remote, e_port_remote),
+                                                           "initiation_direction": (v_initiation_direction,
+                                                                                    l_initiation_direction,
+                                                                                    c_initiation_direction)}}
+
+#         self.rules[frame.communication] = {frame.max_row: {"host": (v_host, l_host, e_host),
+#                                                            "protocol": (v_protocol, l_protocol, c_protocol),
+#                                                            "port_local": (v_port_local, l_port_local, e_port_local),
+#                                                            "port_remote": (v_port_remote, l_port_remote, e_port_remote)
+#                                                            }
+#                                            }
+#         if frame.communication != "controller":
+#             self.rules[frame.communication][frame.max_row]['initiation_direction'] = (v_initiation_direction,
+#                                                                                       l_initiation_direction,
+# {}                                                                                      c_initiation_direction)
+        # self.rules[frame.communication] = {frame.max_row: {"host": v_host,
+        #                                                    "protocol": v_protocol,
+        #                                                    "port_local": v_port_local,
+        #                                                    "port_remote": v_port_remote}}
+        # if frame.communication != "controller":
+        #     self.rules[frame.communication][frame.max_row]['initiation_direction'] = v_initiation_direction
 
         # if frame.communication == "controller":
         #     self.rules[frame.communication] = {frame.max_row: {"host": tk.StringVar(),
@@ -2907,7 +3081,7 @@ class MUDWizard(tk.Toplevel):
         #                                                        "port_remote": tk.StringVar(),
         #                                                        "initiate_direction": tk.StringVar()}}
 
-        frame.grid(row=frame.max_row)
+        #frame.grid(row=frame.max_row)
 
     def remove_rule(self, frame, row=None):
         if row == None:
@@ -2922,7 +3096,7 @@ class MUDWizard(tk.Toplevel):
         if rule_type == "protocol":
             values = ('Any', 'TCP', 'UDP')
         elif rule_type == "initiated":
-            values = ('Any', 'TCP', 'UDP')
+            values = ('Either', 'Thing', 'Remote')
         else:
             print('Error: invalid rule_type')
             return
@@ -2950,6 +3124,25 @@ class MUDWizard(tk.Toplevel):
         #     print("Error: invalid option")
 
         return combobox
+
+    def protocol_updated(self, event, frame, row):
+        if event != "Any":
+            # add local
+            pass
+
+            # add remote
+            pass
+
+            # add or remove direction
+            if event == "TCP" and frame.communication != "controller":
+                # add direction
+                pass
+            else:
+                # hide the grid object
+                pass
+        else:
+            # hide local, remote, and direction
+            pass
 
     def create_port_entries(self, frame, row=None):
         if row == None:
@@ -3199,6 +3392,7 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
         self.row_start_internet = 1
         self.row_cnt_internet = 0
 
+        #self.controller.add_rule()
         button_row_dict = dict()
         v_internet_host = list()
         v_internet_host.append(tk.IntVar())
@@ -3206,13 +3400,14 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
         e_internet.grid(row=self.max_row, sticky="w")
 
         b_internet = tk.Button(self, text = " + ", command=lambda: self.add_internet())
+        b_internet.grid(row=self.max_row, column=1, sticky="e")
 
         #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDStartPage))
         b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
         #b_back.pack()
 
         #b_next = tk.Button(self, text="Next", command=lambda: self.controller.show_frame(MUDPageThree))
-        b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
+        b_next = tk.Button(self, text="Next", command=lambda: self.next_page())
         #b_next.pack()
 
         b_back.grid(row=2000, column=4, sticky="se")
@@ -3220,15 +3415,13 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
 
     def add_internet(self):
         self.row_cnt_internet += 2
+        self.controller.add_rule()
 
     def next_page(self):
         # TODO: ADD INTERNET ACL
-        self.controller.acl.append('stuff')
+        #self.controller.acl.append('stuff')
 
         self.controller.next_page()
-
-    def add_internet(self):
-        pass
 
 
 # TODO: Local
@@ -3240,9 +3433,8 @@ class MUDPageThree(MUDStartPage, tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
-        self.communication = "lcoal"
+        self.communication = "local"
         self.max_row = 0
-
 
         #self.controller.cb_v_list.append(2)
         #print("controller.cb_v_list: ", self.controller.cb_v_list)
@@ -3278,7 +3470,7 @@ class MUDPageThree(MUDStartPage, tk.Frame):
 
 
 # TODO: Same Manufacturers
-class MUDPageFour(tk.Frame):
+class MUDPageFour(MUDStartPage, tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -3312,7 +3504,7 @@ class MUDPageFour(tk.Frame):
 
 
 # TODO: Named Manufacturers
-class MUDPageFive(tk.Frame):
+class MUDPageFive(MUDStartPage, tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -3345,7 +3537,7 @@ class MUDPageFive(tk.Frame):
 
 
 # TODO: My-Controller
-class MUDPageSix(tk.Frame):
+class MUDPageSix(MUDStartPage, tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -3378,7 +3570,7 @@ class MUDPageSix(tk.Frame):
 
 
 # TODO: Controllers
-class MUDPageSeven(tk.Frame):
+class MUDPageSeven(MUDStartPage, tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -3391,6 +3583,37 @@ class MUDPageSeven(tk.Frame):
         #print("controller.cb_v_list: ", self.controller.cb_v_list)
 
         label = tk.Label(self, text="Controllers")
+        #label.pack(pady=10, padx=10)
+        label.grid(row=0, sticky='w')
+
+        v_controller = tk.IntVar()
+        cb_controller = tk.Checkbutton(self, text="Controller", variable=v_controller)
+        cb_controller.grid(row=14, sticky="w")
+
+        #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDPageThree))
+        b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
+        #b_back.pack()
+
+        b_generate = tk.Button(self, text="Generate")#, command=lambda: controller.show_frame(MUDPageFour))
+        #b_generate.pack()
+
+        b_back.grid(row=15, column=4, sticky="se")
+        b_generate.grid(row=15, column=5, sticky="se")
+
+# TODO: Generate MUD File
+class MUDPageSummary(MUDStartPage, tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        self.communication = "Summary"
+        self.max_row = 0
+
+        #self.controller.cb_v_list.append(4)
+        #print("controller.cb_v_list: ", self.controller.cb_v_list)
+
+        label = tk.Label(self, text="MUD File Summary")
         #label.pack(pady=10, padx=10)
         label.grid(row=0, sticky='w')
 

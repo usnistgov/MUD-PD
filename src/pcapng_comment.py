@@ -1,6 +1,7 @@
 import json
 import os
 import struct
+import subprocess
 
 
 def parse_comment(comment):
@@ -35,11 +36,42 @@ def extract_comment(filename):
     return comment
 
 
+def is_pcapng(file):
+    ret = subprocess.run('file ' + file, shell=True, capture_output=True)
+
+    # TODO: Make sure this isn't macOS specific
+    if b': pcap-ng capture file ' in ret.stdout:
+        return True
+    else:
+        return False
+
+
+def is_pcap(file):
+    #if not is_pcapng(file):
+    #    if b': tcpdump capture file' in ret.std
+    ret = subprocess.run('file ' + file, shell=True, capture_output=True)
+
+    # TODO: Make sure this isn't too specific
+    if b': tcpdump capture file' in ret.stdout:
+        return True
+    else:
+        return False
+
+
 def insert_comment(filename_in, comment, filename_out=None):
-    file_in = open(filename_in, 'rb')
+    # Double check if PcapNg file. If not, make a copy of pcap file as PcapNg
+    if not is_pcapng(filename_in):
+    #if filename_in.lower().endswith(".pcap"):
+        fname_in = filename_in + ".pcapng"
+        subprocess.call('tshark -F pcapng -r ' + filename_in + ' -w ' + fname_in, stderr=subprocess.PIPE, shell=True)
+    else:
+        fname_in = filename_in
+
+    #file_in = open(filename_in, 'rb')
+    file_in = open(fname_in, 'rb')
 
     if filename_out is None:
-        filename, file_ext = os.path.splitext(filename_in)
+        filename, file_ext = os.path.splitext(fname_in)  # filename_in)
         filename_out = filename + '_commented' + file_ext
 
     file_out = open(filename_out, 'wb')

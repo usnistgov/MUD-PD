@@ -2921,14 +2921,19 @@ class MUDWizard(tk.Toplevel):
         self.parent = parent
         self.parent.b_MUDdy.config(state='disabled')
 
+        self.current_page = 0
+        self.sv_device = tk.StringVar()
+
         self.mud_name = f'mud-{random.randint(10000, 99999)}'
-        self.acl = []
-        self.policies = {}
+        self.acl = list()  # []
+        self.policies = dict()  # {}  # This could also have been a set originally, unknown
         #self.cb_v_list = []
         self.cb_v_list = list()
         self.db_handler = self.parent.db_handler
+        self.mud_device = dict()
+        self.row_nav = 2000
 
-        self.support_info = {}
+        self.support_info = dict()  # {}
 
         self.rules = {"internet": dict(),
                       "local": dict(),
@@ -2946,19 +2951,21 @@ class MUDWizard(tk.Toplevel):
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
-        self.frames = {}
-        self.frame_list = []
+        self.frames = {}  # At a quick glance I can't tell if this is a set or dict
+        self.frame_list = list()  # []
 
-        for F in (MUDStartPage, MUDPageTwo, MUDPageThree, MUDPageFour, MUDPageFive, MUDPageSix, MUDPageSeven):
+        for F in (MUDPage0Select, MUDPage1Description, MUDPage2Internet, MUDPage3Local, MUDPage4SameMan,
+                  MUDPage5NamedMan, MUDPage6MyControl, MUDPage7Control, MUDPage8Summary):
             self.frame_list.append(F)
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
         print(self.frames)
-        self.current_page = 0
-        self.show_frame(MUDStartPage)
+        #self.current_page = 0
+        self.show_frame(MUDPage0Select)
 
+        self.parent.yield_focus(self)
         #self.mainloop()
 
     def show_frame(self, cont):
@@ -2970,23 +2977,32 @@ class MUDWizard(tk.Toplevel):
         #support_info = make_support_info(1, 'https://lighting.example.com/hvac1.json', 48, True, 'Test Device',
         #                                 'https://jci.example.com/doc/hvac1', mfg_name='Test Manufacturer')
         #options = []
-        for i, v in enumerate(self.cb_v_list):
-            if i and v.get() and i>self.current_page:
-                self.current_page = i
-                self.show_frame(self.frame_list[i])
-                return
+        if self.current_page == 0:
+            self.current_page += 1
+            self.show_frame(self.frame_list[self.current_page])
+        else:
+            for i, v in enumerate(self.cb_v_list):
+                if i and v.get() and i>=self.current_page:
+                    self.current_page = i+1
+                    self.show_frame(self.frame_list[self.current_page])
+                    return
 
-        tk.messagebox.showinfo("Generating MUD File", "Note this is just a placeholder")
+            # Go to Summary Page
+            self.current_page = 8
+            self.show_frame(self.frame_list[self.current_page])
 
     def prev_page(self): # TODO: Fix this
-        for i, v in reversed(list(enumerate(self.cb_v_list))):
-            if i and v.get() and i<self.current_page:
-                self.current_page = i
-                self.show_frame(self.frame_list[i])
-                return
-
-        self.current_page = 0
-        self.show_frame(self.frame_list[0])
+        if self.current_page > 1:
+            for i, v in reversed(list(enumerate(self.cb_v_list))):
+                if i and v.get() and i<self.current_page:
+                    self.current_page = i
+                    self.show_frame(self.frame_list[self.current_page])
+                    return
+            self.current_page = 1
+            self.show_frame(self.frame_list[self.current_page])
+        else:
+            self.current_page = 0
+            self.show_frame(self.frame_list[self.current_page])
 
     def add_rule(self, frame, first_entry=False):
         frame.max_row += 1
@@ -3159,13 +3175,113 @@ class MUDWizard(tk.Toplevel):
 
         return (e_port_local, e_port_remote)
 
-    def exit(self):
+    def generate_mud_file(self):
+        tk.messagebox.showinfo("Generating MUD File", "Note this is just a placeholder")
+        self.__exit__()
+
+    def cancel(self):
+        # TODO: Implement a confirmation Popup with the ability to not cancel
+        tk.messagebox.showinfo("Confirm Cancel", "Note this is just a placeholder")
+        self.__exit__()
+
+    def __exit__(self):
         self.parent.b_MUDdy.config(state='normal')
         self.destroy()
 
 
-# TODO: MUD Start page
-class MUDStartPage(tk.Frame):
+# TODO: MUD Device Selection Page
+class MUDPage0Select(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        #self.communication = "internet"
+        #self.max_row = 1
+
+        self.deviceFrame = tk.Frame(self, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navFrame = tk.Frame(self, width=300) #, bd=1, bg="#eeeeee")
+
+        self.mud_dev_title_var = tk.StringVar()
+        self.mud_dev_title_var.set("Device to Profile:")
+        self.mud_dev_title = tk.Label(self.deviceFrame, textvariable=self.mud_dev_title_var,
+                                      bg="#eeeeee", bd=1, relief="flat")
+        self.mud_dev_title.pack(side=tk.TOP, fill=tk.X)
+
+        # self.mud_dev_header = ["Manufacturer", "Model", "MAC Address", "Internal Name", "Category"]
+        self.mud_dev_header = ["id", "Internal Name", "Manufacturer", "Model", "MAC Address", "Category"]
+        self.mud_dev_list = MultiColumnListbox(parent=self.deviceFrame, header=self.mud_dev_header,
+                                               input_list=list(), select_mode="browse", exclusion_list=["id"])
+        # unidentified_list_selection
+        # self.mud_dev_list.bind("<<TreeviewSelect>>", self.update_gateway_list_selection)
+        self.mud_dev_list.bind("<<TreeviewSelect>>", self.retrieve_device_info)
+
+        #b_cancel = tk.Button(self, text="Cancel", command=lambda: controller.exit())
+        #b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
+
+        #b_cancel.grid(row=15, column=4, sticky="se")
+        #b_next.grid(row=15, column=5, sticky="se")
+
+        b_cancel = tk.Button(self.navFrame, text="Cancel", command=lambda: self.controller.cancel())
+        b_next = tk.Button(self.navFrame, text="Next", command=lambda: self.next_page())
+
+        b_next.pack(side=tk.RIGHT)
+        b_cancel.pack(side=tk.RIGHT)
+
+        self.deviceFrame.grid(row=0, column=0, sticky="se")
+        self.navFrame.grid(row=self.controller.row_nav, column=0, sticky='se')
+
+        self.populate_mud_dev_list()
+
+        self.mud_dev_list.focus(0)
+        self.mud_dev_list.selection_set(0)
+
+    def populate_mud_dev_list(self):
+        # Get and insert all captures currently added to database
+        self.mud_dev_list.clear()
+        print("Populating MUD Device List")
+        devices = self.controller.db_handler.db.select_devices_imported()
+
+        for (dev_id, mfr, model, mac, internalName, category) in devices:
+            self.mud_dev_list.append((dev_id, internalName, mfr, model, mac, category))
+
+    def retrieve_device_info(self, _):  # , ignored_dev = None):
+        print("Retrieving Device Info")
+
+        # TODO: JK - If you want to change this datatype to a dictionary or something else, that's fine by me. You
+        #  may need to modify code below if you do so
+        self.controller.mud_device = self.mud_dev_list.get(self.mud_dev_list.selection())
+        print("device:", self.controller.mud_device)
+
+        # TODO: JK - Please feel free to modify what is included. I'm not sure what would be best here. I'm thinking
+        #  more likely that just the Device name and MAC address (and potentially the device category)
+        # Populates Device String Variable for the next page
+        for i, v in enumerate(self.controller.mud_device):
+            if not i:
+                self.controller.sv_device.set("")
+            else:
+                self.controller.sv_device.set(self.controller.sv_device.get() + " " + v)
+
+        # TODO: JK - if you need these. Feel free to rename or adjust which class they sit in (like parent or
+        #  controller)
+        self.device_id = self.controller.mud_device[0]
+        self.dev_mac = self.controller.mud_device[4]
+        print("self.dev_mac:")
+        print("\t", self.dev_mac)
+        print("self.device_id:")
+        print("\t", self.device_id)
+
+        # TODO: JK - feel free to add additional methods to begin processing things if you need. You can hold off on
+        #  the preprocessing if you'd like by waiting until the "next" button is pressed
+        #self.placeholder_method(_)
+
+    # TODO: Placeholder in case we want to do something extra before navigating to the next page
+    def next_page(self):
+        self.controller.next_page()
+
+
+# TODO: MUD Description Page
+class MUDPage1Description(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -3181,16 +3297,15 @@ class MUDStartPage(tk.Frame):
         # l_page.grid(columnspan=5, sticky="new")
 
         # Device Selection
-        l_device = tk.Label(self, text="Select a Device:")
+        l_device = tk.Label(self, text="Device:")
         l_device.grid(row=0, sticky="nw")
 
         #lb_device = MultiColumnListbox() # TODO: setup actual multiColumnListbox
         temp_var = self.controller.db_handler.db.select_devices_imported()
         print(temp_var)
 
-        self.lb_device = tk.Label(self, text="Placeholder for device listbox")
-        self.lb_device.grid(row=1, columnspan=5, sticky="nesw")
-
+        self.lb_device = tk.Label(self, textvariable=self.controller.sv_device)
+        self.lb_device.grid(row=1, columnspan=6, sticky="nesw")
 
         #self.dev_header = ["id", "Manufacturer", "Model", "Internal Name", "MAC", "Category"]
         #self.dev_list = MultiColumnListbox(parent=self, header=self.dev_header, input_list=list(),
@@ -3293,11 +3408,11 @@ class MUDStartPage(tk.Frame):
         # Best guess: more open (use mostly "any")
         # Best guess: more closed (use mostly specific protocols and ports)
 
-        b_cancel = tk.Button(self, text="Cancel", command=lambda: controller.exit())
+        b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
         b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
 
-        b_cancel.grid(row=15, column=4, sticky="se")
-        b_next.grid(row=15, column=5, sticky="se")
+        b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
+        b_next.grid(row=self.controller.row_nav, column=5, sticky="se")
 
         #self.populate_device_list()
 
@@ -3335,7 +3450,7 @@ class MUDStartPage(tk.Frame):
     #         tk.messagebox.showinfo("Generating MUD File", "Note this is just a placeholder")
 
     def comm_help(self):
-        tk.messagebox.showinfo("Defining Communcation",
+        tk.messagebox.showinfo("Defining Communication",
                                "Internet: Select this type to enter domain names of services that you want this "
                                "device to access.\n\n"
                                "Local: Access to/from any local host for specific services (like COAP or HTTP)\n\n"
@@ -3366,12 +3481,12 @@ class MUDStartPage(tk.Frame):
         pass
 
 
-# TODO: Internet and Local
+# TODO: Internet
 #class MUDPageTwo(tk.Frame):
-class MUDPageTwo(MUDStartPage, tk.Frame):
+class MUDPage2Internet(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        MUDStartPage.__init__(self, parent, controller)
+        MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3410,12 +3525,12 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
         b_next = tk.Button(self, text="Next", command=lambda: self.next_page())
         #b_next.pack()
 
-        b_back.grid(row=2000, column=4, sticky="se")
-        b_next.grid(row=2000, column=5, sticky="se")
+        b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
+        b_next.grid(row=self.controller.row_nav, column=5, sticky="se")
 
     def add_internet(self):
         self.row_cnt_internet += 2
-        self.controller.add_rule()
+        self.controller.add_rule(self)
 
     def next_page(self):
         # TODO: ADD INTERNET ACL
@@ -3426,10 +3541,10 @@ class MUDPageTwo(MUDStartPage, tk.Frame):
 
 # TODO: Local
 #class MUDPageTwo(tk.Frame):
-class MUDPageThree(MUDStartPage, tk.Frame):
+class MUDPage3Local(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        MUDStartPage.__init__(self, parent, controller)
+        MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3462,17 +3577,18 @@ class MUDPageThree(MUDStartPage, tk.Frame):
         b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
         #b_next.pack()
 
-        b_back.grid(row=2000, column=4, sticky="se")
-        b_next.grid(row=2000, column=5, sticky="se")
+        b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
+        b_next.grid(row=self.controller.row_nav, column=5, sticky="se")
 
     def add_local(self):
         self.row_cnt_internet += 2
 
 
 # TODO: Same Manufacturers
-class MUDPageFour(MUDStartPage, tk.Frame):
+class MUDPage4SameMan(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3499,14 +3615,15 @@ class MUDPageFour(MUDStartPage, tk.Frame):
         b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
         #b_next.pack()
 
-        b_back.grid(row=15, column=4, sticky="se")
-        b_next.grid(row=15, column=5, sticky="se")
+        b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
+        b_next.grid(row=self.controller.row_nav, column=5, sticky="se")
 
 
 # TODO: Named Manufacturers
-class MUDPageFive(MUDStartPage, tk.Frame):
+class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3532,14 +3649,15 @@ class MUDPageFive(MUDStartPage, tk.Frame):
         b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
         #b_next.pack()
 
-        b_back.grid(row=15, column=4, sticky="se")
-        b_next.grid(row=15, column=5, sticky="se")
+        b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
+        b_next.grid(row=self.controller.row_nav, column=5, sticky="se")
 
 
 # TODO: My-Controller
-class MUDPageSix(MUDStartPage, tk.Frame):
+class MUDPage6MyControl(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3565,14 +3683,15 @@ class MUDPageSix(MUDStartPage, tk.Frame):
         b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
         #b_next.pack()
 
-        b_back.grid(row=15, column=4, sticky="se")
-        b_next.grid(row=15, column=5, sticky="se")
+        b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
+        b_next.grid(row=self.controller.row_nav, column=5, sticky="se")
 
 
 # TODO: Controllers
-class MUDPageSeven(MUDStartPage, tk.Frame):
+class MUDPage7Control(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3594,20 +3713,21 @@ class MUDPageSeven(MUDStartPage, tk.Frame):
         b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
         #b_back.pack()
 
-        b_generate = tk.Button(self, text="Generate")#, command=lambda: controller.show_frame(MUDPageFour))
+        b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
         #b_generate.pack()
 
-        b_back.grid(row=15, column=4, sticky="se")
-        b_generate.grid(row=15, column=5, sticky="se")
+        b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
+        b_next.grid(row=self.controller.row_nav, column=5, sticky="se")
 
 # TODO: Generate MUD File
-class MUDPageSummary(MUDStartPage, tk.Frame):
+class MUDPage8Summary(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
-        self.communication = "Summary"
+        #self.communication = "Summary"
         self.max_row = 0
 
         #self.controller.cb_v_list.append(4)
@@ -3617,19 +3737,20 @@ class MUDPageSummary(MUDStartPage, tk.Frame):
         #label.pack(pady=10, padx=10)
         label.grid(row=0, sticky='w')
 
-        v_controller = tk.IntVar()
-        cb_controller = tk.Checkbutton(self, text="Controller", variable=v_controller)
-        cb_controller.grid(row=14, sticky="w")
+        sv_summary = tk.StringVar()
+        lb_summary = tk.Label(self, textvariable=sv_summary)
+        sv_summary.set("Placeholder for the MUD file summary")
+        lb_summary.grid(row=1, sticky="w")
 
         #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDPageThree))
         b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
         #b_back.pack()
 
-        b_generate = tk.Button(self, text="Generate")#, command=lambda: controller.show_frame(MUDPageFour))
+        b_generate = tk.Button(self, text="Generate", command=lambda: self.controller.generate_mud_file())
         #b_generate.pack()
 
-        b_back.grid(row=15, column=4, sticky="se")
-        b_generate.grid(row=15, column=5, sticky="se")
+        b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
+        b_generate.grid(row=self.controller.row_nav, column=5, sticky="se")
 
 
 def epoch2datetime(epochtime):

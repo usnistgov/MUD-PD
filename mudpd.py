@@ -2927,6 +2927,8 @@ class MUDWizard(tk.Toplevel):
         self.v_internet.set(True)
         self.v_local = tk.BooleanVar()
         self.v_local.set(True)
+        self.sv_desc = tk.StringVar()
+        self.sv_mfr = tk.StringVar()
 
         self.mud_name = f'mud-{random.randint(10000, 99999)}'
         self.acl = list()  # []
@@ -3336,8 +3338,9 @@ class MUDPage0Select(tk.Frame):
         # Local
         self.controller.cb_v_list[2].set(True)
 
-        #self.controller.v_internet.set(True)
-        #self.controller.v_local.set(True)
+        self.controller.sv_desc.set("Device Description")
+
+        self.controller.sv_mfr.set("Manufacturer")
 
         # TODO: JK - Please feel free to modify what is included. I'm not sure what would be best here. I'm thinking
         #  more likely that just the Device name and MAC address (and potentially the device category)
@@ -3418,8 +3421,9 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
 
         # Manufacturer
         l_mfr = tk.Label(self.contentFrame, text="Manufacturer")
-        self.sv_mfr = tk.StringVar()
-        e_mfr = tk.Entry(self.contentFrame, textvariable=self.sv_mfr)#, expand="y", fill="x")
+        #self.sv_mfr = tk.StringVar()
+        #e_mfr = tk.Entry(self.contentFrame, textvariable=self.sv_mfr)#, expand="y", fill="x")
+        e_mfr = tk.Entry(self.contentFrame, textvariable=self.controller.sv_mfr)  # , expand="y", fill="x")
 
         l_mfr.grid(row=3, column=0, sticky="w")
         e_mfr.grid(row=3, column=1, columnspan=4, sticky="ew")
@@ -3438,8 +3442,9 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
 
         # Device Description
         l_desc = tk.Label(self.contentFrame, text="Device Description")
-        self.sv_desc = tk.StringVar()
-        e_desc = tk.Entry(self.contentFrame, textvariable=self.sv_desc)#, expand="y", fill="x")
+        #self.sv_desc = tk.StringVar()
+        #e_desc = tk.Entry(self.contentFrame, textvariable=self.sv_desc)  # , expand="y", fill="x")
+        e_desc = tk.Entry(self.contentFrame, textvariable=self.controller.sv_desc)  # , expand="y", fill="x")
 
         l_desc.grid(row=5, column=0, sticky="w")
         e_desc.grid(row=6, column=0, columnspan=5, sticky="nesw")

@@ -3026,21 +3026,23 @@ class MUDWizard(tk.Toplevel):
         self.rules[frame.communication] = dict()
 
         # Host
-        l_host = tk.Label(frame, text="Host")
+        l_host = tk.Label(frame.contentFrame, text="Host")
         l_host.grid(row=frame.max_row, column=0, sticky='w')
-        e_host = tk.Entry(frame, width=50, textvariable=v_host)
+        # TODO: Change this to a combobox entry with each entry being observed destination (dst) hosts
+        e_host = tk.Entry(frame.contentFrame, width=50, textvariable=v_host)
         e_host.grid(row=frame.max_row, column=1, columnspan=3, sticky="w")
 
         self.rules[frame.communication][frame.max_row] = {"host": (v_host, l_host, e_host)}
 
         # Protocol
         c_protocol = None
-        l_protocol = tk.Label(frame, text="Protocol")
+        l_protocol = tk.Label(frame.contentFrame, text="Protocol")
         l_protocol.grid(row=frame.max_row, column=4, sticky='w')
         self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
         c_protocol = self.create_combobox(frame)
         c_protocol.grid(row=frame.max_row, column=5, sticky='w')
-        c_protocol.bind("<<ComboboxSelected>>", lambda f=frame, r=frame.max_row: self.protocol_updated(f, r))
+        c_protocol.bind("<<ComboboxSelected>>", lambda f=frame.contentFrame, r=frame.max_row: self.protocol_updated(
+            f, r))
         self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
 
         # Button to Add or Remove entry
@@ -3049,40 +3051,44 @@ class MUDWizard(tk.Toplevel):
             v_modify.set(" + ")
             #modify_command = partial(self.add_rule, frame)
             modify_command = self.add_rule
+            modify_args = False
         else:
             v_modify.set(" - ")
             #modify_command = partial(self.remove_rule, frame)#, row=frame.max_row)
             modify_command = self.remove_rule
+            modify_args = frame.max_row
 
-        b_modify = tk.Button(frame, textvariable=v_modify, command=modify_command)
+        b_modify = tk.Button(frame.contentFrame, textvariable=v_modify, command= lambda f=frame,
+                                                                                        a=modify_args:
+        modify_command(f, a))
         b_modify.grid(row=frame.max_row, column=6, sticky='w')
 
         frame.max_row += 1
 
         # Local Ports
         v_port_local.set("Any")
-        l_port_local = tk.Label(frame, text="Local Port")
+        l_port_local = tk.Label(frame.contentFrame, text="Local Port")
         l_port_local.grid(row=frame.max_row, column=0, sticky='w')
-        e_port_local = tk.Entry(frame, width=10, textvariable=v_port_local)
+        e_port_local = tk.Entry(frame.contentFrame, width=10, textvariable=v_port_local)
         e_port_local.grid(row=frame.max_row, column=1, sticky="w")
         self.rules[frame.communication][frame.max_row] = {"port_local": (v_port_local, l_port_local, e_port_local)}
 
         # Remote Ports
         v_port_remote.set("Any")
-        l_port_remote = tk.Label(frame, text="Remote Port")
+        l_port_remote = tk.Label(frame.contentFrame, text="Remote Port")
         l_port_remote.grid(row=frame.max_row, column=2, sticky='w')
-        e_port_remote = tk.Entry(frame, width=10, textvariable=v_port_remote)
+        e_port_remote = tk.Entry(frame.contentFrame, width=10, textvariable=v_port_remote)
         e_port_remote.grid(row=frame.max_row, column=3, sticky="w")
         self.rules[frame.communication][frame.max_row]["port_remote"] = (v_port_remote, l_port_remote, e_port_remote)
 
         # Initiation Direction
         c_initiation_direction = None
-        l_initiation_direction = tk.Label(frame, text="Initiated by")
+        l_initiation_direction = tk.Label(frame.contentFrame, text="Initiated by")
         l_initiation_direction.grid(row=frame.max_row, column=4, sticky='w')
         self.rules[frame.communication][frame.max_row]["initiation_direction"] = (v_initiation_direction,
                                                                                   l_initiation_direction,
                                                                                   c_initiation_direction)
-        c_initiation_direction = self.create_combobox(frame, rule_type='initiated')
+        c_initiation_direction = self.create_combobox(frame, opt_type='initiation_direction')
         c_initiation_direction.grid(row=frame.max_row, column=5, sticky='w')
         self.rules[frame.communication][frame.max_row]["initiation_direction"] = (v_initiation_direction,
                                                                                   l_initiation_direction,
@@ -3129,14 +3135,23 @@ class MUDWizard(tk.Toplevel):
 
         #frame.grid(row=frame.max_row)
 
+    # TODO: Figure out how to remove these
     def remove_rule(self, frame, row=None):
         if row == None:
             row = frame.max_row
 
-        self.rules[frame.communication].pop(row, None)
-        frame.forget(row)
-        self.rules[frame.communication].pop(row-1, None)
-        frame.forget(row-1)
+        print("Remove_rule button row:", row)
+
+        fields = self.rules[frame.communication].pop(row, None)
+
+        for e in fields:
+            print(e)
+
+        frame.contentFrame.forget(row)
+        #self.rules[frame.communication].pop(row+1, None)
+        #frame.contentFrame.forget(row-1)
+        self.rules[frame.communication].pop(row+1, None)
+        frame.contentFrame.forget(row+1)
 
     def create_combobox(self, frame, opt_type="protocol", row=None):  # , options=[]):#, text_var=None):
         #if opt_type == "custom":
@@ -3144,7 +3159,7 @@ class MUDWizard(tk.Toplevel):
         #else:
         if opt_type == "protocol":
             values = ('Any', 'TCP', 'UDP')
-        elif opt_type == "initiated":
+        elif opt_type == "initiation_direction":
             values = ('Either', 'Thing', 'Remote')
         elif opt_type == "host":
             # TODO: Pull Hosts?
@@ -3166,7 +3181,7 @@ class MUDWizard(tk.Toplevel):
         #                            #textvariable=text_var)
         #                            textvariable=self.rules[frame.communication][frame.row][opt_type])
 
-        combobox = ttk.Combobox(frame, width=10, textvariable=combo_options)
+        combobox = ttk.Combobox(frame.contentFrame, width=10, textvariable=combo_options)
 
         combobox['values'] = values
         combobox.current(0)
@@ -3184,7 +3199,12 @@ class MUDWizard(tk.Toplevel):
 
         return combobox
 
-    def protocol_updated(self, event, frame, row):
+    # TODO: Complete this portion
+    #def protocol_updated(self, event, frame, row):
+    def protocol_updated(self, frame, row):
+        event = None
+        pass
+
         if event != "Any":
             # add local
             pass
@@ -3351,8 +3371,9 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
 
         # l_page = tk.Label(self, text="MUD Start Page")
         # l_page.grid(columnspan=5, sticky="new")
-        #self.contentFrame = tk.Frame(self, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        #self.navigationFrame = tk.Frame(self)
+
+        self.contentFrame = tk.Frame(self)#, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)
 
         # Device Selection
         l_device = tk.Label(self.contentFrame, text="Device:")
@@ -3465,14 +3486,19 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         #b_help.grid(row=15, column=0, sticky="sw")
         b_help.grid(row=0, column=0, sticky="sw")
 
+        b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.controller.next_page())
+
+        b_back.grid(row=0, column=5, sticky="se")
+        b_next.grid(row=0, column=6, sticky="se")
+
+        #self.grid_rowconfigure(0, weight=1)
+
         self.contentFrame.grid(row=0, column=0, sticky="nse")
         self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='se')
         # Future:
         # Best guess: more open (use mostly "any")
         # Best guess: more closed (use mostly specific protocols and ports)
-
-        #b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
-        #b_next = tk.Button(self, text="Next", command=lambda: self.controller.next_page())
 
         #b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
         #b_next.grid(row=self.controller.row_nav, column=5, sticky="se")
@@ -3563,12 +3589,15 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         self.grid_columnconfigure(3, weight=1)
         self.grid_columnconfigure(4, weight=1)
 
+        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)
+
         #self.controller.cb_v_list.append(2)
         #print("controller.cb_v_list: ", self.controller.cb_v_list)
 
-        label = tk.Label(self, text="Internet Hosts")
+        label = tk.Label(self.contentFrame, text="Internet Hosts")
         #label.pack(pady=10, padx=10)
-        label.grid(row=0, columnspan=6, sticky='ew')
+        label.grid(row=0, columnspan=6, sticky='new')
 
         # TODO: Grab stuff from DB
         #temp_var = self.controller.db_handler.db.select_devices_imported()
@@ -3584,19 +3613,23 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         #e_internet = tk.Entry(self, textvariable=v_internet_host)
         #e_internet.grid(row=self.max_row, sticky="w")
 
-        b_internet = tk.Button(self, text = " + ", command=lambda: self.add_internet())
+        b_internet = tk.Button(self.contentFrame, text = " + ", command=lambda: self.add_internet())
         b_internet.grid(row=self.max_row, column=7, sticky="e")
 
-        #b_back = tk.Button(self, text="Back", command=lambda: self.controller.show_frame(MUDStartPage))
-        b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
-        #b_back.pack()
+        #b_back = tk.Button(self, text="Back", command=lambda: self.controller.prev_page())
+        #b_next = tk.Button(self, text="Next", command=lambda: self.next_page())
 
-        #b_next = tk.Button(self, text="Next", command=lambda: self.controller.show_frame(MUDPageThree))
-        b_next = tk.Button(self, text="Next", command=lambda: self.next_page())
-        #b_next.pack()
+        #b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
+        #b_next.grid(row=self.controller.row_nav, column=5, sticky="se")
 
-        b_back.grid(row=self.controller.row_nav, column=4, sticky="se")
-        b_next.grid(row=self.controller.row_nav, column=5, sticky="se")
+        b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
+
+        b_back.grid(row=0, column=5, sticky="se")
+        b_next.grid(row=0, column=6, sticky="se")
+
+        self.contentFrame.grid(row=0, column=0, sticky="nse")
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='se')
 
     def add_internet(self):
         self.row_cnt_internet += 2

@@ -2923,6 +2923,10 @@ class MUDWizard(tk.Toplevel):
 
         self.current_page = 0
         self.sv_device = tk.StringVar()
+        self.v_internet = tk.BooleanVar()
+        self.v_internet.set(True)
+        self.v_local = tk.BooleanVar()
+        self.v_local.set(True)
 
         self.mud_name = f'mud-{random.randint(10000, 99999)}'
         self.acl = list()  # []
@@ -3023,7 +3027,8 @@ class MUDWizard(tk.Toplevel):
         v_port_local = tk.StringVar()
         v_port_remote = tk.StringVar()
         v_initiation_direction = tk.StringVar()
-        self.rules[frame.communication] = dict()
+        # TODO Move elsewhere
+        # self.rules[frame.communication] = dict()
 
         # Host
         l_host = tk.Label(frame.contentFrame, text="Host")
@@ -3325,6 +3330,15 @@ class MUDPage0Select(tk.Frame):
         self.controller.mud_device = self.mud_dev_list.get(self.mud_dev_list.selection())
         print("device:", self.controller.mud_device)
 
+        # TODO: JK - Set these based on whatever you need to
+        # Internet
+        self.controller.cb_v_list[1].set(True)
+        # Local
+        self.controller.cb_v_list[2].set(True)
+
+        #self.controller.v_internet.set(True)
+        #self.controller.v_local.set(True)
+
         # TODO: JK - Please feel free to modify what is included. I'm not sure what would be best here. I'm thinking
         #  more likely that just the Device name and MAC address (and potentially the device category)
         # Populates Device String Variable for the next page
@@ -3456,6 +3470,7 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         #self.cb_v_list.append(v_local)
         self.controller.cb_v_list.append(v_local)
         cb_local = tk.Checkbutton(self.contentFrame, text="Local", variable=v_local)
+        #cb_local = tk.Checkbutton(self.contentFrame, text="Local", variable=self.controller.v_local)
         cb_local.grid(row=10, columnspan=5, sticky="w")
 
         v_mfr_same = tk.BooleanVar()

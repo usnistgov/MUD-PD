@@ -3012,17 +3012,41 @@ class MUDWizard(tk.Toplevel):
 
     # TODO: JK - Develop internet host retrieval
     def retrieve_hosts_internet(self):
-        # Placholder for testing
+        # Placholder for testing, but may be a good place to set or access the values from the database
         self.hosts_internet = ['Internet Host A', 'Internet Host B', 'Internet Host C']
-        pass
+
+        # TODO: JK - you can use the method "self.add_rule" to create new entries
+        #  I think you should be able to use the frame from self.frames as:
+        #  self.frames[MUDPage2Internet] (but I could be wrong)
+        for host in self.hosts_local:
+            self.add_rule(self.frames[MUDPage2Internet])
+
+            # TODO: JK - need to figure out what specific values and dictionary entries need to get set,
+            #  but may need to access both rows
+            #Placeholder values
+            self.rules[self.frames[MUDPage2Internet].communication][self.frames[self.MUDPage2Internet].max_row-1] = \
+                host
+            self.rules[self.frames[MUDPage2Internet].communication][self.frames[self.MUDPage2Internet].max_row] = host
 
     # TODO: JK - Develop internet host retrieval
     def retrieve_hosts_local(self):
-        # Placeholder for testing
+        # Placholder for testing, but may be a good place to set or access the values from the database
         self.hosts_local = ['Local Host A', 'Local Host B', 'Local Host C']
-        pass
 
-    def add_rule(self, frame, first_entry=False):
+        # TODO: JK - you can probably do the same as above for local hosts (as: self.frames[MUDPage3Local] )
+        #  I haven't yet built the frame for the pages after Internet, but they should all basically
+        #  function the same way in the end.
+        for host in self.hosts_local:
+            self.add_rule(self.frames[self.MUDPage3Local])
+
+            # TODO: JK - need to figure out what specific values and dictionary entries need to get set,
+            #  but may need to access both rows
+            #placeholder values
+            self.rules[self.frames[MUDPage3Local].communication][self.frames[self.MUDPage3Local].max_row-1] = host
+            self.rules[self.frames[MUDPage3Local].communication][self.frames[self.MUDPage3Local].max_row] = host
+
+
+    def add_rule(self, frame, first_entry=False):  # Ignore the "first_entry" for now
         frame.max_row += 1
         v_host = tk.StringVar()
         v_protocol = tk.StringVar()
@@ -3069,6 +3093,7 @@ class MUDWizard(tk.Toplevel):
                                                                                         a=modify_args:
         modify_command(f, a))
         b_modify.grid(row=frame.max_row, column=6, sticky='w')
+        self.rules[frame.communication][frame.max_row]['remove_button'] = (b_modify,)
 
         frame.max_row += 1
 
@@ -3149,16 +3174,33 @@ class MUDWizard(tk.Toplevel):
 
         print("Remove_rule button row:", row)
 
-        fields = self.rules[frame.communication].pop(row, None)
+        # Go through row pairs of rules, pull out tkinter objects (as fields), forget them, and pop from rules dict
+        for r in [row, row+1]:
+            fields = self.rules[frame.communication][r]
+            for key in fields:
+                self.forget_fields(fields[key])
+            self.rules[frame.communication].pop(r)#, None)
 
-        for e in fields:
-            print(e)
+        #frame.contentFrame.forget(row)
 
-        frame.contentFrame.forget(row)
         #self.rules[frame.communication].pop(row+1, None)
         #frame.contentFrame.forget(row-1)
-        self.rules[frame.communication].pop(row+1, None)
-        frame.contentFrame.forget(row+1)
+
+        #fields = self.rules[frame.communication][row+1]
+        #for e, f in fields:
+        #    self.forget_fields(f)
+        #self.rules[frame.communication].pop(row+1)#, None)
+
+        #frame.contentFrame.forget(row+1)
+
+    def forget_fields(self, tk_fields):
+        for f in tk_fields:
+            if type(f) is tk.StringVar:
+                pass
+            elif type(f) in [tk.Label, tk.Entry, tk.Button, tk.Checkbutton, ttk.Combobox]:
+                f.grid_forget()
+            else:
+                print("Unexpected datatype %s, skipping" % type(f))
 
     def create_combobox(self, frame, opt_type="protocol", row=None):  # , options=[]):#, text_var=None):
         #if opt_type == "custom":
@@ -3600,6 +3642,7 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         self.parent = parent
         self.controller = controller
         self.communication = "internet"
+        self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
         self.grid_rowconfigure(0, weight=1)
@@ -3627,8 +3670,8 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         self.row_cnt_internet = 0
 
         #self.controller.add_rule(self, first_entry=True)
-        button_row_dict = dict()
-        v_internet_host = list()
+        #button_row_dict = dict()
+        #v_internet_host = list()
         #v_internet_host.append(tk.IntVar())
         #e_internet = tk.Entry(self, textvariable=v_internet_host)
         #e_internet.grid(row=self.max_row, sticky="w")
@@ -3672,6 +3715,7 @@ class MUDPage3Local(MUDPage0Select, tk.Frame):
         self.parent = parent
         self.controller = controller
         self.communication = "local"
+        self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
         #self.controller.cb_v_list.append(2)
@@ -3716,6 +3760,7 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
         self.parent = parent
         self.controller = controller
         self.communication = "mfr_same"
+        self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
 
@@ -3751,6 +3796,7 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
         self.parent = parent
         self.controller = controller
         self.communication = "mfr_named"
+        self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
         #self.controller.cb_v_list.append(3)
@@ -3785,6 +3831,7 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
         self.parent = parent
         self.controller = controller
         self.communication = "controller_my"
+        self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
         #self.controller.cb_v_list.append(4)
@@ -3819,6 +3866,7 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
         self.parent = parent
         self.controller = controller
         self.communication = "controller"
+        self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
         #self.controller.cb_v_list.append(4)
@@ -3850,7 +3898,6 @@ class MUDPage8Summary(MUDPage0Select, tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
-        #self.communication = "Summary"
         self.max_row = 0
 
         #self.controller.cb_v_list.append(4)

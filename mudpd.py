@@ -16,6 +16,7 @@ import src.pcapng_comment as capMeta
 from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_acls, make_support_info
 from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
 import random
+import re
 import json
 
 # External Modules
@@ -2826,10 +2827,16 @@ class MUDWizard(tk.Toplevel):
             self.current_page = 0
             self.show_frame(self.frame_list[self.current_page])
 
-    # TODO: JK - Develop internet host retrieval
     def retrieve_hosts_internet(self):
-        # Placholder for testing, but may be a good place to set or access the values from the database
-        self.hosts_internet = ['Internet Host A', 'Internet Host B', 'Internet Host C']
+        self.hosts_internet = []
+        self.comm_ports = []
+        pattern = re.compile(
+            "^([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!172\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31))(?<!127)(?<!^10)(?<!^0)\.([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!192\.168)(?<!172\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31))\.([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!\.255$)$")
+        for i in comm_list:
+            yesno = re.search(pattern, i[2])
+            if yesno:
+                self.hosts_internet.append((i[2], i[4]))
+                print("Adding ", i[2], i[4])
 
         # TODO: JK - you can use the method "self.add_rule" to create new entries
         #  I think you should be able to use the frame from self.frames as:
@@ -2843,11 +2850,17 @@ class MUDWizard(tk.Toplevel):
             #Placeholder values
             self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row-1] = host
             self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row] = host
+        return self.hosts_internet
 
-    # TODO: JK - Develop internet host retrieval
     def retrieve_hosts_local(self):
         # Placholder for testing, but may be a good place to set or access the values from the database
-        self.hosts_local = ['Local Host A', 'Local Host B', 'Local Host C']
+        self.hosts_local = []
+        pattern = re.compile("(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.168\.)|(^127\.0\.0\.1)")
+        for i in comm_list:
+            yesno = re.search(pattern, i[2])
+            if yesno:
+                self.hosts_local.append((i[2], i[4]))
+                print("Adding ", i[2], i[4])
 
         # TODO: JK - you can probably do the same as above for local hosts (as: self.frames[MUDPage3Local] )
         #  I haven't yet built the frame for the pages after Internet, but they should all basically
@@ -2861,6 +2874,7 @@ class MUDWizard(tk.Toplevel):
             #placeholder values
             self.rules[self.frames[MUDPage3Local].communication][self.frames[MUDPage3Local].max_row-1] = host
             self.rules[self.frames[MUDPage3Local].communication][self.frames[MUDPage3Local].max_row] = host
+        return self.hosts_local
 
 
     def add_rule(self, frame, first_entry=False):  # Ignore the "first_entry" for now
@@ -3115,6 +3129,12 @@ class MUDPage0Select(tk.Frame):
         self.parent = parent
         self.controller = controller
 
+        self.inthosts = []
+        self.localhosts = []
+        self.device_id = ''
+        self.dev_mac = ''
+        self.dev_mfr = ''
+
         self.contentFrame = tk.Frame(self, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
         self.navigationFrame = tk.Frame(self)  # , width=300) #, bd=1, bg="#eeeeee")
 
@@ -3159,10 +3179,12 @@ class MUDPage0Select(tk.Frame):
         # Get and insert all captures currently added to database
         self.mud_dev_list.clear()
         print("Populating MUD Device List")
-        devices = self.controller.db_handler.db.select_devices_imported()
-
-        for (dev_id, mfr, model, mac, internalName, category) in devices:
-            self.mud_dev_list.append((dev_id, internalName, mfr, model, mac, category))
+        try:
+            devices = self.controller.db_handler.db.select_devices_imported()
+            for (dev_id, mfr, model, mac, internalName, category) in devices:
+                self.mud_dev_list.append((dev_id, internalName, mfr, model, mac, category))
+        except AttributeError as ae:
+            print("Database not connected, please connect to a database")
 
     def retrieve_device_info(self, _):  # , ignored_dev = None):
         print("Retrieving Device Info")
@@ -3171,16 +3193,6 @@ class MUDPage0Select(tk.Frame):
         #  may need to modify code below if you do so
         self.controller.mud_device = self.mud_dev_list.get(self.mud_dev_list.selection())
         print("device:", self.controller.mud_device)
-
-        # TODO: JK - Set these based on whatever you need to
-        # Internet
-        self.controller.cb_v_list[1].set(True)
-        # Local
-        self.controller.cb_v_list[2].set(True)
-
-        self.controller.sv_desc.set("Device Description")
-
-        self.controller.sv_mfr.set("Manufacturer")
 
         # TODO: JK - Please feel free to modify what is included. I'm not sure what would be best here. I'm thinking
         #  more likely that just the Device name and MAC address (and potentially the device category)
@@ -3191,24 +3203,36 @@ class MUDPage0Select(tk.Frame):
             elif i in [1,4,5]:
                 self.controller.sv_device.set(self.controller.sv_device.get() + " " + v)
 
-        # TODO: JK - if you need these. Feel free to rename or adjust which class they sit in (like parent or
-        #  controller)
         self.device_id = self.controller.mud_device[0]
         self.dev_mac = self.controller.mud_device[4]
+        self.dev_mfr = self.controller.mud_device[2]
         print("self.dev_mac:")
         print("\t", self.dev_mac)
         print("self.device_id:")
         print("\t", self.device_id)
+        print("self.device_mfr:")
+        print("\t", self.dev_mfr)
 
-        # TODO: JK - feel free to add additional methods to begin processing things if you need. You can hold off on
-        #  the preprocessing if you'd like by waiting until the "next" button is pressed
-        #self.placeholder_method(_)
-        # TODO: Develop these two methods
-        self.controller.retrieve_hosts_internet()
-        self.controller.retrieve_hosts_local()
-
-    # TODO: Placeholder in case we want to do something extra before navigating to the next page
     def next_page(self):
+        print("Populating device communication list")
+        try:
+            comminfo = self.controller.db_handler.db.select_device_communication_info({'new_deviceID': self.device_id})
+            print(comminfo)
+            self.inthosts = self.controller.retrieve_hosts_internet(comminfo)
+            self.localhosts = self.controller.retrieve_hosts_local(comminfo)
+        except AttributeError as ae:
+            print("Database not connected, please connect to a database")
+        print("Internet hosts:", len(self.inthosts), self.inthosts)
+        print("Local hosts:", len(self.localhosts), self.localhosts)
+        # Internet
+        if self.inthosts:
+            self.controller.cb_v_list[1].set(True)
+        # Local
+        if self.localhosts:
+            self.controller.cb_v_list[2].set(True)
+        self.controller.sv_desc.set("Device Description")
+        self.controller.sv_mfr.set(self.dev_mfr)
+
         self.controller.next_page()
 
 

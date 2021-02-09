@@ -505,6 +505,10 @@ class CaptureDatabase:
         "s.ipv4_addr!='Not found' AND s.ipv4_addr!='0.0.0.0' AND "
         "s.ipv6_addr!='Not found' AND s.ipv6_addr!='::';")
 
+    query_device_communication_info = (
+        "SELECT DISTINCT deviceID, protocol, dst_ip_addr, ipv6, dst_port FROM protocol "
+        "WHERE deviceID=%(new_deviceID)s;")
+
     query_gateway_ips = (
         "SELECT DISTINCT ipv4_addr, ipv6_addr "
         "FROM device_state "
@@ -800,6 +804,10 @@ class CaptureDatabase:
 
     def select_devices_imported_ignore(self, ignored_deviceID):
         self.cursor.execute(self.query_devices_imported_ignore, ignored_deviceID)
+        return self.cursor.fetchall()
+
+    def select_device_communication_info(self, new_deviceID):
+        self.cursor.execute(self.query_device_communication_info, new_deviceID)
         return self.cursor.fetchall()
 
     def select_gateway_ips(self, gatewayID):

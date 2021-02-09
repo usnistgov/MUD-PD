@@ -17,7 +17,7 @@ PAD_X = 5
 class MultiColumnListbox(object):
     # use a ttk.TreeView as a multicolumn ListBox
     def __init__(self, parent, header, input_list, select_mode="extended", keep_first=False, exclusion_list=list(),
-                 row=None, column=None):
+                 row=None, column=None, sticky=None):
         self.parent = parent
         self.header = header
         self.exclusion_list = exclusion_list
@@ -27,16 +27,16 @@ class MultiColumnListbox(object):
 
         self.tree = None
         self.num_nodes = 0
-        self._setup_widgets(select_mode, row=row, column=column)
+        self._setup_widgets(select_mode, row=row, column=column, sticky=sticky)
         self._build_tree(input_list)
         self.keep_first = keep_first
 
-    def _setup_widgets(self, select_mode, row=None, column=None):
+    def _setup_widgets(self, select_mode, row=None, column=None, sticky=None):
         #container = ttk.Frame(self.parent)
         if row is None and column is None:
             self.container.pack(fill='both', expand=True)
         else:
-            self.container.grid(row=row, column=column, sticky="nsew")
+            self.container.grid(row=row, column=column, sticky=sticky)
         # create a treeview with dual scrollbars
         self.tree = ttk.Treeview(self.container, columns=self.header, show="headings", selectmode=select_mode)
         vsb = ttk.Scrollbar(self.container, orient="vertical", command=self.tree.yview)

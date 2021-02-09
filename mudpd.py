@@ -2777,6 +2777,12 @@ class MUDWizard(tk.Toplevel):
         self.frames = {}  # At a quick glance I can't tell if this is a set or dict
         self.frame_list = list()  # []
 
+        try:
+            self.db_handler.db.insert_protocol_device()
+            print("Success!", "Labeled Device Info Updated")
+        except AttributeError:
+            messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
+
         for F in (MUDPage0Select, MUDPage1Description, MUDPage2Internet, MUDPage3Local, MUDPage4SameMan,
                   MUDPage5NamedMan, MUDPage6MyControl, MUDPage7Control, MUDPage8Summary):
             self.frame_list.append(F)
@@ -2827,53 +2833,26 @@ class MUDWizard(tk.Toplevel):
             self.current_page = 0
             self.show_frame(self.frame_list[self.current_page])
 
-    def retrieve_hosts_internet(self):
+    def retrieve_hosts_internet(self, comm_list):
         self.hosts_internet = []
-        self.comm_ports = []
         pattern = re.compile(
-            "^([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!172\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31))(?<!127)(?<!^10)(?<!^0)\.([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!192\.168)(?<!172\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31))\.([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!\.255$)$")
+            "^([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!172\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31))"
+            "(?<!127)(?<!^10)(?<!^0)\.([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!192\.168)(?<!172\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31))\."
+            "([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!\.255$)$")
         for i in comm_list:
             yesno = re.search(pattern, i[2])
             if yesno:
-                self.hosts_internet.append((i[2], i[4]))
-                print("Adding ", i[2], i[4])
+                self.hosts_internet.append((i[1], i[2], i[4]))
 
-        # TODO: JK - you can use the method "self.add_rule" to create new entries
-        #  I think you should be able to use the frame from self.frames as:
-        #  self.frames[MUDPage2Internet] (but I could be wrong)
-        for host in self.hosts_local:
-            continue
-            self.add_rule(self.frames[MUDPage2Internet])
-
-            # TODO: JK - need to figure out what specific values and dictionary entries need to get set,
-            #  but may need to access both rows
-            #Placeholder values
-            self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row-1] = host
-            self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row] = host
         return self.hosts_internet
 
-    def retrieve_hosts_local(self):
-        # Placholder for testing, but may be a good place to set or access the values from the database
+    def retrieve_hosts_local(self, comm_list):
         self.hosts_local = []
         pattern = re.compile("(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.168\.)|(^127\.0\.0\.1)")
         for i in comm_list:
             yesno = re.search(pattern, i[2])
             if yesno:
-                self.hosts_local.append((i[2], i[4]))
-                print("Adding ", i[2], i[4])
-
-        # TODO: JK - you can probably do the same as above for local hosts (as: self.frames[MUDPage3Local] )
-        #  I haven't yet built the frame for the pages after Internet, but they should all basically
-        #  function the same way in the end.
-        for host in self.hosts_local:
-            continue
-            self.add_rule(self.frames[self.MUDPage3Local])
-
-            # TODO: JK - need to figure out what specific values and dictionary entries need to get set,
-            #  but may need to access both rows
-            #placeholder values
-            self.rules[self.frames[MUDPage3Local].communication][self.frames[MUDPage3Local].max_row-1] = host
-            self.rules[self.frames[MUDPage3Local].communication][self.frames[MUDPage3Local].max_row] = host
+                self.hosts_local.append((i[1], i[2], i[4]))
         return self.hosts_local
 
 
@@ -3189,18 +3168,14 @@ class MUDPage0Select(tk.Frame):
     def retrieve_device_info(self, _):  # , ignored_dev = None):
         print("Retrieving Device Info")
 
-        # TODO: JK - If you want to change this datatype to a dictionary or something else, that's fine by me. You
-        #  may need to modify code below if you do so
         self.controller.mud_device = self.mud_dev_list.get(self.mud_dev_list.selection())
         print("device:", self.controller.mud_device)
 
-        # TODO: JK - Please feel free to modify what is included. I'm not sure what would be best here. I'm thinking
-        #  more likely that just the Device name and MAC address (and potentially the device category)
         # Populates Device String Variable for the next page
         for i, v in enumerate(self.controller.mud_device):
             if not i:
                 self.controller.sv_device.set("")
-            elif i in [1,4,5]:
+            elif i in [1, 4, 5]:
                 self.controller.sv_device.set(self.controller.sv_device.get() + " " + v)
 
         self.device_id = self.controller.mud_device[0]
@@ -3221,17 +3196,37 @@ class MUDPage0Select(tk.Frame):
             self.inthosts = self.controller.retrieve_hosts_internet(comminfo)
             self.localhosts = self.controller.retrieve_hosts_local(comminfo)
         except AttributeError as ae:
-            print("Database not connected, please connect to a database")
+            print("Error: ", ae)
         print("Internet hosts:", len(self.inthosts), self.inthosts)
         print("Local hosts:", len(self.localhosts), self.localhosts)
         # Internet
         if self.inthosts:
             self.controller.cb_v_list[1].set(True)
+        for host in self.inthosts:
+            self.controller.add_rule(self.controller.frames[MUDPage2Internet])
+            self.controller.rules[self.controller.frames[MUDPage2Internet].communication][self.controller.frames[MUDPage2Internet].max_row - 1][
+                'host'][
+                0].set(host[1])
+            self.controller.rules[self.controller.frames[MUDPage2Internet].communication][self.controller.frames[MUDPage2Internet].max_row - 1][
+                'protocol'][0].set(host[0].upper())
+            self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
+                self.controller.frames[MUDPage2Internet].max_row][
+                'port_remote'][0].set(host[2])
         # Local
         if self.localhosts:
             self.controller.cb_v_list[2].set(True)
         self.controller.sv_desc.set("Device Description")
         self.controller.sv_mfr.set(self.dev_mfr)
+
+        for host in self.localhosts:
+            self.controller.add_rule(self.controller.frames[MUDPage3Local])
+            self.controller.rules[self.controller.frames[MUDPage3Local].communication][self.controller.frames[MUDPage3Local].max_row - 1]['host'][
+                0].set(host[1])
+            self.controller.rules[self.controller.frames[MUDPage3Local].communication][self.controller.frames[MUDPage3Local].max_row - 1][
+                'protocol'][0].set(host[0].upper())
+            self.controller.rules[self.controller.frames[MUDPage3Local].communication][
+                self.controller.frames[MUDPage3Local].max_row][
+                'port_remote'][0].set(host[2])
 
         self.controller.next_page()
 

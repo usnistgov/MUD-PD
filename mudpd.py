@@ -11,14 +11,21 @@ from src.lookup import lookup_mac  # , lookup_hostname
 from src.generate_mudfile import MUDgeeWrapper
 from src.generate_report import ReportGenerator
 from src.multicolumn_listbox import MultiColumnListbox
+import src.pcapng_comment as capMeta
+
+from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_acls, make_support_info
+from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
+import random
+import json
 
 # External Modules
 # import concurrent
 from datetime import datetime
 from datetime import timedelta
 import hashlib
+from functools import partial
 # import math
-# import multiprocessing
+import multiprocessing as mp
 # from multiprocessing import Process, Queue
 import mysql.connector
 from mysql.connector import errorcode
@@ -27,7 +34,8 @@ from mysql.connector import errorcode
 import sys
 import time
 import tkinter as tk
-# from tkinter import ttk
+from tkinter import ttk
+from tkinter import scrolledtext
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename
 from configparser import ConfigParser
@@ -81,6 +89,17 @@ class MudCaptureApplication(tk.Frame):
         self.window_stack = []
         self.yield_focus(self.parent)
 
+        self.test = "testing"
+
+        # Multiprocessing
+        self.p_file = None
+        #self.p_list = list()
+        #nself.p_count = 0
+        self.m = mp.Manager()
+        self.q = self.m.Queue()
+        #self.event = self.Event()
+        self.filename_prev = ""
+
         # ** Initialize class variables ** #
         # TODO: Handle these variables better
         # Future windows (i.e. set self.w_XXXX objects to None
@@ -111,6 +130,7 @@ class MudCaptureApplication(tk.Frame):
         self.db_cnx_entries = None
         self.api_key_entries = None
         self.capture_entries = None
+        self.cap_envi_metadata = None
         self.device_entries = None
         self.device_state_entries = None
         self.capture_devices_entries = None
@@ -209,13 +229,28 @@ class MudCaptureApplication(tk.Frame):
         self.b_main_import.image = icon_import
         self.b_main_import.pack(side="left")
 
-        self.b_main_generate_MUD = tk.Button(self.menuFrame, text="Generate MUD File", state='disabled', wraplength=80,
+        self.b_main_generate_MUD = tk.Button(self.menuFrame,
+                                             text="Generate MUD File",
+                                             wraplength=80,
+                                             state='disabled',
                                              command=self.popup_generate_mud_wizard)  # , anchor=tk.N+tk.W)
         self.b_main_generate_MUD.pack(side="left")
 
-        self.b_main_generate_report = tk.Button(self.menuFrame, state="disabled", text="Generate Report", wraplength=80,
+        self.b_main_generate_report = tk.Button(self.menuFrame,
+                                                text="Generate Report",
+                                                wraplength=80,
+                                                state="disabled",
                                                 command=self.generate_report_wizard)  # , anchor=tk.N+tk.W)
         self.b_main_generate_report.pack(side="left")
+
+        #start_muddy = MUDWizard()
+
+        #self.b_MUDdy = tk.Button(self.menuFrame, text="MUDdy", command=lambda: start_muddy.mainloop())
+        self.b_MUDdy = tk.Button(self.menuFrame,
+                                 text="MUDdy",
+                                 state="disabled",
+                                 command=lambda p=self: MUDWizard(parent=p))
+        self.b_MUDdy.pack(side="left")
 
         # *** Left (capture) frame *** #
         self.capFrame = tk.Frame(self.parent, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
@@ -606,6 +641,7 @@ class MudCaptureApplication(tk.Frame):
             self.b_main_import.config(state='normal')
             self.b_main_generate_MUD.config(state='normal')
             self.b_main_generate_report.config(state='normal')
+            self.b_MUDdy.config(state='normal')
             self.b_main_inspect.config(state="disabled")
             self.b_ns.config(state='normal')
             self.b_ew.config(state='normal')
@@ -740,13 +776,77 @@ class MudCaptureApplication(tk.Frame):
 
         self.yield_focus(self.w_cap)
 
-    @staticmethod
-    def open_file_callback(entry):
+    #@staticmethod
+    def open_file_callback(self, sv_entry):
         tk.Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
 
         filename = askopenfilename()  # show an "Open" dialog box and return the path to the selected file
-        entry.delete(0, tk.END)
-        entry.insert(0, filename)
+        sv_entry.set(filename)
+        #entry.delete(0, tk.END)
+        #entry.insert(0, filename)
+
+        # TODO: Check if selected file is the previously selected one
+        if filename != self.filename_prev:
+            self.filename_prev = filename
+
+            if filename.lower().endswith(".pcapng"):
+                # Check for metadata embedded in the comment field
+                self.cap_envi_metadata = capMeta.extract_comment(filename)
+
+                # 'File': 'fileName', 'Activity': 'activity', 'Notes (optional)': 'details',
+                #                    'Lifecycle Phase': 'lifecyclePhase', 'Setup': 'setup', 'Normal Operation': 'normalOperation',
+                #                    'Removal': 'removal',
+                #                    'Internet': 'internet', 'Human Interaction': 'humanInteraction',
+                #                    'Preferred DNS Enabled': 'preferredDNS', 'Isolated': 'isolated',
+                #                    'Duration-based': 'durationBased', 'Duration': 'duration', 'Action-based': 'actionBased',
+                #                    'Action': 'deviceAction',
+                # field2db[self.capture_entries[2][0].cget('text')]:
+                #                     field2db[lifecyclePhaseFields[self.capture_entries[2][1].get()]]
+                if len(self.cap_envi_metada) > 0:
+                    for i, (x, y) in enumerate (self.capture_entries):
+                        # Skip first entry
+                        if i:
+                            if i == 2:
+                                try:
+                                    if self.cap_envi_metadata[ field2db[x] ].lower() == "setup":
+                                        y.set(1)
+                                    elif self.cap_envi_metadata[ field2db[x] ].lower() == "normal operation":
+                                        y.set(2)
+                                    elif self.cap_envi_metadata[field2db[x]].lower() == "removal":
+                                        y.set(3)
+                                    else:
+                                        print("Warning unexpected phase provided")
+
+                                    print("Phase", x.cget("text"), y.get())
+                                except:
+                                    print("Warning: Likely field missing in file comment")
+                            else:
+                                try:
+                                    if type(y) == type(tk.IntVar()):
+                                        if self.cap_env_envi_metadata[ field2db[x] ].lower() == "true":
+                                            y.set(1)
+                                        elif self.cap_envi_metadata[ field2db[x] ].lower() == "false":
+                                            y.set(0)
+                                        else:
+                                            print("Warning! non true/false value provided")
+                                    elif type(y) == type(tk.StringVar()):
+                                        y.set(self.cap_env_envi_metadata[ field2db[x] ])
+                                    else:
+                                        print("Warning! Unexpected variable type")
+                                    #self.cap_envi_metadata[field2db[x.cget: y.get()]]
+
+                                    print(x, field2db[x], y.get())
+                                except:
+                                    print("Warning! Likely environmental variable missing")
+            else:
+                self.cap_envi_metadata = dict()
+
+            # TODO: Kill any/all existing worker threads if a new file was selected
+            #self.q.put("kill")
+
+            # TODO: Restart worker threads to process file
+            #self.p_file = mp.Process(target=self.import_and_close_proc, args=(self.q))
+
 
     def make_form_capture(self, fields_general, fields_phase, fields_env, fields_type):
         #entries = list()
@@ -754,11 +854,13 @@ class MudCaptureApplication(tk.Frame):
         for i, field in enumerate(fields_general):
             row = tk.Frame(self.w_cap)
             lab = tk.Label(row, width=15, text=field, anchor='w')
-            ent = tk.Entry(row)
+            sv_ent = tk.StringVar()
+            ent = tk.Entry(row, textvariable=sv_ent)
 
             if i == 0:
                 b_open = tk.Button(row, text='...',
-                                   command=(lambda e=ent: self.open_file_callback(e)))
+                                   command=(lambda e=sv_ent: self.open_file_callback(e)))
+                                   #command=(lambda e=ent: self.open_file_callback(e)))
                 row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
                 lab.pack(side=tk.LEFT)
                 ent.pack(side=tk.LEFT, fill=tk.X)
@@ -769,7 +871,8 @@ class MudCaptureApplication(tk.Frame):
                 ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
 
             #entries.append((field, ent))
-            self.capture_entries.append((field, ent))
+            #self.capture_entries.append((field, ent))
+            self.capture_entries.append((field, sv_ent))
 
         # Device Phase (Setup, Normal Operation, Removal)
         # lifecyclePhaseFields = 'Setup', 'Normal Operation', 'Removal'
@@ -839,11 +942,12 @@ class MudCaptureApplication(tk.Frame):
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
         lab = tk.Label(row, padx=5, width=9, text=fields_type[i], anchor='w')
         lab.pack(side=tk.LEFT)
-        e_dur = tk.Entry(row)
+        sv_dur = tk.StringVar()
+        e_dur = tk.Entry(row, textvariable=sv_dur)
         e_dur.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
         e_dur.config(state='disabled')
         #entries.append((fields_type[i], e_dur))
-        self.capture_entries.append((fields_type[i], e_dur))
+        self.capture_entries.append((fields_type[i], sv_dur))
 
         def activate_check_action():
             if v_act.get() == 1:  # whenever checked
@@ -867,11 +971,12 @@ class MudCaptureApplication(tk.Frame):
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
         lab = tk.Label(row, padx=5, width=9, text=fields_type[i], anchor='w')
         lab.pack(side=tk.LEFT)
-        e_act = tk.Entry(row)
+        sv_act = tk.StringVar()
+        e_act = tk.Entry(row, textvariable=sv_act)
         e_act.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
         e_act.config(state='disabled')
         #entries.append((fields_type[i], e_act))
-        self.capture_entries.append((fields_type[i], e_act))
+        self.capture_entries.append((fields_type[i], sv_act))
 
         #return entries
 
@@ -879,9 +984,7 @@ class MudCaptureApplication(tk.Frame):
     def import_and_close(self):
 
         # Check if capture is already in database (using sha256)
-        #filehash = hashlib.sha256(open(entries[0][1].get(), 'rb').read()).hexdigest()
         file_path = self.capture_entries[0][1].get()
-        #filehash = hashlib.sha256(open(self.capture_entries[0][1].get(), 'rb').read()).hexdigest()
         filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
         captures = self.db_handler.db.select_unique_captures()
 
@@ -929,6 +1032,25 @@ class MudCaptureApplication(tk.Frame):
             temp_file_id = self.db_handler.db.select_last_insert_id()
             self.cap.id = temp_file_id[0]
 
+            # Embed capture environment metadata into pcapng file
+            for i, (x, y) in enumerate(self.capture_entries):
+                # Skip first entry
+                if i:
+                    if i == 2:
+                        if y.get() == 1:
+                            self.cap_envi_metadata[ field2db[x.cget("text")] ] = "setup"
+                        elif y.get() == 2:
+                            self.cap_envi_metadata[ field2db[x.cget("text")] ] = "normal operation"
+                        elif y.get() == 3:
+                            self.cap_envi_metadata[ field2db[x.cget("text")] ] = "removal"
+                    else:
+                        if type(y) == type(tk.IntVar()):
+                            self.cap_envi_metadata[ field2db[x] ] = str(bool(y.get()))
+                        else:
+                            self.cap_envi_metadata[ field2db[x] ] = y.get()
+
+            self.cap.embed_meta(self.cap_envi_metadata)
+
             # Potentially threadable code
 
             # Popup window
@@ -945,6 +1067,64 @@ class MudCaptureApplication(tk.Frame):
 
             print("(E) destroying import capture window")
             self.w_cap.destroy()
+
+
+    def import_and_close_proc(self, q):
+
+        # Check if capture is already in database (using sha256)
+        file_path = self.capture_entries[0][1].get()
+        filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
+        captures = self.db_handler.db.select_unique_captures()
+
+        if any(filehash in cap_hash for cap_hash in captures):
+            tk.Tk().withdraw()
+            messagebox.showerror("Error", "Capture file already imported into database")
+        else:
+            self.cap = CaptureDigest(file_path, api_key=self.api_key, mp=True)  # , q=q)
+            print("finished importing")
+
+            data_capture = {
+                "fileName": self.cap.fname,
+                "fileLoc": self.cap.fdir,
+                "fileHash": self.cap.fileHash,
+                "capDate": epoch2datetime(float(self.cap.cap_timestamp)),  # epoch2datetime(float(self.cap.cap_date)),
+                "capDuration": self.cap.capDuration,
+                "details": self.capture_entries[1][1].get(),
+                field2db[self.capture_entries[2][0].cget('text')]:
+                    field2db[lifecyclePhaseFields[self.capture_entries[2][1].get()]]
+            }
+
+            for i in range(3, 11):
+                data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
+                print(i, self.capture_entries[i][1].get())
+
+            print('data_capture:', data_capture)
+
+            print("(A) inserting capture file into database")
+            self.db_handler.db.insert_capture(data_capture)
+            temp_file_id = self.db_handler.db.select_last_insert_id()
+            self.cap.id = temp_file_id[0]
+
+            # Embed capture environment metadata into pcapng file
+            self.cap.embed_meta(data_capture)
+
+            # Potentially threadable code
+
+            # Popup window
+            # self.yield_focus(self.w_cap)
+            # print("(A) popup_import_capture_devices")
+            print("(B) popup_import_capture_devices")
+            self.popup_import_capture_devices(self.cap)
+
+            print("(C) populate_capture_list")
+            self.populate_capture_list()
+
+            print("(D) import_packets")
+            self.import_packets(self.cap)
+
+            print("(E) destroying import capture window")
+            self.w_cap.destroy()
+
 
     def pre_popup_import_capture_devices(self):
         # sel_cap_path = self.cap_list.get_selected_row()[5] + "/" + self.cap_list.get_selected_row()[2]
@@ -2266,209 +2446,6 @@ class MudCaptureApplication(tk.Frame):
         self.mud_pcap_list.focus(0)
         self.mud_pcap_list.selection_set(0)
 
-    # **** OLD ATTEMPT **** #
-    '''
-    def generate_MUD_wizard_dropdown(self):
-        #print("You shouldn't have gotten to the generate MUD wizard yet")
-
-        self.w_gen_mud = tk.Toplevel()
-        self.w_gen_mud.wm_title('Generate MUD File Wizard')
-
-        # Prompt for selecting the device
-        self.row_dev = tk.Frame(self.w_gen_mud)
-        self.row_dev.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-
-        dev_select_label = tk.Label(self.row_dev, width=20, text="Select the device to profile:", anchor='w')
-        dev_select_label.pack(side=tk.LEFT)
-
-        # Prompt for selecting the gateway
-        self.row_gate = tk.Frame(self.w_gen_mud)
-        self.row_gate.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-
-        gate_select_label = tk.Label(self.row_gate, width=20, text="Select the network gateway:", anchor='w')
-        gate_select_label.pack(side=tk.LEFT)
-
-        
-
-        self.mud_gate_list = ['--']
-        self.mud_gate_var = tk.StringVar(self.w_gen_mud)
-        self.mud_gate_var.set(self.mud_gate_list[0])
-
-
-        #Device
-        self.populate_mud_dev_list()
-
-        self.mud_dev_var = tk.StringVar(self.w_gen_mud)
-        self.mud_dev_var.set(self.mud_dev_list[0])
-
-        #row_dropdown_device = tk.Frame(self.w_gen_mud)
-        #row_dropdown_device.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-
-
-        #dev_select_dropdown = tk.OptionMenu(row_dropdown_device, mud_dev_var, *self.mud_dev_list)
-        self.dev_select_dropdown = tk.OptionMenu(self.row_dev, self.mud_dev_var, *self.mud_dev_list)
-        self.dev_select_dropdown.pack(side=tk.LEFT)
-
-
-
-        #Gateway
-
-        #self.populate_mud_gate_list()
-
-        #self.mud_gate_var = tk.StringVar(self.w_gen_mud)
-        #self.mud_gate_var.set(self.mud_gate_list[0])
-
-        #gate_select_dropdown = tk.OptionMenu(row_gate, mud_gate_var, *self.mud_gate_list)
-        #gate_select_dropdown.pack(side=tk.LEFT)
-
-
-        def change_dev(*args):
-            print("Device Changed")
-            print(self.mud_dev_var.get())
-            self.populate_mud_gate_list(ignored_dev=self.mud_dev_var.get().split(' | ')[-1])
-            print("Mac =", self.mud_dev_var.get().split(' | ')[-1])
-
-            #mud_gate_var = tk.StringVar(self.w_gen_mud)
-            #mud_gate_var.set(self.mud_dev_list[0])
-
-            #gate_select_dropdown = tk.OptionMenu(row_gate, mud_gate_var, *self.mud_gate_list)
-            #gate_select_dropdown.pack(side=tk.LEFT)
-
-        self.mud_dev_var.trace('w', change_dev)
-
-        def change_gate(*args):
-            print(self.mud_gate_var.get())
-            self.populate_mud_pcap_list(self.mud_dev_var.get().split(' | ')[-1],
-                                        self.mud_gate_var.get().split(' | ')[-1])
-
-        self.mud_gate_var.trace('w', change_gate)
-
-    '''
-
-    '''
-        list_row = tk.Frame(self.w_gen_mud)
-        list_row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-
-        self.mud_dev_header = ["Manufacturer", "Model", "Internal Name", "Category", "MAC"]#, "IPv4", "IPv6"]
-        #self.mud_dev_list = MultiColumnListbox(parent=self.mudDevFrame,
-        self.mud_dev_list = MultiColumnListbox(parent=list_row,
-                                                   header=self.mud_dev_header,
-                                                   list=list(), selectmode="browse")
-        self.mud_dev_list.bind("<<TreeviewSelect>>", self.update_mud_device_selection)
-
-        #self.w_gen_mud.bind('<Return>', (lambda event, n=internalName, m=mac: self.select_mud_dev(n, m)))
-        self.w_gen_mud.bind('<Return>', (lambda event : self.select_mud_dev()))
-
-    '''
-
-    '''
-        b_select = tk.Button(self.w_gen_mud, text='Select',
-                             #command=(lambda n=internalName, m=mac: self.select_mud_dev(n, m)))
-                             command=(self.select_mud_dev()))
-
-        b_cancel = tk.Button(self.w_gen_mud, text='Cancel', command=self.w_gen_mud.destroy)
-
-        if sys.platform == "win32":
-            b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
-            b_select.pack(side=tk.RIGHT, padx=5, pady=5)
-        else:
-            b_select.pack(side=tk.RIGHT, padx=5, pady=5)
-            b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
-
-        #self.populate_mud_dev_list()
-
-        self.yield_focus(self.w_gen_mud)
-
-
-
-
-
-
-    def update_mud_device_selection():
-        print("update_mud_device_selection")
-        self.mud_dev = {name:"internalName", mac:"mac"}
-    '''
-    '''
-    def populate_mud_dev_list(self):
-        # clear previous list
-        self.mud_dev_list.clear()
-
-        # Get and insert all captures currently added to database
-        self.db_handler.db.select_devices_imported()
-
-        for (id, mfr, model, mac, internalName, category) in self.db_handler.db.cursor:
-            self.mud_dev_list.append((mfr, model, internalName, category, mac))
-
-        # Set focus on the first element
-        #self.mud_dev_list.focus(0)
-        #self.mud_dev_list.selection_set(0)
-    '''
-    '''
-    def populate_mud_dev_list_dropdown(self):
-        self.mud_dev_list = ['--']
-
-        # Get and insert all captures currently added to database
-        self.db_handler.db.select_devices_imported()
-
-        for (id, mfr, model, mac, internalName, category) in self.db_handler.db.cursor:
-            #self.mud_dev_list.append((mfr, model, internalName, category, mac))
-            self.mud_dev_list.append(internalName + ' | ' + mac)
-
-        self.gate_select_dropdown = tk.OptionMenu(self.row_gate, self.mud_gate_var, *self.mud_gate_list)
-        self.gate_select_dropdown.pack(side=tk.LEFT)
-    '''
-
-    '''
-    def populate_mud_gateway_list(self):
-        # clear previous list
-        self.mud_gateway_list.clear()
-
-        # Get and insert all captures currently added to database
-        self.db_handler.db.select_all_local_devices(ignore='')
-
-        for (id, mfr, model, internalName, category, mac) in self.db_handler.db.cursor:
-            self.mud_gateway_list.append((mfr, model, internalName, category, mac))
-
-        # Set focus on the first element
-        self.mud_gateway_list.focus(0)
-        self.mud_gateway_list.selection_set(0)
-
-    '''
-    '''
-    def populate_mud_gate_list_dropdown(self, ignored_dev = '--'):
-        print("Populating mud gate list")
-        self.mud_gate_list = ['--']
-
-        if ignored_dev == '--':
-            print("Ignored device:", ignored_dev)
-            print("Returning")
-            return
-
-        # Get and insert all captures currently added to database
-        self.db_handler.db.select_devices_imported_ignore({'ignored_dev':ignored_dev})
-
-        for (id, mfr, model, internalName, category, mac) in self.db_handler.db.cursor:
-            #self.mud_gateway_list.append((mfr, model, internalName, category, mac))
-            self.mud_gate_list.append(internalName + ' | ' + mac)
-            print("\t" + internalName + ' | ' + mac)
-
-
-    def populate_mud_pcap_list_dropdown(self, device, gateway):
-        # clear previous list
-        self.mud_pcap_list.clear()
-        self.mud_dev_list.append(("All...",))
-
-        # Get and insert all captures currently added to database
-        self.db_handler.db.select_imported_captures_with(dev='', gateway='')
-
-        for (id, fileName, fileLoc, fileHash, cap_date, activity, details) in self.db_handler.db.cursor:
-            self.cap_list.append((cap_date, fileName, activity, details, fileLoc)) #for early stages
-
-        # Set focus on the first element
-        self.cap_list.focus(0)
-        self.cap_list.selection_set(0)
-    '''
-
     def generate_report_wizard(self):
         self.w_gen_report = tk.Toplevel()
         self.w_gen_report.wm_title('Generate Device Report Wizard')
@@ -2745,6 +2722,1078 @@ class MudCaptureApplication(tk.Frame):
         self.parent.quit()
 
 
+#class MUDWizard(tk.Tk):
+class MUDWizard(tk.Toplevel):
+
+    def __init__(self, parent, *args, **kwargs):
+        #tk.Tk.__init__(self, *args, **kwargs)
+        tk.Toplevel.__init__(self, *args, **kwargs)
+        self.wm_title("MUD Wizard")
+        #self.w_db = tk.Toplevel()
+        #self.w_db.wm_title("Connect to Database")
+        self.parent = parent
+        self.parent.b_MUDdy.config(state='disabled')
+
+        self.hosts_internet = list()
+        self.hosts_local = list()
+
+        self.current_page = 0
+        self.sv_device = tk.StringVar()
+        self.v_internet = tk.BooleanVar()
+        self.v_internet.set(True)
+        self.v_local = tk.BooleanVar()
+        self.v_local.set(True)
+        self.sv_desc = tk.StringVar()
+        self.sv_mfr = tk.StringVar()
+
+        self.mud_name = f'mud-{random.randint(10000, 99999)}'
+        self.acl = list()  # []
+        self.policies = dict()  # {}  # This could also have been a set originally, unknown
+        #self.cb_v_list = []
+        self.cb_v_list = list()
+        self.db_handler = self.parent.db_handler
+        self.mud_device = dict()
+        self.row_nav = 2000
+
+        self.support_info = dict()  # {}
+
+        self.rules = {"internet": dict(),
+                      "local": dict(),
+                      "mfr_same": dict(),
+                      "mfr_named": dict(),
+                      "controller_my": dict(),
+                      "controller": dict()}
+
+        print("self.parent.test", self.parent.test)
+
+        container = tk.Frame(self)
+
+        container.pack(side="top", fil="both", expand = True)
+
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
+
+        self.frames = {}  # At a quick glance I can't tell if this is a set or dict
+        self.frame_list = list()  # []
+
+        for F in (MUDPage0Select, MUDPage1Description, MUDPage2Internet, MUDPage3Local, MUDPage4SameMan,
+                  MUDPage5NamedMan, MUDPage6MyControl, MUDPage7Control, MUDPage8Summary):
+            self.frame_list.append(F)
+            frame = F(container, self)
+            self.frames[F] = frame
+            frame.grid(row=0, column=0, sticky="nsew")
+
+        print(self.frames)
+        #self.current_page = 0
+        self.show_frame(MUDPage0Select)
+
+        self.parent.yield_focus(self)
+        #self.mainloop()
+
+    def show_frame(self, cont):
+        frame = self.frames[cont]
+        frame.tkraise()
+
+    def next_page(self):#, current_page): #TODO: Fix this
+
+        #support_info = make_support_info(1, 'https://lighting.example.com/hvac1.json', 48, True, 'Test Device',
+        #                                 'https://jci.example.com/doc/hvac1', mfg_name='Test Manufacturer')
+        #options = []
+        if self.current_page == 0:
+            self.current_page += 1
+            self.show_frame(self.frame_list[self.current_page])
+        else:
+            for i, v in enumerate(self.cb_v_list):
+                if i and v.get() and i>=self.current_page:
+                    self.current_page = i+1
+                    self.show_frame(self.frame_list[self.current_page])
+                    return
+
+            # Go to Summary Page
+            self.current_page = 8
+            self.show_frame(self.frame_list[self.current_page])
+
+    def prev_page(self): # TODO: Fix this
+        if self.current_page > 1:
+            for i, v in reversed(list(enumerate(self.cb_v_list))):
+                if i and v.get() and i<self.current_page:
+                    self.current_page = i
+                    self.show_frame(self.frame_list[self.current_page])
+                    return
+            self.current_page = 1
+            self.show_frame(self.frame_list[self.current_page])
+        else:
+            self.current_page = 0
+            self.show_frame(self.frame_list[self.current_page])
+
+    # TODO: JK - Develop internet host retrieval
+    def retrieve_hosts_internet(self):
+        # Placholder for testing, but may be a good place to set or access the values from the database
+        self.hosts_internet = ['Internet Host A', 'Internet Host B', 'Internet Host C']
+
+        # TODO: JK - you can use the method "self.add_rule" to create new entries
+        #  I think you should be able to use the frame from self.frames as:
+        #  self.frames[MUDPage2Internet] (but I could be wrong)
+        for host in self.hosts_local:
+            continue
+            self.add_rule(self.frames[MUDPage2Internet])
+
+            # TODO: JK - need to figure out what specific values and dictionary entries need to get set,
+            #  but may need to access both rows
+            #Placeholder values
+            self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row-1] = host
+            self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row] = host
+
+    # TODO: JK - Develop internet host retrieval
+    def retrieve_hosts_local(self):
+        # Placholder for testing, but may be a good place to set or access the values from the database
+        self.hosts_local = ['Local Host A', 'Local Host B', 'Local Host C']
+
+        # TODO: JK - you can probably do the same as above for local hosts (as: self.frames[MUDPage3Local] )
+        #  I haven't yet built the frame for the pages after Internet, but they should all basically
+        #  function the same way in the end.
+        for host in self.hosts_local:
+            continue
+            self.add_rule(self.frames[self.MUDPage3Local])
+
+            # TODO: JK - need to figure out what specific values and dictionary entries need to get set,
+            #  but may need to access both rows
+            #placeholder values
+            self.rules[self.frames[MUDPage3Local].communication][self.frames[MUDPage3Local].max_row-1] = host
+            self.rules[self.frames[MUDPage3Local].communication][self.frames[MUDPage3Local].max_row] = host
+
+
+    def add_rule(self, frame, first_entry=False):  # Ignore the "first_entry" for now
+        frame.max_row += 1
+        v_host = tk.StringVar()
+        v_protocol = tk.StringVar()
+        v_port_local = tk.StringVar()
+        v_port_remote = tk.StringVar()
+        v_initiation_direction = tk.StringVar()
+        # TODO Move elsewhere
+        # self.rules[frame.communication] = dict()
+
+        # Host
+        l_host = tk.Label(frame.contentFrame, text="Host")
+        l_host.grid(row=frame.max_row, column=0, sticky='w')
+        # TODO: Change this to a combobox entry with each entry being observed destination (dst) hosts
+        e_host = tk.Entry(frame.contentFrame, width=50, textvariable=v_host)
+        e_host.grid(row=frame.max_row, column=1, columnspan=4, sticky="ew")
+
+        self.rules[frame.communication][frame.max_row] = {"host": (v_host, l_host, e_host)}
+
+        # Protocol
+        c_protocol = None
+        l_protocol = tk.Label(frame.contentFrame, text="Protocol")
+        l_protocol.grid(row=frame.max_row, column=5, sticky='w')
+        self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
+        c_protocol = self.create_combobox(frame)
+        c_protocol.grid(row=frame.max_row, column=6, sticky='w')
+        c_protocol.bind("<<ComboboxSelected>>", lambda f=frame.contentFrame, r=frame.max_row: self.protocol_updated(
+            f, r))
+        self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
+
+        # Button to Add or Remove entry
+        v_modify = tk.StringVar()
+        if first_entry:
+            v_modify.set(" + ")
+            #modify_command = partial(self.add_rule, frame)
+            modify_command = self.add_rule
+            modify_args = False
+        else:
+            v_modify.set(" - ")
+            #modify_command = partial(self.remove_rule, frame)#, row=frame.max_row)
+            modify_command = self.remove_rule
+            modify_args = frame.max_row
+
+        b_modify = tk.Button(frame.contentFrame, textvariable=v_modify, command= lambda f=frame,
+                                                                                        a=modify_args:
+        modify_command(f, a))
+        b_modify.grid(row=frame.max_row, column=7, sticky='w')
+        self.rules[frame.communication][frame.max_row]['remove_button'] = (b_modify,)
+
+        frame.max_row += 1
+
+        # Local Ports
+        v_port_local.set("Any")
+        l_port_local = tk.Label(frame.contentFrame, text="Local Port")
+        l_port_local.grid(row=frame.max_row, column=0, columnspan=2, sticky='w')
+        e_port_local = tk.Entry(frame.contentFrame, width=10, textvariable=v_port_local)
+        e_port_local.grid(row=frame.max_row, column=2, sticky="w")
+        self.rules[frame.communication][frame.max_row] = {"port_local": (v_port_local, l_port_local, e_port_local)}
+
+        # Remote Ports
+        v_port_remote.set("Any")
+        l_port_remote = tk.Label(frame.contentFrame, text="Remote Port")
+        l_port_remote.grid(row=frame.max_row, column=3, sticky='w')
+        e_port_remote = tk.Entry(frame.contentFrame, width=10, textvariable=v_port_remote)
+        e_port_remote.grid(row=frame.max_row, column=4, sticky="w")
+        self.rules[frame.communication][frame.max_row]["port_remote"] = (v_port_remote, l_port_remote, e_port_remote)
+
+        # Initiation Direction
+        c_initiation_direction = None
+        l_initiation_direction = tk.Label(frame.contentFrame, text="Initiated by")
+        l_initiation_direction.grid(row=frame.max_row, column=5, sticky='w')
+        self.rules[frame.communication][frame.max_row]["initiation_direction"] = (v_initiation_direction,
+                                                                                  l_initiation_direction,
+                                                                                  c_initiation_direction)
+        c_initiation_direction = self.create_combobox(frame, opt_type='initiation_direction')
+        c_initiation_direction.grid(row=frame.max_row, column=6, sticky='w')
+        self.rules[frame.communication][frame.max_row]["initiation_direction"] = (v_initiation_direction,
+                                                                                  l_initiation_direction,
+                                                                                  c_initiation_direction)
+
+        # TODO: Evaluate how to use the rules in MUDdy and if this part is needed
+        # Save rules to shared dictionary
+        #self.rules[frame.communication] = {frame.max_row: {"host": (v_host, l_host, e_host),
+        #                                                   "protocol": (v_protocol, l_protocol, c_protocol),
+        #                                                   "port_local": (v_port_local, l_port_local, e_port_local),
+        #                                                   "port_remote": (v_port_remote, l_port_remote,
+        #                                                   e_port_remote),
+        #                                                   "initiation_direction": (v_initiation_direction,
+        #                                                                            l_initiation_direction,
+        #                                                                            c_initiation_direction)}}
+
+#         self.rules[frame.communication] = {frame.max_row: {"host": (v_host, l_host, e_host),
+#                                                            "protocol": (v_protocol, l_protocol, c_protocol),
+#                                                            "port_local": (v_port_local, l_port_local, e_port_local),
+#                                                            "port_remote": (v_port_remote, l_port_remote, e_port_remote)
+#                                                            }
+#                                            }
+#         if frame.communication != "controller":
+#             self.rules[frame.communication][frame.max_row]['initiation_direction'] = (v_initiation_direction,
+#                                                                                       l_initiation_direction,
+# {}                                                                                      c_initiation_direction)
+        # self.rules[frame.communication] = {frame.max_row: {"host": v_host,
+        #                                                    "protocol": v_protocol,
+        #                                                    "port_local": v_port_local,
+        #                                                    "port_remote": v_port_remote}}
+        # if frame.communication != "controller":
+        #     self.rules[frame.communication][frame.max_row]['initiation_direction'] = v_initiation_direction
+
+        # if frame.communication == "controller":
+        #     self.rules[frame.communication] = {frame.max_row: {"host": tk.StringVar(),
+        #                                                        "protocol": tk.StringVar(),
+        #                                                        "port_local": tk.StringVar(),
+        #                                                        "port_remote": tk.StringVar()}}
+        # else:
+        #     self.rules[frame.communication] = {frame.max_row: {"host": tk.StringVar(),
+        #                                                        "protocol": tk.StringVar(),
+        #                                                        "port_local": tk.StringVar(),
+        #                                                        "port_remote": tk.StringVar(),
+        #                                                        "initiate_direction": tk.StringVar()}}
+
+        #frame.grid(row=frame.max_row)
+
+    def remove_rule(self, frame, row=None):
+        if row == None:
+            row = frame.max_row
+
+        print("Remove_rule button row:", row)
+
+        # Go through row pairs of rules, pull out tkinter objects (as fields), forget them, and pop from rules dict
+        for r in [row, row+1]:
+            fields = self.rules[frame.communication][r]
+            for key in fields:
+                self.forget_fields(fields[key])
+            self.rules[frame.communication].pop(r)#, None)
+
+    def forget_fields(self, tk_fields):
+        for f in tk_fields:
+            if type(f) is tk.StringVar:
+                pass
+            elif type(f) in [tk.Label, tk.Entry, tk.Button, tk.Checkbutton, ttk.Combobox]:
+                f.grid_forget()
+            else:
+                print("Unexpected datatype %s, skipping" % type(f))
+
+    def create_combobox(self, frame, opt_type="protocol", row=None):  # , options=[]):#, text_var=None):
+        #if opt_type == "custom":
+        #    combo_options = options
+        #else:
+        if opt_type == "protocol":
+            values = ('Any', 'TCP', 'UDP')
+        elif opt_type == "initiation_direction":
+            values = ('Either', 'Thing', 'Remote')
+        elif opt_type == "host":
+            # TODO: Pull Hosts?
+            values = ('Host A', 'Host B', 'Host B')
+        else:
+            print('Error: invalid rule_type')
+            return
+
+        if row is None:
+            combo_options = self.rules[frame.communication][frame.max_row][opt_type][0]
+        else:
+            combo_options = self.rules[frame.communication][frame.row][opt_type][0]
+
+        #if row is None: #if text_var == None:
+        #    combobox = ttk.Combobox(frame, width=10,
+        #                            textvariable=self.rules[frame.communication][frame.max_row][opt_type])
+        #else:
+        #    combobox = ttk.Combobox(frame, width=10,
+        #                            #textvariable=text_var)
+        #                            textvariable=self.rules[frame.communication][frame.row][opt_type])
+
+        combobox = ttk.Combobox(frame.contentFrame, width=10, textvariable=combo_options)
+
+        combobox['values'] = values
+        combobox.current(0)
+
+        # if rule_type == "protocol":
+        #     combobox['values'] = ('Any',
+        #                           'TCP',
+        #                           'UDP')
+        # elif rule_type == "initiated":
+        #     combobox['values'] = ('Either',
+        #                           'Thing',
+        #                           'Remote')
+        # else:
+        #     print("Error: invalid option")
+
+        return combobox
+
+    # TODO: Complete this portion
+    #def protocol_updated(self, event, frame, row):
+    def protocol_updated(self, frame, row):
+        event = None
+        pass
+
+        if event != "Any":
+            # add local
+            pass
+
+            # add remote
+            pass
+
+            # add or remove direction
+            if event == "TCP" and frame.communication != "controller":
+                # add direction
+                pass
+            else:
+                # hide the grid object
+                pass
+        else:
+            # hide local, remote, and direction
+            pass
+
+    def create_port_entries(self, frame, row=None):
+        if row == None:
+            e_port_local = tk.Entry(frame, width=10,
+                                    textvariable=self.rules[frame.communication][frame.max_row]['port_local'])
+            e_port_remote = tk.Entry(frame, width=10,
+                                     textvariable=self.rules[frame.communication][frame.max_row]['port_remote'])
+        else:
+            e_port_local = tk.Entry(frame, width=10, textvariable=self.rules[frame.communication][row]['port_local'])
+            e_port_remote = tk.Entry(frame, width=10, textvariable=self.rules[frame.communication][row]['port_remote'])
+
+        e_port_local.insert(0, 'any')
+        e_port_remote.insert(0, 'any')
+
+        return (e_port_local, e_port_remote)
+
+    def generate_mud_file(self):
+        tk.messagebox.showinfo("Generating MUD File", "Note this is just a placeholder")
+        self.__exit__()
+
+    def cancel(self):
+        # TODO: Implement a confirmation Popup with the ability to not cancel
+        tk.messagebox.showinfo("Confirm Cancel", "Note this is just a placeholder")
+        self.__exit__()
+
+    def __exit__(self):
+        self.parent.b_MUDdy.config(state='normal')
+        self.destroy()
+
+
+# TODO: MUD Device Selection Page
+class MUDPage0Select(tk.Frame):
+
+    def __init__(self, parent, controller):
+        # TODO: See if this is where the window dimensions should be set
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+
+        self.contentFrame = tk.Frame(self, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)  # , width=300) #, bd=1, bg="#eeeeee")
+
+        self.mud_dev_title_var = tk.StringVar()
+        self.mud_dev_title_var.set("Device to Profile:")
+        self.mud_dev_title = tk.Label(self.contentFrame, textvariable=self.mud_dev_title_var,
+                                      bg="#eeeeee", bd=1, relief="flat")
+        self.mud_dev_title.grid(row=0, sticky="nsew")
+
+        self.mud_dev_header = ["id", "Internal Name", "Manufacturer", "Model", "MAC Address", "Category"]
+        self.mud_dev_list = MultiColumnListbox(parent=self.contentFrame, header=self.mud_dev_header,
+                                               input_list=list(), select_mode="browse", exclusion_list=["id"], row=1,
+                                               sticky="nsew")
+        self.mud_dev_list.bind("<<TreeviewSelect>>", self.retrieve_device_info)
+
+        b_cancel = tk.Button(self.navigationFrame, text="Cancel", command=lambda: self.controller.cancel())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
+
+        b_cancel.grid(row=0, column=0, sticky='nsw')
+        b_next.grid(row=0, column=1, sticky='nse')
+
+        # Setup Device Selection Multi-column listbox
+        self.populate_mud_dev_list()
+        self.mud_dev_list.focus(0)
+        self.mud_dev_list.selection_set(0)
+
+        # Configure the grid
+        self.contentFrame.grid(row=0, column=0, sticky="nsew")
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+
+        self.contentFrame.grid_rowconfigure(1, weight=1)
+        self.contentFrame.grid_columnconfigure(0, weight=1)
+        self.navigationFrame.grid_rowconfigure(0, weight=1)
+        self.navigationFrame.grid_columnconfigure(0, weight=1)
+        self.navigationFrame.grid_columnconfigure(1, weight=1)
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=0)
+        self.grid_columnconfigure(0, weight=1)
+
+    def populate_mud_dev_list(self):
+        # Get and insert all captures currently added to database
+        self.mud_dev_list.clear()
+        print("Populating MUD Device List")
+        devices = self.controller.db_handler.db.select_devices_imported()
+
+        for (dev_id, mfr, model, mac, internalName, category) in devices:
+            self.mud_dev_list.append((dev_id, internalName, mfr, model, mac, category))
+
+    def retrieve_device_info(self, _):  # , ignored_dev = None):
+        print("Retrieving Device Info")
+
+        # TODO: JK - If you want to change this datatype to a dictionary or something else, that's fine by me. You
+        #  may need to modify code below if you do so
+        self.controller.mud_device = self.mud_dev_list.get(self.mud_dev_list.selection())
+        print("device:", self.controller.mud_device)
+
+        # TODO: JK - Set these based on whatever you need to
+        # Internet
+        self.controller.cb_v_list[1].set(True)
+        # Local
+        self.controller.cb_v_list[2].set(True)
+
+        self.controller.sv_desc.set("Device Description")
+
+        self.controller.sv_mfr.set("Manufacturer")
+
+        # TODO: JK - Please feel free to modify what is included. I'm not sure what would be best here. I'm thinking
+        #  more likely that just the Device name and MAC address (and potentially the device category)
+        # Populates Device String Variable for the next page
+        for i, v in enumerate(self.controller.mud_device):
+            if not i:
+                self.controller.sv_device.set("")
+            elif i in [1,4,5]:
+                self.controller.sv_device.set(self.controller.sv_device.get() + " " + v)
+
+        # TODO: JK - if you need these. Feel free to rename or adjust which class they sit in (like parent or
+        #  controller)
+        self.device_id = self.controller.mud_device[0]
+        self.dev_mac = self.controller.mud_device[4]
+        print("self.dev_mac:")
+        print("\t", self.dev_mac)
+        print("self.device_id:")
+        print("\t", self.device_id)
+
+        # TODO: JK - feel free to add additional methods to begin processing things if you need. You can hold off on
+        #  the preprocessing if you'd like by waiting until the "next" button is pressed
+        #self.placeholder_method(_)
+        # TODO: Develop these two methods
+        self.controller.retrieve_hosts_internet()
+        self.controller.retrieve_hosts_local()
+
+    # TODO: Placeholder in case we want to do something extra before navigating to the next page
+    def next_page(self):
+        self.controller.next_page()
+
+
+# TODO: MUD Description Page
+class MUDPage1Description(MUDPage0Select, tk.Frame):
+
+    def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+
+        self.contentFrame = tk.Frame(self)#, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)
+
+        # Device Selection
+        l_device = tk.Label(self.contentFrame, text="Device:")
+        l_device.grid(row=0, sticky="nw")
+        self.lb_device = tk.Label(self.contentFrame, textvariable=self.controller.sv_device)
+        self.lb_device.grid(row=0, column=1, columnspan=5, sticky="nsw")
+
+        # Support URL
+        l_support_url = tk.Label(self.contentFrame, text="Support URL:")
+        self.sv_support_url = tk.StringVar()
+        e_support_url = tk.Entry(self.contentFrame, textvariable=self.sv_support_url)#, expand="y", fill="x")
+        l_support_url.grid(row=1, column=0, columnspan=2, sticky="w")
+        e_support_url.grid(row=1, column=2, columnspan=4, sticky="ew")
+
+        # Manufacturer
+        l_mfr = tk.Label(self.contentFrame, text="Manufacturer:")
+        e_mfr = tk.Entry(self.contentFrame, textvariable=self.controller.sv_mfr)  # , expand="y", fill="x")
+        l_mfr.grid(row=2, column=0, columnspan=2, sticky="w")
+        e_mfr.grid(row=2, column=2, columnspan=4, sticky="ew")
+
+        # TODO: To autofilll from DB Query
+        v_mfr = "MANUFACTURER TO BE AUTOFILLED FROM DB" # TODO: setup actual query
+        e_mfr.insert(0, v_mfr)
+
+        # Documentation URL
+        l_doc_url = tk.Label(self.contentFrame, text="Documentation URL:")
+        self.sv_doc_url = tk.StringVar()
+        e_doc_url = tk.Entry(self.contentFrame, textvariable=self.sv_doc_url)#, expand="y", fill="x")
+        l_doc_url.grid(row=3, column=0, columnspan=3, sticky="w")
+        e_doc_url.grid(row=3, column=3, columnspan=3, sticky="ew")
+
+        # Device Description
+        l_desc = tk.Label(self.contentFrame, text="Device Description:")
+        e_desc = tk.Entry(self.contentFrame, textvariable=self.controller.sv_desc)  # , expand="y", fill="x")
+        l_desc.grid(row=4, column=0, sticky="w")
+        e_desc.grid(row=5, column=0, columnspan=6, sticky="nesw")
+
+        # Communication types to Define [checkbox]
+        l_comm_types = tk.Label(self.contentFrame, text="Select types of communication to define:")
+        l_comm_types.grid(row=6, columnspan=5, sticky='w')
+
+        # Select all/none checkbox
+        self.sv_toggle = tk.StringVar(value="All")
+        v_toggle = tk.BooleanVar()
+        self.controller.cb_v_list.append(v_toggle)
+        cb_toggle = tk.Checkbutton(self.contentFrame, textvariable=self.sv_toggle, variable=v_toggle,
+                                   command=self.cb_toggle)
+        cb_toggle.grid(row=6, column=5, sticky="w")
+
+        # Remote/Internet Hosts
+        v_internet = tk.BooleanVar()
+        self.controller.cb_v_list.append(v_internet)
+        cb_internet = tk.Checkbutton(self.contentFrame, text="Internet", variable=v_internet)
+        cb_internet.grid(row=7, columnspan=6, sticky="w")
+
+        # Local Hosts
+        v_local = tk.BooleanVar()
+        self.controller.cb_v_list.append(v_local)
+        cb_local = tk.Checkbutton(self.contentFrame, text="Local", variable=v_local)
+        cb_local.grid(row=8, columnspan=6, sticky="w")
+
+        # Same Manufacturer
+        v_mfr_same = tk.BooleanVar()
+        self.controller.cb_v_list.append(v_mfr_same)
+        cb_mfr_same = tk.Checkbutton(self.contentFrame, text="Same Manufacturer", variable=v_mfr_same)
+        cb_mfr_same.grid(row=9, columnspan=6, sticky="w")
+
+        # Other Named Manufacturers
+        v_mfr_other = tk.BooleanVar()
+        self.controller.cb_v_list.append(v_mfr_other)
+        cb_mfr_other = tk.Checkbutton(self.contentFrame, text="Other Named Manufacturers", variable=v_mfr_other)
+        cb_mfr_other.grid(row=10, columnspan=6, sticky="w")
+
+        # My-Controller class of devices
+        v_controller_my = tk.BooleanVar()
+        self.controller.cb_v_list.append(v_controller_my)
+        cb_controller_my = tk.Checkbutton(self.contentFrame, text="Network-Defined Controller", variable=v_controller_my)
+        cb_controller_my.grid(row=11, columnspan=6, sticky="w")
+
+        # Controllers
+        v_controller = tk.BooleanVar()
+        self.controller.cb_v_list.append(v_controller)
+        cb_controller = tk.Checkbutton(self.contentFrame, text="Controller", variable=v_controller)
+        cb_controller.grid(row=12, columnspan=6, sticky="w")
+
+        # Navigation Buttons
+        b_help = tk.Button(self.navigationFrame, text=" ? ", command=lambda: self.comm_help())
+        b_help.grid(row=0, column=0, sticky="sw")
+
+        b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.controller.next_page())
+        b_back.grid(row=0, column=4, sticky="se")
+        b_next.grid(row=0, column=5, sticky="se")
+
+        # Configuring the grid
+        self.contentFrame.grid(row=0, column=0, sticky="nsew")
+        self.navigationFrame.grid(row=1, column=0, sticky='sew')
+
+        self.contentFrame.grid_rowconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(3, weight=1)
+        self.navigationFrame.grid_rowconfigure(0, weight=1)
+        self.navigationFrame.grid_columnconfigure(0, weight=1)
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=0)
+        self.grid_columnconfigure(0, weight=1)
+
+        # Future:
+        # Best guess: more open (use mostly "any")
+        # Best guess: more closed (use mostly specific protocols and ports)
+
+    def cb_toggle(self):#, event):
+        toggle = False
+        for i, cb in enumerate(self.controller.cb_v_list):#self.cb_v_list):
+            if not i:
+                toggle = cb.get()
+                if toggle:
+                    self.sv_toggle.set("None")
+                else:
+                    self.sv_toggle.set("All")
+            else:
+                cb.set(toggle)
+
+    def comm_help(self):
+        tk.messagebox.showinfo("Defining Communication",
+                               "Internet: Select this type to enter domain names of services that you want this "
+                               "device to access.\n\n"
+                               "Local: Access to/from any local host for specific services (like COAP or HTTP)\n\n"
+                               "Same Manufacturer: Access to devices to/from the same manufacturer based on the "
+                               "domain name in the MUD URL.\n\n"
+                               "Other Manufacturer: Access to  of devices that are identified by the domain names in "
+                               "their MUD URLs\n\n"
+                               "Device-Specific Controller: Access to controllers specific to this device (no need to "
+                               "name a class). This is \"my-controller\".\n\n"
+                               "Controller Access: Access to classes of devices that are known to be controllers.  "
+                               "Use this when you want different types of devices to access the same controller.")
+
+    # TODO: Future, could update the mfr table at this point if the manufacturer input isn't found in the database or
+    #  is different
+    def update_mfr(self):
+        pass
+
+
+# TODO: Internet
+class MUDPage2Internet(MUDPage0Select, tk.Frame):
+
+    def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        self.communication = "internet"
+        self.controller.rules[self.communication] = dict()
+        self.max_row = 0
+
+        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)
+
+        label = tk.Label(self.contentFrame, text="Internet Hosts")
+        label.grid(row=0, columnspan=6, sticky='new')
+
+        # Button for adding entries/rules
+        b_internet = tk.Button(self.contentFrame, text = " + ", command=lambda: self.add_internet())
+        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+
+        # Navigation Buttons
+        b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
+        b_back.grid(row=0, column=5, sticky="se")
+        b_next.grid(row=0, column=6, sticky="se")
+
+        # Configuring the Grid
+        self.contentFrame.grid(row=0, column=0, sticky="nsew")
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+
+        self.contentFrame.grid_rowconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(1, weight=2)
+        self.contentFrame.grid_columnconfigure(2, weight=1)
+        self.contentFrame.grid_columnconfigure(3, weight=2)
+        self.contentFrame.grid_columnconfigure(4, weight=1)
+        self.contentFrame.grid_columnconfigure(5, weight=0)
+        self.contentFrame.grid_columnconfigure(6, weight=0)
+        self.contentFrame.grid_columnconfigure(7, weight=0)
+        self.contentFrame.grid_columnconfigure(8, weight=1)
+
+        self.navigationFrame.grid_rowconfigure(0, weight=1)
+        self.navigationFrame.grid_columnconfigure(0, weight=1)
+
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        # Load up 1 instance to fill in at launch
+        self.add_internet()
+
+    # In case anything else should occur beyond the add_rule method
+    def add_internet(self):
+        self.controller.add_rule(self)
+
+    def next_page(self):
+        # TODO: ADD INTERNET ACL
+        #self.controller.acl.append('stuff')
+        self.controller.next_page()
+
+
+# TODO: Local
+class MUDPage3Local(MUDPage0Select, tk.Frame):
+
+    def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        self.communication = "local"
+        self.controller.rules[self.communication] = dict()
+        self.max_row = 0
+
+        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)
+
+        label = tk.Label(self.contentFrame, text="Local Hosts")
+        label.grid(row=0, columnspan=6, sticky='new')
+
+        # Button for adding entries/rules
+        b_internet = tk.Button(self.contentFrame, text=" + ", command=lambda: self.add_local())
+        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+
+        # Navigation Buttons
+        b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
+        b_back.grid(row=0, column=5, sticky="se")
+        b_next.grid(row=0, column=6, sticky="se")
+
+        # Configuring the Grid
+        self.contentFrame.grid(row=0, column=0, sticky="nsew")
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+
+        self.contentFrame.grid_rowconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(1, weight=2)
+        self.contentFrame.grid_columnconfigure(2, weight=1)
+        self.contentFrame.grid_columnconfigure(3, weight=2)
+        self.contentFrame.grid_columnconfigure(4, weight=1)
+        self.contentFrame.grid_columnconfigure(5, weight=0)
+        self.contentFrame.grid_columnconfigure(6, weight=0)
+        self.contentFrame.grid_columnconfigure(7, weight=0)
+        self.contentFrame.grid_columnconfigure(8, weight=1)
+
+        self.navigationFrame.grid_rowconfigure(0, weight=1)
+        self.navigationFrame.grid_columnconfigure(0, weight=1)
+
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        # Load up 1 instance to fill in at launch
+        self.add_local()
+
+    # In case anything else should occur beyond the add_rule method
+    def add_local(self):
+        self.controller.add_rule(self)
+
+    def next_page(self):
+        # TODO: ADD Local ACL
+        # self.controller.acl.append('stuff')
+        self.controller.next_page()
+
+
+# TODO: Same Manufacturers
+class MUDPage4SameMan(MUDPage0Select, tk.Frame):
+
+    def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        self.communication = "mfr_same"
+        self.controller.rules[self.communication] = dict()
+        self.max_row = 0
+
+        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)
+
+        label = tk.Label(self.contentFrame, text="Same Manufacturer")
+        label.grid(row=0, columnspan=6, sticky='new')
+
+        # Button for adding entries/rules
+        b_internet = tk.Button(self.contentFrame, text=" + ", command=lambda: self.add_same_mfr())
+        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+
+        # Navigation Buttons
+        b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
+        b_back.grid(row=0, column=5, sticky="se")
+        b_next.grid(row=0, column=6, sticky="se")
+
+        # Configuring the Grid
+        self.contentFrame.grid(row=0, column=0, sticky="nsew")
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+
+        self.contentFrame.grid_rowconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(1, weight=2)
+        self.contentFrame.grid_columnconfigure(2, weight=1)
+        self.contentFrame.grid_columnconfigure(3, weight=2)
+        self.contentFrame.grid_columnconfigure(4, weight=1)
+        self.contentFrame.grid_columnconfigure(5, weight=0)
+        self.contentFrame.grid_columnconfigure(6, weight=0)
+        self.contentFrame.grid_columnconfigure(7, weight=0)
+        self.contentFrame.grid_columnconfigure(8, weight=1)
+
+        self.navigationFrame.grid_rowconfigure(0, weight=1)
+        self.navigationFrame.grid_columnconfigure(0, weight=1)
+
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        # Load up 1 instance to fill in at launch
+        self.add_same_mfr()
+
+    # In case anything else should occur beyond the add_rule method
+    # TODO: Make the HOST field unfillable, and mark as "filled in by system"
+    def add_same_mfr(self):
+        self.controller.add_rule(self)
+
+    def next_page(self):
+        # TODO: ADD SAME MANUFACTURER ACL
+        # self.controller.acl.append('stuff')
+        self.controller.next_page()
+
+
+# TODO: Named Manufacturers
+class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
+
+    def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        self.communication = "mfr_named"
+        self.controller.rules[self.communication] = dict()
+        self.max_row = 0
+
+        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)
+
+        label = tk.Label(self.contentFrame, text="Other Named Manufacturer(s)")
+        label.grid(row=0, columnspan=6, sticky='new')
+
+        # Button for adding entries/rules
+        b_internet = tk.Button(self.contentFrame, text=" + ", command=lambda: self.add_named_mfr())
+        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+
+        # Navigation Buttons
+        b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
+        b_back.grid(row=0, column=5, sticky="se")
+        b_next.grid(row=0, column=6, sticky="se")
+
+        # Configuring the Grid
+        self.contentFrame.grid(row=0, column=0, sticky="nsew")
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+
+        self.contentFrame.grid_rowconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(1, weight=2)
+        self.contentFrame.grid_columnconfigure(2, weight=1)
+        self.contentFrame.grid_columnconfigure(3, weight=2)
+        self.contentFrame.grid_columnconfigure(4, weight=1)
+        self.contentFrame.grid_columnconfigure(5, weight=0)
+        self.contentFrame.grid_columnconfigure(6, weight=0)
+        self.contentFrame.grid_columnconfigure(7, weight=0)
+        self.contentFrame.grid_columnconfigure(8, weight=1)
+
+        self.navigationFrame.grid_rowconfigure(0, weight=1)
+        self.navigationFrame.grid_columnconfigure(0, weight=1)
+
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        # Load up 1 instance to fill in at launch
+        self.add_named_mfr()
+
+    # In case anything else should occur beyond the add_rule method
+    def add_named_mfr(self):
+        self.controller.add_rule(self)
+
+    def next_page(self):
+        # TODO: ADD SAME MANUFACTURER ACL
+        # self.controller.acl.append('stuff')
+        self.controller.next_page()
+
+
+# TODO: My-Controller
+class MUDPage6MyControl(MUDPage0Select, tk.Frame):
+
+    def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        self.communication = "controller_my"
+        self.controller.rules[self.communication] = dict()
+        self.max_row = 0
+
+        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)
+
+        label = tk.Label(self.contentFrame, text="Network-Specific Controllers (my-controller)")
+        label.grid(row=0, columnspan=6, sticky='new')
+
+        # Button for adding entries/rules
+        b_internet = tk.Button(self.contentFrame, text=" + ", command=lambda: self.add_my_controller())
+        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+
+        # Navigation Buttons
+        b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
+        b_back.grid(row=0, column=5, sticky="se")
+        b_next.grid(row=0, column=6, sticky="se")
+
+        # Configuring the Grid
+        self.contentFrame.grid(row=0, column=0, sticky="nsew")
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+
+        self.contentFrame.grid_rowconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(1, weight=2)
+        self.contentFrame.grid_columnconfigure(2, weight=1)
+        self.contentFrame.grid_columnconfigure(3, weight=2)
+        self.contentFrame.grid_columnconfigure(4, weight=1)
+        self.contentFrame.grid_columnconfigure(5, weight=0)
+        self.contentFrame.grid_columnconfigure(6, weight=0)
+        self.contentFrame.grid_columnconfigure(7, weight=0)
+        self.contentFrame.grid_columnconfigure(8, weight=1)
+
+        self.navigationFrame.grid_rowconfigure(0, weight=1)
+        self.navigationFrame.grid_columnconfigure(0, weight=1)
+
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        # Load up 1 instance to fill in at launch
+        self.add_my_controller()
+
+    # In case anything else should occur beyond the add_rule method
+    # TODO: Make the host unfillable and mark "filled by local admin"
+    def add_my_controller(self):
+        self.controller.add_rule(self)
+
+    def next_page(self):
+        # TODO: ADD MY-CONTROLLER ACL
+        # self.controller.acl.append('stuff')
+        self.controller.next_page()
+
+
+# TODO: Controllers
+class MUDPage7Control(MUDPage0Select, tk.Frame):
+
+    def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        self.communication = "controller"
+        self.controller.rules[self.communication] = dict()
+        self.max_row = 0
+
+        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)
+
+        label = tk.Label(self.contentFrame, text="Controllers")
+        label.grid(row=0, columnspan=6, sticky='new')
+
+        # Button for adding entries/rules
+        b_internet = tk.Button(self.contentFrame, text=" + ", command=lambda: self.add_controller())
+        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+
+        # Navigation Buttons
+        b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
+        b_back.grid(row=0, column=5, sticky="se")
+        b_next.grid(row=0, column=6, sticky="se")
+
+        # Configuring the Grid
+        self.contentFrame.grid(row=0, column=0, sticky="nsew")
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+
+        self.contentFrame.grid_rowconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(0, weight=1)
+        self.contentFrame.grid_columnconfigure(1, weight=2)
+        self.contentFrame.grid_columnconfigure(2, weight=1)
+        self.contentFrame.grid_columnconfigure(3, weight=2)
+        self.contentFrame.grid_columnconfigure(4, weight=1)
+        self.contentFrame.grid_columnconfigure(5, weight=0)
+        self.contentFrame.grid_columnconfigure(6, weight=0)
+        self.contentFrame.grid_columnconfigure(7, weight=0)
+        self.contentFrame.grid_columnconfigure(8, weight=1)
+
+        self.navigationFrame.grid_rowconfigure(0, weight=1)
+        self.navigationFrame.grid_columnconfigure(0, weight=1)
+
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        # Load up 1 instance to fill in at launch
+        self.add_controller()
+
+    # In case anything else should occur beyond the add_rule method
+    # TODO: Make the host unfillable and mark "filled by local admin"
+    def add_controller(self):
+        self.controller.add_rule(self)
+
+    def next_page(self):
+        # TODO: ADD CONTROLLER ACL
+        # self.controller.acl.append('stuff')
+        self.controller.next_page()
+
+
+# TODO: Generate MUD File
+class MUDPage8Summary(MUDPage0Select, tk.Frame):
+
+    def __init__(self, parent, controller):
+        MUDPage0Select.__init__(self, parent, controller)
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.controller = controller
+        self.max_row = 0
+
+        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self)
+
+        # Summary header
+        label = tk.Label(self.contentFrame, text="MUD File Summary")
+        label.grid(row=0, columnspan=6, sticky='new')
+
+        # TODO: Implement the actual summary information (probably in a normal listbox with all the text
+        # Summary contents
+        sv_summary = tk.StringVar()
+        #lb_summary = tk.Label(self.contentFrame, textvariable=sv_summary)
+        #lb_summary.grid(row=1, sticky="w")
+        # TODO: Remove this when real implementation complete
+        sv_summary.set("This\nis\na\nplaceholder\nfor\nthe\nMUD\nfile\nsummary\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nHI!")
+        st_summary = scrolledtext.ScrolledText(self.contentFrame, wrap=tk.WORD,
+                                               width=40, height=10, font=("Times New Roman", 15))
+        st_summary.grid(row=1, sticky="nsew")
+        st_summary.insert(tk.INSERT, sv_summary.get())
+
+        # Navigation Buttons
+        b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
+        b_generate = tk.Button(self.navigationFrame, text="Generate", command=lambda: self.controller.generate_mud_file())
+
+        b_back.grid(row=0, column=1, sticky="se")
+        b_generate.grid(row=0, column=2, sticky="se")
+
+        # Configuring the Grid
+        self.contentFrame.grid(row=0, column=0, sticky="nsew")
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+
+        self.contentFrame.grid_rowconfigure(1, weight=1)
+        self.contentFrame.grid_columnconfigure(0, weight=1)
+
+        self.navigationFrame.grid_rowconfigure(0, weight=1)
+        self.navigationFrame.grid_columnconfigure(0, weight=1)
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        # TODO: considered not making this disabled, or provide an "ADVANCED" toggle to allow manual editing of the file
+        st_summary.configure(state="disabled")
+
+
 def epoch2datetime(epochtime):
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(epochtime))
 
@@ -2853,4 +3902,17 @@ def importFileWindow(entry):
 if __name__ == '__main__':
     root = tk.Tk()
     gui = MudCaptureApplication(root)
+
+    # Gets the requested values of the height and width.
+    #windowWidth = 800#root.winfo_reqwidth()
+    #windowHeight = 500#root.winfo_reqheight()
+    #print("Width", windowWidth, "Height", windowHeight)
+
+    # Gets both half the screen width/height and window width/height
+    #positionRight = int(root.winfo_screenwidth() / 2 - windowWidth / 2)
+    #positionDown = int(root.winfo_screenheight() / 2 - windowHeight / 2)
+
+    # Positions the window in the center of the page.
+    #root.geometry("+{}+{}".format(positionRight, positionDown))
+
     root.mainloop()

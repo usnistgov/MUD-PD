@@ -16,32 +16,38 @@ PAD_X = 5
 
 class MultiColumnListbox(object):
     # use a ttk.TreeView as a multicolumn ListBox
-    def __init__(self, parent, header, input_list, select_mode="extended", keep_first=False, exclusion_list=list()):
+    def __init__(self, parent, header, input_list, select_mode="extended", keep_first=False, exclusion_list=list(),
+                 row=None, column=None, sticky=None):
         self.parent = parent
         self.header = header
         self.exclusion_list = exclusion_list
         self.display_columns = list()
 
+        self.container = ttk.Frame(self.parent)
+
         self.tree = None
         self.num_nodes = 0
-        self._setup_widgets(select_mode)
+        self._setup_widgets(select_mode, row=row, column=column, sticky=sticky)
         self._build_tree(input_list)
         self.keep_first = keep_first
 
-    def _setup_widgets(self, select_mode):
-        container = ttk.Frame(self.parent)
-        container.pack(fill='both', expand=True)
+    def _setup_widgets(self, select_mode, row=None, column=None, sticky=None):
+        #container = ttk.Frame(self.parent)
+        if row is None and column is None:
+            self.container.pack(fill='both', expand=True)
+        else:
+            self.container.grid(row=row, column=column, sticky=sticky)
         # create a treeview with dual scrollbars
-        self.tree = ttk.Treeview(container, columns=self.header, show="headings", selectmode=select_mode)
-        vsb = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(container, orient="horizontal", command=self.tree.xview)
+        self.tree = ttk.Treeview(self.container, columns=self.header, show="headings", selectmode=select_mode)
+        vsb = ttk.Scrollbar(self.container, orient="vertical", command=self.tree.yview)
+        hsb = ttk.Scrollbar(self.container, orient="horizontal", command=self.tree.xview)
 
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-        self.tree.grid(column=0, row=0, sticky='nsew', in_=container)
-        vsb.grid(column=1, row=0, sticky='ns', in_=container)
-        hsb.grid(column=0, row=1, sticky='ew', in_=container)
-        container.grid_columnconfigure(0, weight=1)
-        container.grid_rowconfigure(0, weight=1)
+        self.tree.grid(column=0, row=0, sticky='nsew', in_=self.container)
+        vsb.grid(column=1, row=0, sticky='ns', in_=self.container)
+        hsb.grid(column=0, row=1, sticky='ew', in_=self.container)
+        self.container.grid_columnconfigure(0, weight=1)
+        self.container.grid_rowconfigure(0, weight=1)
 
     def _build_tree(self, input_list):
         for col in self.header:

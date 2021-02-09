@@ -2827,7 +2827,7 @@ class MUDWizard(tk.Toplevel):
             self.current_page = 0
             self.show_frame(self.frame_list[self.current_page])
 
-    def retrieve_hosts_internet(self):
+    def retrieve_hosts_internet(self, comm_list):
         self.hosts_internet = []
         self.comm_ports = []
         pattern = re.compile(
@@ -2842,18 +2842,20 @@ class MUDWizard(tk.Toplevel):
         #  I think you should be able to use the frame from self.frames as:
         #  self.frames[MUDPage2Internet] (but I could be wrong)
         for host in self.hosts_local:
-            continue
             self.add_rule(self.frames[MUDPage2Internet])
 
             # TODO: JK - need to figure out what specific values and dictionary entries need to get set,
             #  but may need to access both rows
             #Placeholder values
-            self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row-1] = host
-            self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row] = host
+            self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row-1]['host'][
+                0].set(host[1])
+            self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row - 1][
+                'protocol'][0].set(host[0].upper())
+            #self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row] = host
         return self.hosts_internet
 
-    def retrieve_hosts_local(self):
-        # Placholder for testing, but may be a good place to set or access the values from the database
+    def retrieve_hosts_local(self, comm_list):
+        # Placeholder for testing, but may be a good place to set or access the values from the database
         self.hosts_local = []
         pattern = re.compile("(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.168\.)|(^127\.0\.0\.1)")
         for i in comm_list:
@@ -2866,14 +2868,15 @@ class MUDWizard(tk.Toplevel):
         #  I haven't yet built the frame for the pages after Internet, but they should all basically
         #  function the same way in the end.
         for host in self.hosts_local:
-            continue
             self.add_rule(self.frames[self.MUDPage3Local])
 
             # TODO: JK - need to figure out what specific values and dictionary entries need to get set,
             #  but may need to access both rows
             #placeholder values
-            self.rules[self.frames[MUDPage3Local].communication][self.frames[MUDPage3Local].max_row-1] = host
-            self.rules[self.frames[MUDPage3Local].communication][self.frames[MUDPage3Local].max_row] = host
+            self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row - 1]['host'][
+                0].set(host[1])
+            self.rules[self.frames[MUDPage2Internet].communication][self.frames[MUDPage2Internet].max_row - 1][
+                'protocol'][0].set(host[0].upper())
         return self.hosts_local
 
 

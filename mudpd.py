@@ -3248,7 +3248,6 @@ class MUDPage0Select(tk.Frame):
 class MUDPage1Description(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3257,7 +3256,7 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         self.contentFrame = tk.Frame(self)#, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
         self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
-        # Devic Details Header
+        # Device Details Header
         title = tk.Label(self.headerFrame, text="Device Details", bg="#eeeeee", bd=1, relief="flat")
         title.grid(row=0, sticky="nsew")
 
@@ -3433,8 +3432,8 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
         # Header
-        label = tk.Label(self.headerFrame, text="Internet Hosts", bg="#eeeeee", bd=1, relief="flat")
-        label.grid(row=0, columnspan=6, sticky='new')
+        title = tk.Label(self.headerFrame, text="Internet Hosts", bg="#eeeeee", bd=1, relief="flat")
+        title.grid(row=0, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
         b_add_entry = tk.Button(self.headerFrame, text = " + ", command=lambda: self.add_internet())
@@ -3491,7 +3490,6 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
 class MUDPage3Local(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3552,7 +3550,6 @@ class MUDPage3Local(MUDPage0Select, tk.Frame):
 class MUDPage4SameMan(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3615,7 +3612,6 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
 class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3676,7 +3672,6 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
 class MUDPage6MyControl(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3740,7 +3735,6 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
 class MUDPage7Control(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3753,8 +3747,8 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
         self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
         # Header
-        label = tk.Label(self.headerFrame, text="Controllers", bg="#eeeeee", bd=1, relief="flat")
-        label.grid(row=0, columnspan=6, sticky='new')
+        title = tk.Label(self.headerFrame, text="Controllers", bg="#eeeeee", bd=1, relief="flat")
+        title.grid(row=0, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
         b_add_entry = tk.Button(self.headerFrame, text=" + ", command=lambda: self.add_controller())
@@ -3801,7 +3795,6 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
 class MUDPage8Summary(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller

@@ -11,6 +11,7 @@ from src.lookup import lookup_mac  # , lookup_hostname
 from src.generate_mudfile import MUDgeeWrapper
 from src.generate_report import ReportGenerator
 from src.multicolumn_listbox import MultiColumnListbox
+from src.scrollable_frame import ScrollableFrame
 import src.pcapng_comment as capMeta
 
 from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_acls, make_support_info
@@ -1066,7 +1067,15 @@ class MudCaptureApplication(tk.Frame):
             print("(D) import_packets")
             self.import_packets(self.cap)
 
-            print("(E) destroying import capture window")
+            # TODO: Verify this placement works
+            print("(E) insert_protocol_device\n\tUpdating Device Protocol Table")
+            try:
+                self.db_handler.db.insert_protocol_device()
+                messagebox.showinfo("Success!", "Labeled Device Info Updated")
+            except AttributeError:
+                messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
+
+            print("(F) destroying import capture window")
             self.w_cap.destroy()
 
 
@@ -2727,16 +2736,16 @@ class MudCaptureApplication(tk.Frame):
 class MUDWizard(tk.Toplevel):
 
     def __init__(self, parent, *args, **kwargs):
-        #tk.Tk.__init__(self, *args, **kwargs)
         tk.Toplevel.__init__(self, *args, **kwargs)
         self.wm_title("MUD Wizard")
-        #self.w_db = tk.Toplevel()
-        #self.w_db.wm_title("Connect to Database")
         self.parent = parent
         self.parent.b_MUDdy.config(state='disabled')
 
         self.hosts_internet = list()
         self.hosts_local = list()
+
+        self.protocol_options = ('Any', 'TCP', 'UDP')
+        self.init_direction_options = ('Either', 'Thing', 'Remote')
 
         self.current_page = 0
         self.sv_device = tk.StringVar()
@@ -2747,16 +2756,16 @@ class MUDWizard(tk.Toplevel):
         self.sv_desc = tk.StringVar()
         self.sv_mfr = tk.StringVar()
 
+        self.mud = None
         self.mud_name = f'mud-{random.randint(10000, 99999)}'
-        self.acl = list()  # []
-        self.policies = dict()  # {}  # This could also have been a set originally, unknown
-        #self.cb_v_list = []
+        self.acl = list()
+        self.policies = dict()
         self.cb_v_list = list()
         self.db_handler = self.parent.db_handler
         self.mud_device = dict()
         self.row_nav = 2000
 
-        self.support_info = dict()  # {}
+        self.support_info = None
 
         self.rules = {"internet": dict(),
                       "local": dict(),
@@ -2777,6 +2786,7 @@ class MUDWizard(tk.Toplevel):
         self.frames = {}  # At a quick glance I can't tell if this is a set or dict
         self.frame_list = list()  # []
 
+        # TODO: See if this can be removed
         try:
             self.db_handler.db.insert_protocol_device()
             print("Success!", "Labeled Device Info Updated")
@@ -2800,6 +2810,8 @@ class MUDWizard(tk.Toplevel):
     def show_frame(self, cont):
         frame = self.frames[cont]
         frame.tkraise()
+        #print("width: ", frame.winfo_width())
+        #print("height: ", frame.winfo_height())
 
     def next_page(self):#, current_page): #TODO: Fix this
 
@@ -2819,6 +2831,9 @@ class MUDWizard(tk.Toplevel):
             # Go to Summary Page
             self.current_page = 8
             self.show_frame(self.frame_list[self.current_page])
+
+            # Check and format MUD file info
+            self.format_mud_info()
 
     def prev_page(self): # TODO: Fix this
         if self.current_page > 1:
@@ -2863,120 +2878,80 @@ class MUDWizard(tk.Toplevel):
         v_port_local = tk.StringVar()
         v_port_remote = tk.StringVar()
         v_initiation_direction = tk.StringVar()
-        # TODO Move elsewhere
-        # self.rules[frame.communication] = dict()
 
         # Host
-        l_host = tk.Label(frame.contentFrame, text="Host")
+        l_host = tk.Label(frame.contentFrame.scrollable_frame, text="Host")
         l_host.grid(row=frame.max_row, column=0, sticky='w')
         # TODO: Change this to a combobox entry with each entry being observed destination (dst) hosts
-        e_host = tk.Entry(frame.contentFrame, width=50, textvariable=v_host)
-        e_host.grid(row=frame.max_row, column=1, columnspan=4, sticky="ew")
+        e_host = tk.Entry(frame.contentFrame.scrollable_frame, width=40, textvariable=v_host)
+        e_host.grid(row=frame.max_row, column=1, columnspan=6, sticky="ew")
 
         self.rules[frame.communication][frame.max_row] = {"host": (v_host, l_host, e_host)}
 
         # Protocol
         c_protocol = None
-        l_protocol = tk.Label(frame.contentFrame, text="Protocol")
-        l_protocol.grid(row=frame.max_row, column=5, sticky='w')
+        l_protocol = tk.Label(frame.contentFrame.scrollable_frame, text="Protocol")
+        l_protocol.grid(row=frame.max_row, column=7, sticky='w')
         self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
         c_protocol = self.create_combobox(frame)
-        c_protocol.grid(row=frame.max_row, column=6, sticky='w')
-        c_protocol.bind("<<ComboboxSelected>>", lambda f=frame.contentFrame, r=frame.max_row: self.protocol_updated(
+        c_protocol.grid(row=frame.max_row, column=8, sticky='w')
+        c_protocol.bind("<<ComboboxSelected>>", lambda f=frame.contentFrame.scrollable_frame, r=frame.max_row:
+        self.protocol_updated(
             f, r))
         self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
 
+        # TODO: Remove unnecessary code for the plus button
         # Button to Add or Remove entry
         v_modify = tk.StringVar()
         if first_entry:
             v_modify.set(" + ")
-            #modify_command = partial(self.add_rule, frame)
             modify_command = self.add_rule
             modify_args = False
         else:
             v_modify.set(" - ")
-            #modify_command = partial(self.remove_rule, frame)#, row=frame.max_row)
             modify_command = self.remove_rule
             modify_args = frame.max_row
 
-        b_modify = tk.Button(frame.contentFrame, textvariable=v_modify, command= lambda f=frame,
+        b_modify = tk.Button(frame.contentFrame.scrollable_frame, textvariable=v_modify, command= lambda f=frame,
                                                                                         a=modify_args:
         modify_command(f, a))
-        b_modify.grid(row=frame.max_row, column=7, sticky='w')
+        b_modify.grid(row=frame.max_row, column=9, sticky='w')
         self.rules[frame.communication][frame.max_row]['remove_button'] = (b_modify,)
 
         frame.max_row += 1
 
         # Local Ports
         v_port_local.set("Any")
-        l_port_local = tk.Label(frame.contentFrame, text="Local Port")
+        l_port_local = tk.Label(frame.contentFrame.scrollable_frame, text="Local Port")
         l_port_local.grid(row=frame.max_row, column=0, columnspan=2, sticky='w')
-        e_port_local = tk.Entry(frame.contentFrame, width=10, textvariable=v_port_local)
+        e_port_local = tk.Entry(frame.contentFrame.scrollable_frame, width=5, textvariable=v_port_local)
         e_port_local.grid(row=frame.max_row, column=2, sticky="w")
         self.rules[frame.communication][frame.max_row] = {"port_local": (v_port_local, l_port_local, e_port_local)}
 
         # Remote Ports
         v_port_remote.set("Any")
-        l_port_remote = tk.Label(frame.contentFrame, text="Remote Port")
-        l_port_remote.grid(row=frame.max_row, column=3, sticky='w')
-        e_port_remote = tk.Entry(frame.contentFrame, width=10, textvariable=v_port_remote)
-        e_port_remote.grid(row=frame.max_row, column=4, sticky="w")
+        l_port_remote = tk.Label(frame.contentFrame.scrollable_frame, text="Remote Port")
+        l_port_remote.grid(row=frame.max_row, column=3, columnspan=2, sticky='e')
+        e_port_remote = tk.Entry(frame.contentFrame.scrollable_frame, width=5, textvariable=v_port_remote)
+        e_port_remote.grid(row=frame.max_row, column=5, sticky="w")
         self.rules[frame.communication][frame.max_row]["port_remote"] = (v_port_remote, l_port_remote, e_port_remote)
 
         # Initiation Direction
         c_initiation_direction = None
-        l_initiation_direction = tk.Label(frame.contentFrame, text="Initiated by")
-        l_initiation_direction.grid(row=frame.max_row, column=5, sticky='w')
+        l_initiation_direction = tk.Label(frame.contentFrame.scrollable_frame, text="Initiated by")
+        l_initiation_direction.grid(row=frame.max_row, column=7, sticky='w')
         self.rules[frame.communication][frame.max_row]["initiation_direction"] = (v_initiation_direction,
                                                                                   l_initiation_direction,
                                                                                   c_initiation_direction)
         c_initiation_direction = self.create_combobox(frame, opt_type='initiation_direction')
-        c_initiation_direction.grid(row=frame.max_row, column=6, sticky='w')
+        c_initiation_direction.grid(row=frame.max_row, column=8, sticky='w')
         self.rules[frame.communication][frame.max_row]["initiation_direction"] = (v_initiation_direction,
                                                                                   l_initiation_direction,
                                                                                   c_initiation_direction)
 
-        # TODO: Evaluate how to use the rules in MUDdy and if this part is needed
-        # Save rules to shared dictionary
-        #self.rules[frame.communication] = {frame.max_row: {"host": (v_host, l_host, e_host),
-        #                                                   "protocol": (v_protocol, l_protocol, c_protocol),
-        #                                                   "port_local": (v_port_local, l_port_local, e_port_local),
-        #                                                   "port_remote": (v_port_remote, l_port_remote,
-        #                                                   e_port_remote),
-        #                                                   "initiation_direction": (v_initiation_direction,
-        #                                                                            l_initiation_direction,
-        #                                                                            c_initiation_direction)}}
-
-#         self.rules[frame.communication] = {frame.max_row: {"host": (v_host, l_host, e_host),
-#                                                            "protocol": (v_protocol, l_protocol, c_protocol),
-#                                                            "port_local": (v_port_local, l_port_local, e_port_local),
-#                                                            "port_remote": (v_port_remote, l_port_remote, e_port_remote)
-#                                                            }
-#                                            }
-#         if frame.communication != "controller":
-#             self.rules[frame.communication][frame.max_row]['initiation_direction'] = (v_initiation_direction,
-#                                                                                       l_initiation_direction,
-# {}                                                                                      c_initiation_direction)
-        # self.rules[frame.communication] = {frame.max_row: {"host": v_host,
-        #                                                    "protocol": v_protocol,
-        #                                                    "port_local": v_port_local,
-        #                                                    "port_remote": v_port_remote}}
-        # if frame.communication != "controller":
-        #     self.rules[frame.communication][frame.max_row]['initiation_direction'] = v_initiation_direction
-
-        # if frame.communication == "controller":
-        #     self.rules[frame.communication] = {frame.max_row: {"host": tk.StringVar(),
-        #                                                        "protocol": tk.StringVar(),
-        #                                                        "port_local": tk.StringVar(),
-        #                                                        "port_remote": tk.StringVar()}}
-        # else:
-        #     self.rules[frame.communication] = {frame.max_row: {"host": tk.StringVar(),
-        #                                                        "protocol": tk.StringVar(),
-        #                                                        "port_local": tk.StringVar(),
-        #                                                        "port_remote": tk.StringVar(),
-        #                                                        "initiate_direction": tk.StringVar()}}
-
-        #frame.grid(row=frame.max_row)
+        # TODO: See if there is a way to scroll to the bottom
+        #self.rules[frame.communication][frame.max_row]["initiation_direction"][1].see("end")
+        #frame.contentFrame.scrollable_frame.see("end")
 
     def remove_rule(self, frame, row=None):
         if row == None:
@@ -3005,12 +2980,12 @@ class MUDWizard(tk.Toplevel):
         #    combo_options = options
         #else:
         if opt_type == "protocol":
-            values = ('Any', 'TCP', 'UDP')
+            values = self.protocol_options
         elif opt_type == "initiation_direction":
-            values = ('Either', 'Thing', 'Remote')
-        elif opt_type == "host":
-            # TODO: Pull Hosts?
-            values = ('Host A', 'Host B', 'Host B')
+            values = self.init_direction_options
+        #elif opt_type == "host":
+        #    # TODO: Pull Hosts?
+        #    values = ('Host A', 'Host B', 'Host B')
         else:
             print('Error: invalid rule_type')
             return
@@ -3020,29 +2995,10 @@ class MUDWizard(tk.Toplevel):
         else:
             combo_options = self.rules[frame.communication][frame.row][opt_type][0]
 
-        #if row is None: #if text_var == None:
-        #    combobox = ttk.Combobox(frame, width=10,
-        #                            textvariable=self.rules[frame.communication][frame.max_row][opt_type])
-        #else:
-        #    combobox = ttk.Combobox(frame, width=10,
-        #                            #textvariable=text_var)
-        #                            textvariable=self.rules[frame.communication][frame.row][opt_type])
-
-        combobox = ttk.Combobox(frame.contentFrame, width=10, textvariable=combo_options)
+        combobox = ttk.Combobox(frame.contentFrame.scrollable_frame, width=6, textvariable=combo_options)
 
         combobox['values'] = values
         combobox.current(0)
-
-        # if rule_type == "protocol":
-        #     combobox['values'] = ('Any',
-        #                           'TCP',
-        #                           'UDP')
-        # elif rule_type == "initiated":
-        #     combobox['values'] = ('Either',
-        #                           'Thing',
-        #                           'Remote')
-        # else:
-        #     print("Error: invalid option")
 
         return combobox
 
@@ -3072,19 +3028,57 @@ class MUDWizard(tk.Toplevel):
 
     def create_port_entries(self, frame, row=None):
         if row == None:
-            e_port_local = tk.Entry(frame, width=10,
+            e_port_local = tk.Entry(frame, width=6,
                                     textvariable=self.rules[frame.communication][frame.max_row]['port_local'])
-            e_port_remote = tk.Entry(frame, width=10,
+            e_port_remote = tk.Entry(frame, width=6,
                                      textvariable=self.rules[frame.communication][frame.max_row]['port_remote'])
         else:
-            e_port_local = tk.Entry(frame, width=10, textvariable=self.rules[frame.communication][row]['port_local'])
-            e_port_remote = tk.Entry(frame, width=10, textvariable=self.rules[frame.communication][row]['port_remote'])
+            e_port_local = tk.Entry(frame, width=6, textvariable=self.rules[frame.communication][row]['port_local'])
+            e_port_remote = tk.Entry(frame, width=6, textvariable=self.rules[frame.communication][row]['port_remote'])
 
         e_port_local.insert(0, 'any')
         e_port_remote.insert(0, 'any')
 
         return (e_port_local, e_port_remote)
 
+    # TODO: Finish this method for assembling MUD files
+    def format_mud_info(self):
+        for comm in self.rules.keys():
+            for row in self.rules[comm]:
+                if not row % 2:  # Even rows
+                    host = self.rules[comm][row]['host'][0].get()
+                    protocol = self.rules[comm][row]['protocol'][0].get()
+                else:  # Odd rows
+                    port_local = self.rules[comm][row]['port_local'][0].get()
+                    port_remote = self.rules[comm][row]['port_remote'][0].get()
+                    initiation_direction = self.rules[comm][row]['initiation_direction'][0].get()
+
+                    # TODO: Make these actually do something
+                    # Check if protocol is ANY, if so, ignore ports and initiation direction
+                    if protocol.upper() is "ANY":
+                        print("host: ", host)
+                        print("protocol: ", protocol)
+                    # If protocol is UDP, ignore initiation direction
+                    elif protocol.upper() is "UDP":
+                        print("host: ", host)
+                        print("protocol: ", protocol)
+                        print("local port: ", port_local)
+                        print("remote port: ", port_remote)
+                    elif protocol.upper() is "TCP":
+                        print("host: ", host)
+                        print("protocol: ", protocol)
+                        print("local port: ", port_local)
+                        print("remote port: ", port_remote)
+                        print("initiation direction: ", initiation_direction)
+                    else:
+                        print("Error: Unacceptable transport layer protocol (TLP) provided")
+                        print("\tSkipping host: ", host)
+                        continue
+
+        # TODO: Finish setting up the policies and ACL before enabling this
+        #self.mud = make_mud(self.support_info, self.policies, self.acl)
+
+    # TODO: Modify this to either prompt asking where to save the file, or display where the file has been outputted
     def generate_mud_file(self):
         tk.messagebox.showinfo("Generating MUD File", "Note this is just a placeholder")
         self.__exit__()
@@ -3108,18 +3102,19 @@ class MUDPage0Select(tk.Frame):
         self.parent = parent
         self.controller = controller
 
-        self.inthosts = []
-        self.localhosts = []
+        self.hosts_internet = []
+        self.hosts_local = []
         self.device_id = ''
         self.dev_mac = ''
         self.dev_mfr = ''
 
-        self.contentFrame = tk.Frame(self, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.navigationFrame = tk.Frame(self)  # , width=300) #, bd=1, bg="#eeeeee")
+        self.headerFrame = tk.Frame(self, bg="#eeeeee")
+        self.contentFrame = tk.Frame(self, width=622, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.navigationFrame = tk.Frame(self, bg="#eeeeee")  # , width=300) #, bd=1, bg="#eeeeee")
 
         self.mud_dev_title_var = tk.StringVar()
         self.mud_dev_title_var.set("Device to Profile:")
-        self.mud_dev_title = tk.Label(self.contentFrame, textvariable=self.mud_dev_title_var,
+        self.mud_dev_title = tk.Label(self.headerFrame, textvariable=self.mud_dev_title_var,
                                       bg="#eeeeee", bd=1, relief="flat")
         self.mud_dev_title.grid(row=0, sticky="nsew")
 
@@ -3140,18 +3135,25 @@ class MUDPage0Select(tk.Frame):
         self.mud_dev_list.focus(0)
         self.mud_dev_list.selection_set(0)
 
-        # Configure the grid
-        self.contentFrame.grid(row=0, column=0, sticky="nsew")
-        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+        # *** Configure the grid *** #
+        # Header
+        self.headerFrame.grid(row=0, column=0, sticky="new")
+        self.headerFrame.grid_rowconfigure(0, weight=1)
+        self.headerFrame.grid_columnconfigure(0, weight=1)
 
+        # Content
         self.contentFrame.grid_rowconfigure(1, weight=1)
         self.contentFrame.grid_columnconfigure(0, weight=1)
+        self.contentFrame.grid(row=1, column=0, sticky="nsew")
+
+        # Navigation
         self.navigationFrame.grid_rowconfigure(0, weight=1)
         self.navigationFrame.grid_columnconfigure(0, weight=1)
         self.navigationFrame.grid_columnconfigure(1, weight=1)
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
 
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=0)
+        # Overall
+        self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
     def populate_mud_dev_list(self):
@@ -3173,10 +3175,10 @@ class MUDPage0Select(tk.Frame):
 
         # Populates Device String Variable for the next page
         for i, v in enumerate(self.controller.mud_device):
-            if not i:
-                self.controller.sv_device.set("")
-            elif i in [1, 4, 5]:
-                self.controller.sv_device.set(self.controller.sv_device.get() + " " + v)
+            if i == 1:
+                self.controller.sv_device.set(v)
+            elif i in [4, 5]:
+                self.controller.sv_device.set(self.controller.sv_device.get() + "  -  " + v)
 
         self.device_id = self.controller.mud_device[0]
         self.dev_mac = self.controller.mud_device[4]
@@ -3191,42 +3193,53 @@ class MUDPage0Select(tk.Frame):
     def next_page(self):
         print("Populating device communication list")
         try:
-            comminfo = self.controller.db_handler.db.select_device_communication_info({'new_deviceID': self.device_id})
-            print(comminfo)
-            self.inthosts = self.controller.retrieve_hosts_internet(comminfo)
-            self.localhosts = self.controller.retrieve_hosts_local(comminfo)
+            comm_info = self.controller.db_handler.db.select_device_communication_info({'new_deviceID': self.device_id})
+            print(comm_info)
+            self.hosts_internet = self.controller.retrieve_hosts_internet(comm_info)
+            self.hosts_local = self.controller.retrieve_hosts_local(comm_info)
         except AttributeError as ae:
             print("Error: ", ae)
-        print("Internet hosts:", len(self.inthosts), self.inthosts)
-        print("Local hosts:", len(self.localhosts), self.localhosts)
-        # Internet
-        if self.inthosts:
-            self.controller.cb_v_list[1].set(True)
-        for host in self.inthosts:
-            self.controller.add_rule(self.controller.frames[MUDPage2Internet])
-            self.controller.rules[self.controller.frames[MUDPage2Internet].communication][self.controller.frames[MUDPage2Internet].max_row - 1][
-                'host'][
-                0].set(host[1])
-            self.controller.rules[self.controller.frames[MUDPage2Internet].communication][self.controller.frames[MUDPage2Internet].max_row - 1][
-                'protocol'][0].set(host[0].upper())
-            self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
-                self.controller.frames[MUDPage2Internet].max_row][
-                'port_remote'][0].set(host[2])
-        # Local
-        if self.localhosts:
-            self.controller.cb_v_list[2].set(True)
-        self.controller.sv_desc.set("Device Description")
-        self.controller.sv_mfr.set(self.dev_mfr)
+            # Skipping rest of method if fails.
+            self.controller.next_page()
+            return
 
-        for host in self.localhosts:
+        # Autofill Device Details
+        self.controller.sv_mfr.set(self.dev_mfr)
+        # TODO: JK - see if you can fill in device description from the database
+        #self.controller.sv_desc.set("Device Description")
+
+
+        print("Internet hosts:", len(self.hosts_internet), self.hosts_internet)
+        print("Local hosts:", len(self.hosts_local), self.hosts_local)
+
+        # Internet
+        if self.hosts_internet:
+            self.controller.cb_v_list[1].set(True)
+        for host in self.hosts_internet:
+            self.controller.add_rule(self.controller.frames[MUDPage2Internet])
+            self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
+                self.controller.frames[MUDPage2Internet].max_row-1]['host'][0].set(host[1])
+            self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
+                self.controller.frames[MUDPage2Internet].max_row-1]['protocol'][0].set(host[0].upper())
+            self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
+                self.controller.frames[MUDPage2Internet].max_row]['port_remote'][0].set(host[2])
+        if len(self.hosts_internet) == 0:
+            self.controller.add_rule(self.controller.frames[MUDPage2Internet])
+
+        # Local
+        if self.hosts_local:
+            self.controller.cb_v_list[2].set(True)
+
+        for host in self.hosts_local:
             self.controller.add_rule(self.controller.frames[MUDPage3Local])
-            self.controller.rules[self.controller.frames[MUDPage3Local].communication][self.controller.frames[MUDPage3Local].max_row - 1]['host'][
-                0].set(host[1])
-            self.controller.rules[self.controller.frames[MUDPage3Local].communication][self.controller.frames[MUDPage3Local].max_row - 1][
-                'protocol'][0].set(host[0].upper())
             self.controller.rules[self.controller.frames[MUDPage3Local].communication][
-                self.controller.frames[MUDPage3Local].max_row][
-                'port_remote'][0].set(host[2])
+                self.controller.frames[MUDPage3Local].max_row-1]['host'][0].set(host[1])
+            self.controller.rules[self.controller.frames[MUDPage3Local].communication][
+                self.controller.frames[MUDPage3Local].max_row-1]['protocol'][0].set(host[0].upper())
+            self.controller.rules[self.controller.frames[MUDPage3Local].communication][
+                self.controller.frames[MUDPage3Local].max_row]['port_remote'][0].set(host[2])
+        if len(self.hosts_local) == 0:
+            self.controller.add_rule(self.controller.frames[MUDPage2Internet])
 
         self.controller.next_page()
 
@@ -3235,19 +3248,24 @@ class MUDPage0Select(tk.Frame):
 class MUDPage1Description(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        MUDPage0Select.__init__(self, parent, controller)
+        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
 
+        self.headerFrame = tk.Frame(self, bg="#eeeeee")
         self.contentFrame = tk.Frame(self)#, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.navigationFrame = tk.Frame(self)
+        self.navigationFrame = tk.Frame(self, bg="#eeeeee")
+
+        # Devic Details Header
+        title = tk.Label(self.headerFrame, text="Device Details", bg="#eeeeee", bd=1, relief="flat")
+        title.grid(row=0, sticky="nsew")
 
         # Device Selection
         l_device = tk.Label(self.contentFrame, text="Device:")
         l_device.grid(row=0, sticky="nw")
         self.lb_device = tk.Label(self.contentFrame, textvariable=self.controller.sv_device)
-        self.lb_device.grid(row=0, column=1, columnspan=5, sticky="nsw")
+        self.lb_device.grid(row=0, column=1, columnspan=5, sticky="nw")
 
         # Support URL
         l_support_url = tk.Label(self.contentFrame, text="Support URL:")
@@ -3332,21 +3350,28 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         b_help.grid(row=0, column=0, sticky="sw")
 
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
-        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.controller.next_page())
+        b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
         b_back.grid(row=0, column=4, sticky="se")
         b_next.grid(row=0, column=5, sticky="se")
 
-        # Configuring the grid
-        self.contentFrame.grid(row=0, column=0, sticky="nsew")
-        self.navigationFrame.grid(row=1, column=0, sticky='sew')
+        # *** Configure the grid *** #
+        # Header
+        self.headerFrame.grid(row=0, column=0, sticky="new")
+        self.headerFrame.grid_rowconfigure(0, weight=1)
+        self.headerFrame.grid_columnconfigure(0, weight=1)
 
+        # Content
+        self.contentFrame.grid(row=1, column=0, sticky="nsew")
         self.contentFrame.grid_rowconfigure(0, weight=1)
         self.contentFrame.grid_columnconfigure(3, weight=1)
+
+        # Navigation
+        self.navigationFrame.grid(row=2, column=0, sticky='sew')
         self.navigationFrame.grid_rowconfigure(0, weight=1)
         self.navigationFrame.grid_columnconfigure(0, weight=1)
 
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=0)
+        # Overall
+        self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         # Future:
@@ -3379,6 +3404,12 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
                                "Controller Access: Access to classes of devices that are known to be controllers.  "
                                "Use this when you want different types of devices to access the same controller.")
 
+    def next_page(self):
+        # TODO: Check what the "1" and "48" are
+        self.support_info = make_support_info(1, self.sv_support_url.get(), 48, True, self.controller.mud_device[1],
+                                              self.sv_dpc_url.get(), mfg_name=self.controller.sv_mfr)
+        self.controller.next_page()
+
     # TODO: Future, could update the mfr table at this point if the manufacturer input isn't found in the database or
     #  is different
     def update_mfr(self):
@@ -3389,7 +3420,7 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
 class MUDPage2Internet(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        MUDPage0Select.__init__(self, parent, controller)
+        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3397,15 +3428,17 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
-        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.navigationFrame = tk.Frame(self)
+        self.headerFrame = tk.Frame(self, bg="#eeeeee")
+        self.contentFrame = ScrollableFrame(self)#, width=500)  # , bg="#ffffff")
+        self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
-        label = tk.Label(self.contentFrame, text="Internet Hosts")
+        # Header
+        label = tk.Label(self.headerFrame, text="Internet Hosts", bg="#eeeeee", bd=1, relief="flat")
         label.grid(row=0, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
-        b_internet = tk.Button(self.contentFrame, text = " + ", command=lambda: self.add_internet())
-        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+        b_add_entry = tk.Button(self.headerFrame, text = " + ", command=lambda: self.add_internet())
+        b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
@@ -3413,29 +3446,36 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         b_back.grid(row=0, column=5, sticky="se")
         b_next.grid(row=0, column=6, sticky="se")
 
-        # Configuring the Grid
-        self.contentFrame.grid(row=0, column=0, sticky="nsew")
-        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+        # *** Configure the grid *** #
+        # Header
+        self.headerFrame.grid(row=0, column=0, sticky="new")
+        self.headerFrame.grid_rowconfigure(0, weight=1)
+        self.headerFrame.grid_columnconfigure(0, weight=1)
 
-        self.contentFrame.grid_rowconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(1, weight=2)
-        self.contentFrame.grid_columnconfigure(2, weight=1)
-        self.contentFrame.grid_columnconfigure(3, weight=2)
-        self.contentFrame.grid_columnconfigure(4, weight=1)
-        self.contentFrame.grid_columnconfigure(5, weight=0)
-        self.contentFrame.grid_columnconfigure(6, weight=0)
-        self.contentFrame.grid_columnconfigure(7, weight=0)
-        self.contentFrame.grid_columnconfigure(8, weight=1)
+        # Content
+        self.contentFrame.grid(row=1, column=0, sticky="nsew")
+        # self.contentFrame.grid_rowconfigure(0, weight=1)
+        # self.contentFrame.grid_columnconfigure(0, weight=1)
+        # self.contentFrame.grid_columnconfigure(1, weight=2)
+        # self.contentFrame.grid_columnconfigure(2, weight=1)
+        # self.contentFrame.grid_columnconfigure(3, weight=2)
+        # self.contentFrame.grid_columnconfigure(4, weight=1)
+        # self.contentFrame.grid_columnconfigure(5, weight=0)
+        # self.contentFrame.grid_columnconfigure(6, weight=0)
+        # self.contentFrame.grid_columnconfigure(7, weight=0)
+        # self.contentFrame.grid_columnconfigure(8, weight=1)
 
+        # Navigation
+        self.navigationFrame.grid(row=2, column=0, sticky='sew')
         self.navigationFrame.grid_rowconfigure(0, weight=1)
         self.navigationFrame.grid_columnconfigure(0, weight=1)
 
+        # Overall
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         # Load up 1 instance to fill in at launch
-        self.add_internet()
+        #self.add_internet()
 
     # In case anything else should occur beyond the add_rule method
     def add_internet(self):
@@ -3451,7 +3491,7 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
 class MUDPage3Local(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        MUDPage0Select.__init__(self, parent, controller)
+        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3459,15 +3499,17 @@ class MUDPage3Local(MUDPage0Select, tk.Frame):
         self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
-        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.navigationFrame = tk.Frame(self)
+        self.headerFrame = tk.Frame(self, bg="#eeeeee")
+        self.contentFrame = ScrollableFrame(self, width=600)
+        self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
-        label = tk.Label(self.contentFrame, text="Local Hosts")
+        # Header
+        label = tk.Label(self.headerFrame, text="Local Hosts", bg="#eeeeee", bd=1, relief="flat")
         label.grid(row=0, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
-        b_internet = tk.Button(self.contentFrame, text=" + ", command=lambda: self.add_local())
-        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+        b_add_entry = tk.Button(self.headerFrame, text=" + ", command=lambda: self.add_local())
+        b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
@@ -3475,33 +3517,30 @@ class MUDPage3Local(MUDPage0Select, tk.Frame):
         b_back.grid(row=0, column=5, sticky="se")
         b_next.grid(row=0, column=6, sticky="se")
 
-        # Configuring the Grid
-        self.contentFrame.grid(row=0, column=0, sticky="nsew")
-        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+        # *** Configure the grid *** #
+        # Header
+        self.headerFrame.grid(row=0, column=0, sticky="new")
+        self.headerFrame.grid_rowconfigure(0, weight=1)
+        self.headerFrame.grid_columnconfigure(0, weight=1)
 
-        self.contentFrame.grid_rowconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(1, weight=2)
-        self.contentFrame.grid_columnconfigure(2, weight=1)
-        self.contentFrame.grid_columnconfigure(3, weight=2)
-        self.contentFrame.grid_columnconfigure(4, weight=1)
-        self.contentFrame.grid_columnconfigure(5, weight=0)
-        self.contentFrame.grid_columnconfigure(6, weight=0)
-        self.contentFrame.grid_columnconfigure(7, weight=0)
-        self.contentFrame.grid_columnconfigure(8, weight=1)
+        # Content
+        self.contentFrame.grid(row=1, column=0, sticky="nsew")
 
+        # Navigation
+        self.navigationFrame.grid(row=2, column=0, sticky='sew')
         self.navigationFrame.grid_rowconfigure(0, weight=1)
         self.navigationFrame.grid_columnconfigure(0, weight=1)
 
+        # Overall
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         # Load up 1 instance to fill in at launch
-        self.add_local()
+        #self.add_local()
 
     # In case anything else should occur beyond the add_rule method
     def add_local(self):
-        self.controller.add_rule(self)
+       self.controller.add_rule(self)
 
     def next_page(self):
         # TODO: ADD Local ACL
@@ -3513,7 +3552,7 @@ class MUDPage3Local(MUDPage0Select, tk.Frame):
 class MUDPage4SameMan(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        MUDPage0Select.__init__(self, parent, controller)
+        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3521,15 +3560,17 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
         self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
-        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.navigationFrame = tk.Frame(self)
+        self.headerFrame = tk.Frame(self, bg="#eeeeee")
+        self.contentFrame = ScrollableFrame(self)
+        self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
-        label = tk.Label(self.contentFrame, text="Same Manufacturer")
+        # Header
+        label = tk.Label(self.headerFrame, text="Same Manufacturer", bg="#eeeeee", bd=1, relief="flat")
         label.grid(row=0, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
-        b_internet = tk.Button(self.contentFrame, text=" + ", command=lambda: self.add_same_mfr())
-        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+        b_add_entry = tk.Button(self.headerFrame, text=" + ", command=lambda: self.add_same_mfr())
+        b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
@@ -3537,24 +3578,21 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
         b_back.grid(row=0, column=5, sticky="se")
         b_next.grid(row=0, column=6, sticky="se")
 
-        # Configuring the Grid
-        self.contentFrame.grid(row=0, column=0, sticky="nsew")
-        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+        # *** Configure the grid *** #
+        # Header
+        self.headerFrame.grid(row=0, column=0, sticky="new")
+        self.headerFrame.grid_rowconfigure(0, weight=1)
+        self.headerFrame.grid_columnconfigure(0, weight=1)
 
-        self.contentFrame.grid_rowconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(1, weight=2)
-        self.contentFrame.grid_columnconfigure(2, weight=1)
-        self.contentFrame.grid_columnconfigure(3, weight=2)
-        self.contentFrame.grid_columnconfigure(4, weight=1)
-        self.contentFrame.grid_columnconfigure(5, weight=0)
-        self.contentFrame.grid_columnconfigure(6, weight=0)
-        self.contentFrame.grid_columnconfigure(7, weight=0)
-        self.contentFrame.grid_columnconfigure(8, weight=1)
+        # Content
+        self.contentFrame.grid(row=1, column=0, sticky="nsew")
 
+        # Navigation
+        self.navigationFrame.grid(row=2, column=0, sticky='sew')
         self.navigationFrame.grid_rowconfigure(0, weight=1)
         self.navigationFrame.grid_columnconfigure(0, weight=1)
 
+        # Overall
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -3562,9 +3600,10 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
         self.add_same_mfr()
 
     # In case anything else should occur beyond the add_rule method
-    # TODO: Make the HOST field unfillable, and mark as "filled in by system"
     def add_same_mfr(self):
         self.controller.add_rule(self)
+        self.controller.rules[self.communication][self.max_row - 1]["host"][0].set("(filled in by system)")
+        self.controller.rules[self.communication][self.max_row - 1]["host"][2].config(state="disabled")
 
     def next_page(self):
         # TODO: ADD SAME MANUFACTURER ACL
@@ -3576,7 +3615,7 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
 class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        MUDPage0Select.__init__(self, parent, controller)
+        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3584,15 +3623,17 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
         self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
-        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.navigationFrame = tk.Frame(self)
+        self.headerFrame = tk.Frame(self, bg="#eeeeee")
+        self.contentFrame = ScrollableFrame(self)
+        self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
-        label = tk.Label(self.contentFrame, text="Other Named Manufacturer(s)")
+        # Header
+        label = tk.Label(self.headerFrame, text="Other Named Manufacturer(s)", bg="#eeeeee", bd=1, relief="flat")
         label.grid(row=0, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
-        b_internet = tk.Button(self.contentFrame, text=" + ", command=lambda: self.add_named_mfr())
-        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+        b_add_entry = tk.Button(self.headerFrame, text=" + ", command=lambda: self.add_named_mfr())
+        b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
@@ -3600,24 +3641,21 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
         b_back.grid(row=0, column=5, sticky="se")
         b_next.grid(row=0, column=6, sticky="se")
 
-        # Configuring the Grid
-        self.contentFrame.grid(row=0, column=0, sticky="nsew")
-        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+        # *** Configure the grid *** #
+        # Header
+        self.headerFrame.grid(row=0, column=0, sticky="new")
+        self.headerFrame.grid_rowconfigure(0, weight=1)
+        self.headerFrame.grid_columnconfigure(0, weight=1)
 
-        self.contentFrame.grid_rowconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(1, weight=2)
-        self.contentFrame.grid_columnconfigure(2, weight=1)
-        self.contentFrame.grid_columnconfigure(3, weight=2)
-        self.contentFrame.grid_columnconfigure(4, weight=1)
-        self.contentFrame.grid_columnconfigure(5, weight=0)
-        self.contentFrame.grid_columnconfigure(6, weight=0)
-        self.contentFrame.grid_columnconfigure(7, weight=0)
-        self.contentFrame.grid_columnconfigure(8, weight=1)
+        # Content
+        self.contentFrame.grid(row=1, column=0, sticky="nsew")
 
+        # Navigation
+        self.navigationFrame.grid(row=2, column=0, sticky='sew')
         self.navigationFrame.grid_rowconfigure(0, weight=1)
         self.navigationFrame.grid_columnconfigure(0, weight=1)
 
+        # Overall
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -3638,7 +3676,7 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
 class MUDPage6MyControl(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        MUDPage0Select.__init__(self, parent, controller)
+        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3646,15 +3684,19 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
         self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
-        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.navigationFrame = tk.Frame(self)
+        self.headerFrame = tk.Frame(self, bg="#eeeeee")
+        self.contentFrame = ScrollableFrame(self)
+        self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
-        label = tk.Label(self.contentFrame, text="Network-Specific Controllers (my-controller)")
-        label.grid(row=0, columnspan=6, sticky='new')
+        # Header
+        title = tk.Label(self.headerFrame, text="Network-Specific Controllers", bg="#eeeeee", bd=1, relief="flat")
+        title.grid(row=0, columnspan=6, sticky='new')
+        subtitle = tk.Label(self.headerFrame, text="(my-controller)", bg="#eeeeee", bd=1, relief="flat")
+        subtitle.grid(row=1, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
-        b_internet = tk.Button(self.contentFrame, text=" + ", command=lambda: self.add_my_controller())
-        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+        b_add_entry = tk.Button(self.headerFrame, text=" + ", command=lambda: self.add_my_controller())
+        b_add_entry.grid(row=0, column=6, sticky="ne")
 
         # Navigation Buttons
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
@@ -3662,34 +3704,31 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
         b_back.grid(row=0, column=5, sticky="se")
         b_next.grid(row=0, column=6, sticky="se")
 
-        # Configuring the Grid
-        self.contentFrame.grid(row=0, column=0, sticky="nsew")
-        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+        # *** Configure the grid *** #
+        # Header
+        self.headerFrame.grid(row=0, column=0, sticky="new")
+        self.headerFrame.grid_rowconfigure(0, weight=1)
+        self.headerFrame.grid_columnconfigure(0, weight=1)
 
-        self.contentFrame.grid_rowconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(1, weight=2)
-        self.contentFrame.grid_columnconfigure(2, weight=1)
-        self.contentFrame.grid_columnconfigure(3, weight=2)
-        self.contentFrame.grid_columnconfigure(4, weight=1)
-        self.contentFrame.grid_columnconfigure(5, weight=0)
-        self.contentFrame.grid_columnconfigure(6, weight=0)
-        self.contentFrame.grid_columnconfigure(7, weight=0)
-        self.contentFrame.grid_columnconfigure(8, weight=1)
+        # Content
+        self.contentFrame.grid(row=1, column=0, sticky="nsew")
 
+        # Navigation
+        self.navigationFrame.grid(row=2, column=0, sticky='sew')
         self.navigationFrame.grid_rowconfigure(0, weight=1)
         self.navigationFrame.grid_columnconfigure(0, weight=1)
 
+        # Overall
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         # Load up 1 instance to fill in at launch
         self.add_my_controller()
 
-    # In case anything else should occur beyond the add_rule method
-    # TODO: Make the host unfillable and mark "filled by local admin"
     def add_my_controller(self):
         self.controller.add_rule(self)
+        self.controller.rules[self.communication][self.max_row - 1]["host"][0].set("(filled in by local admin)")
+        self.controller.rules[self.communication][self.max_row - 1]["host"][2].config(state="disabled")
 
     def next_page(self):
         # TODO: ADD MY-CONTROLLER ACL
@@ -3701,7 +3740,7 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
 class MUDPage7Control(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        MUDPage0Select.__init__(self, parent, controller)
+        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3709,15 +3748,17 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
         self.controller.rules[self.communication] = dict()
         self.max_row = 0
 
-        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.navigationFrame = tk.Frame(self)
+        self.headerFrame = tk.Frame(self, bg="#eeeeee")
+        self.contentFrame = ScrollableFrame(self)
+        self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
-        label = tk.Label(self.contentFrame, text="Controllers")
+        # Header
+        label = tk.Label(self.headerFrame, text="Controllers", bg="#eeeeee", bd=1, relief="flat")
         label.grid(row=0, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
-        b_internet = tk.Button(self.contentFrame, text=" + ", command=lambda: self.add_controller())
-        b_internet.grid(row=self.max_row, column=8, sticky="ne")
+        b_add_entry = tk.Button(self.headerFrame, text=" + ", command=lambda: self.add_controller())
+        b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
@@ -3725,24 +3766,21 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
         b_back.grid(row=0, column=5, sticky="se")
         b_next.grid(row=0, column=6, sticky="se")
 
-        # Configuring the Grid
-        self.contentFrame.grid(row=0, column=0, sticky="nsew")
-        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+        # *** Configure the grid *** #
+        # Header
+        self.headerFrame.grid(row=0, column=0, sticky="new")
+        self.headerFrame.grid_rowconfigure(0, weight=1)
+        self.headerFrame.grid_columnconfigure(0, weight=1)
 
-        self.contentFrame.grid_rowconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(0, weight=1)
-        self.contentFrame.grid_columnconfigure(1, weight=2)
-        self.contentFrame.grid_columnconfigure(2, weight=1)
-        self.contentFrame.grid_columnconfigure(3, weight=2)
-        self.contentFrame.grid_columnconfigure(4, weight=1)
-        self.contentFrame.grid_columnconfigure(5, weight=0)
-        self.contentFrame.grid_columnconfigure(6, weight=0)
-        self.contentFrame.grid_columnconfigure(7, weight=0)
-        self.contentFrame.grid_columnconfigure(8, weight=1)
+        # Content
+        self.contentFrame.grid(row=1, column=0, sticky="nsew")
 
+        # Navigation
+        self.navigationFrame.grid(row=2, column=0, sticky='sew')
         self.navigationFrame.grid_rowconfigure(0, weight=1)
         self.navigationFrame.grid_columnconfigure(0, weight=1)
 
+        # Overall
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -3750,7 +3788,6 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
         self.add_controller()
 
     # In case anything else should occur beyond the add_rule method
-    # TODO: Make the host unfillable and mark "filled by local admin"
     def add_controller(self):
         self.controller.add_rule(self)
 
@@ -3764,18 +3801,19 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
 class MUDPage8Summary(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        MUDPage0Select.__init__(self, parent, controller)
+        #MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
         self.max_row = 0
 
-        self.contentFrame = tk.Frame(self)  # , width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.navigationFrame = tk.Frame(self)
+        self.headerFrame = tk.Frame(self, bg="#eeeeee")
+        self.contentFrame = tk.Frame(self)
+        self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
         # Summary header
-        label = tk.Label(self.contentFrame, text="MUD File Summary")
-        label.grid(row=0, columnspan=6, sticky='new')
+        title = tk.Label(self.headerFrame, text="MUD File Summary")
+        title.grid(row=0, columnspan=6, sticky='new')
 
         # TODO: Implement the actual summary information (probably in a normal listbox with all the text
         # Summary contents
@@ -3796,17 +3834,24 @@ class MUDPage8Summary(MUDPage0Select, tk.Frame):
         b_back.grid(row=0, column=1, sticky="se")
         b_generate.grid(row=0, column=2, sticky="se")
 
-        # Configuring the Grid
-        self.contentFrame.grid(row=0, column=0, sticky="nsew")
-        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
+        # *** Configure the grid *** #
+        # Header
+        self.headerFrame.grid(row=0, column=0, sticky="new")
+        self.headerFrame.grid_rowconfigure(0, weight=1)
+        self.headerFrame.grid_columnconfigure(0, weight=1)
 
+        # Content
+        self.contentFrame.grid(row=0, column=0, sticky="nsew")
         self.contentFrame.grid_rowconfigure(1, weight=1)
         self.contentFrame.grid_columnconfigure(0, weight=1)
 
+        # Navigation
+        self.navigationFrame.grid(row=self.controller.row_nav, column=0, sticky='sew')
         self.navigationFrame.grid_rowconfigure(0, weight=1)
         self.navigationFrame.grid_columnconfigure(0, weight=1)
 
-        self.grid_rowconfigure(0, weight=1)
+        # Overall
+        self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         # TODO: considered not making this disabled, or provide an "ADVANCED" toggle to allow manual editing of the file

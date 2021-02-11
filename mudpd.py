@@ -17,7 +17,8 @@ import src.pcapng_comment as capMeta
 from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_acls, make_support_info
 from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
 import random
-import re
+from IPy import IP
+import socket
 import json
 
 # External Modules
@@ -2743,6 +2744,7 @@ class MUDWizard(tk.Toplevel):
 
         self.hosts_internet = list()
         self.hosts_local = list()
+        self.dns_name = ''
 
         self.protocol_options = ('Any', 'TCP', 'UDP')
         self.init_direction_options = ('Either', 'Thing', 'Remote')
@@ -2850,24 +2852,35 @@ class MUDWizard(tk.Toplevel):
 
     def retrieve_hosts_internet(self, comm_list):
         self.hosts_internet = []
-        pattern = re.compile(
-            "^([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!172\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31))"
-            "(?<!127)(?<!^10)(?<!^0)\.([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!192\.168)(?<!172\.(16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31))\."
-            "([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(?<!\.255$)$")
         for i in comm_list:
-            yesno = re.search(pattern, i[2])
-            if yesno:
-                self.hosts_internet.append((i[1], i[2], i[4]))
-
+            if i[3] == 1:
+                iptest = IP(i[2])
+                if iptest.iptype() != 'ULA' or 'MULTICAST' not in iptest.iptype():
+                    self.hosts_internet.append((i[1], i[2], i[4], i[3]))
+            else:
+                iptest = IP(i[2])
+                if iptest.iptype() == 'PUBLIC':
+                    try:
+                        self.dns_name = socket.gethostbyaddr(i[2])
+                        print(self.dns_name[0])
+                    except socket.herror as he:
+                        print("DNS Name not found for", i[2])
+                        self.hosts_internet.append((i[1], i[2], i[4], i[3]))
+                        continue
+                    self.hosts_internet.append((i[1], self.dns_name[0], i[4], i[3]))
         return self.hosts_internet
 
     def retrieve_hosts_local(self, comm_list):
         self.hosts_local = []
-        pattern = re.compile("(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.168\.)|(^127\.0\.0\.1)")
         for i in comm_list:
-            yesno = re.search(pattern, i[2])
-            if yesno:
-                self.hosts_local.append((i[1], i[2], i[4]))
+            if i[3] == 1:
+                iptest = IP(i[2])
+                if iptest.iptype() == 'ULA' or 'MULTICAST' in iptest.iptype():
+                    self.hosts_local.append((i[1], i[2], i[4], i[3]))
+            else:
+                iptest = IP(i[2])
+                if iptest.iptype() != 'PUBLIC':
+                    self.hosts_local.append((i[1], i[2], i[4], i[3]))
         return self.hosts_local
 
 
@@ -3205,9 +3218,6 @@ class MUDPage0Select(tk.Frame):
 
         # Autofill Device Details
         self.controller.sv_mfr.set(self.dev_mfr)
-        # TODO: JK - see if you can fill in device description from the database
-        #self.controller.sv_desc.set("Device Description")
-
 
         print("Internet hosts:", len(self.hosts_internet), self.hosts_internet)
         print("Local hosts:", len(self.hosts_local), self.hosts_local)
@@ -3239,7 +3249,7 @@ class MUDPage0Select(tk.Frame):
             self.controller.rules[self.controller.frames[MUDPage3Local].communication][
                 self.controller.frames[MUDPage3Local].max_row]['port_remote'][0].set(host[2])
         if len(self.hosts_local) == 0:
-            self.controller.add_rule(self.controller.frames[MUDPage2Internet])
+            self.controller.add_rule(self.controller.frames[MUDPage3Local])
 
         self.controller.next_page()
 
@@ -3279,8 +3289,7 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         l_mfr.grid(row=2, column=0, columnspan=2, sticky="w")
         e_mfr.grid(row=2, column=2, columnspan=4, sticky="ew")
 
-        # TODO: To autofilll from DB Query
-        v_mfr = "MANUFACTURER TO BE AUTOFILLED FROM DB" # TODO: setup actual query
+        v_mfr = ""
         e_mfr.insert(0, v_mfr)
 
         # Documentation URL

@@ -2818,6 +2818,7 @@ class MUDWizard(tk.Toplevel):
 
         time.sleep(0.25)
         if cont == MUDPage2Internet:
+            # TODO: Check if page contains any IP addresses, and show message if so
             # Warning about hostnames needing to be domain names, not IP addresses
             tk.messagebox.showinfo("Warning", "For proper functionality and alignment with the MUD Specification, "
                                               "these hostnames should be domain names, not IP addresses.")
@@ -3031,7 +3032,8 @@ class MUDWizard(tk.Toplevel):
         else:
             combo_options = self.rules[frame.communication][frame.row][opt_type][0]
 
-        combobox = ttk.Combobox(frame.contentFrame.scrollable_frame, width=6, textvariable=combo_options)
+        combobox = ttk.Combobox(frame.contentFrame.scrollable_frame, width=6, textvariable=combo_options,
+                                state="readonly")
 
         combobox['values'] = values
         combobox.current(0)
@@ -3042,6 +3044,9 @@ class MUDWizard(tk.Toplevel):
     #def protocol_updated(self, event, frame, row):
     def protocol_updated(self, frame, row):
         event = None
+
+        print(frame, row)
+
         pass
 
         if event != "Any":
@@ -3094,6 +3099,8 @@ class MUDWizard(tk.Toplevel):
 
                         #type = MatchType.IS_CLOUD
                         if comm == "local":
+                            # The Host for local must be unspecified/"any"
+                            host = "any"
                             type = MatchType.IS_LOCAL
                         elif comm == "internet":
                             type = MatchType.IS_CLOUD

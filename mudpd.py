@@ -34,6 +34,7 @@ import mysql.connector
 from mysql.connector import errorcode
 # import pyshark
 # import subprocess
+import re
 import sys
 import time
 import tkinter as tk
@@ -2814,6 +2815,23 @@ class MUDWizard(tk.Toplevel):
     def show_frame(self, cont):
         frame = self.frames[cont]
         frame.tkraise()
+
+        time.sleep(0.25)
+        if cont == MUDPage2Internet:
+            # Warning about hostnames needing to be domain names, not IP addresses
+            tk.messagebox.showinfo("Warning", "For proper functionality and alignment with the MUD Specification, "
+                                              "these hostnames should be domain names, not IP addresses.")
+        elif cont == MUDPage3Local:
+            tk.messagebox.showinfo("Warning", "Hostnames for Local entries are for reference/context during this "
+                                              "wizard only and will neither be saved, nor used in the MUD file. ANY "
+                                              "local device can follow the rules defined.")
+        elif cont == MUDPage5NamedMan:
+            tk.messagebox.showinfo("Warning", "For proper functionality and alignment with the MUD Specification, "
+                                              "these hostnames should be domain names, NOT IP addresses.")
+        elif cont == MUDPage7Control:
+            tk.messagebox.showinfo("Warning", "For proper functionality and alignment with the MUD Specification, "
+                                              "these hostnames should be class URIs, NOT IP addresses.")
+
         #print("width: ", frame.winfo_width())
         #print("height: ", frame.winfo_height())
 
@@ -2845,8 +2863,8 @@ class MUDWizard(tk.Toplevel):
     def prev_page(self): # TODO: Fix this
         if self.current_page > 1:
             for i, v in reversed(list(enumerate(self.cb_v_list))):
-                if i and v.get() and i<self.current_page:
-                    self.current_page = i
+                if i and v.get() and i<(self.current_page-1):
+                    self.current_page = i+1
                     self.show_frame(self.frame_list[self.current_page])
                     return
             self.current_page = 1
@@ -3064,6 +3082,7 @@ class MUDWizard(tk.Toplevel):
         # Reset acl and policies
         self.acl = []
         self.policies = {}
+        #self.domain_warning = False
 
         for direction_initiated in [Direction.TO_DEVICE, Direction.FROM_DEVICE]:
             for comm in self.rules.keys():
@@ -3073,22 +3092,22 @@ class MUDWizard(tk.Toplevel):
                         host = self.rules[comm][row]['host'][0].get()
                         protocol = self.rules[comm][row]['protocol'][0].get()
 
-                        type = MatchType.IS_CLOUD
-                        # if comm is "local":
-                        #     type = MatchType.IS_LOCAL
-                        # elif comm is "internet":
-                        #     type = MatchType.IS_CLOUD
-                        # elif comm is "mfr_same":
-                        #     type = MatchType.IS_MYMFG
-                        # elif comm is "mfr_named":
-                        #     type = MatchType.IS_MFG
-                        # elif comm is "controller_my":
-                        #     type = MatchType.IS_MY_CONTROLLER
-                        # elif comm is "controller":
-                        #     type = MatchType.IS_CONTROLLER
-                        # else:
-                        #     print("Communication type error! Skipping")
-                        #     continue
+                        #type = MatchType.IS_CLOUD
+                        if comm == "local":
+                            type = MatchType.IS_LOCAL
+                        elif comm == "internet":
+                            type = MatchType.IS_CLOUD
+                        elif comm == "mfr_same":
+                            type = MatchType.IS_MYMFG
+                        elif comm == "mfr_named":
+                            type = MatchType.IS_MFG
+                        elif comm == "controller_my":
+                            type = MatchType.IS_MY_CONTROLLER
+                        elif comm == "controller":
+                            type = MatchType.IS_CONTROLLER
+                        else:
+                            print("Communication type error! Skipping")
+                            continue
 
                         if protocol == self.protocol_options[0]:
                             prot = Protocol.ANY
@@ -3106,7 +3125,10 @@ class MUDWizard(tk.Toplevel):
                         self.policies.update(make_policy(direction_initiated, acl_names))
                         #self.acl.append(make_acls([IPVersion.IPV4], host, prot, type, direction_initiated,
                         #                          acl_names=acl_names))
-                        self.acl.append(make_acls([IPVersion.IPV4], 'honeywell.com', prot,
+                        # TODO: Revisit if want to handle non-domain hosts
+                        #if not re.match(r'[a-zA-Z0-9.-]+\.[a-zA-Z]{2,3}$', host):
+                        #    self.domain_warning = True
+                        self.acl.append(make_acls([IPVersion.IPV4], host, prot,
                                                   type,
                                                   direction_initiated, acl_names=acl_names))
                     else:
@@ -3152,19 +3174,19 @@ class MUDWizard(tk.Toplevel):
                     elif not skip:
                         # Get values
                         host = self.rules[comm][row]['host'][0].get()
-                        protocol = self.rues[comm][row]['protocol'][0].get()
+                        protocol = self.rules[comm][row]['protocol'][0].get()
 
-                        if comm is "local":
+                        if comm == "local":
                             type = MatchType.IS_LOCAL
-                        elif comm is "internet":
+                        elif comm == "internet":
                             type = MatchType.IS_CLOUD
-                        elif comm is "mfr_same":
+                        elif comm == "mfr_same":
                             type = MatchType.IS_MYMFG
-                        elif comm is "mfr_named":
+                        elif comm == "mfr_named":
                             type = MatchType.IS_MFG
-                        elif comm is "controller_my":
+                        elif comm == "controller_my":
                             type = MatchType.IS_MY_CONTROLLER
-                        elif comm is "controller":
+                        elif comm == "controller":
                             type = MatchType.IS_CONTROLLER
                         else:
                             print("Communication type error! Skipping")
@@ -3204,16 +3226,16 @@ class MUDWizard(tk.Toplevel):
 
                     # TODO: Make these actually do something
                     # Check if protocol is ANY, if so, ignore ports and initiation direction
-                    if protocol.upper() is "ANY":
+                    if protocol.upper() == "ANY":
                         print("host: ", host)
                         print("protocol: ", protocol)
                     # If protocol is UDP, ignore initiation direction
-                    elif protocol.upper() is "UDP":
+                    elif protocol.upper() == "UDP":
                         print("host: ", host)
                         print("protocol: ", protocol)
                         print("local port: ", port_local)
                         print("remote port: ", port_remote)
-                    elif protocol.upper() is "TCP":
+                    elif protocol.upper() == "TCP":
                         print("host: ", host)
                         print("protocol: ", protocol)
                         print("local port: ", port_local)
@@ -3381,6 +3403,9 @@ class MUDPage0Select(tk.Frame):
                 self.controller.add_rule(self.controller.frames[MUDPage3Local])
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
                     self.controller.frames[MUDPage3Local].max_row-1]['host'][0].set(host[1])
+                #Disable hostname modification since it will be unused
+                self.controller.rules[self.controller.frames[MUDPage3Local].communication][
+                    self.controller.frames[MUDPage3Local].max_row-1]['host'][2].config(state="disabled")
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
                     self.controller.frames[MUDPage3Local].max_row-1]['protocol'][0].set(host[0].upper())
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][

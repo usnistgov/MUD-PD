@@ -506,7 +506,8 @@ class CaptureDatabase:
         "s.ipv6_addr!='Not found' AND s.ipv6_addr!='::';")
 
     query_device_communication_info = (
-        "SELECT DISTINCT deviceID, protocol, dst_ip_addr, ipv6, dst_port FROM protocol "
+        "SELECT DISTINCT deviceID, protocol, dst_ip_addr, ipv6, dst_port, src_port "
+        "FROM protocol "
         "WHERE deviceID=%(new_deviceID)s;")
 
     query_gateway_ips = (

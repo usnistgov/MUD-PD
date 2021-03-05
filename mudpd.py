@@ -2746,7 +2746,7 @@ class DatabaseHandler:
     def __init__(self, filename='config.ini', section='mysql'):
         try:
             self.config = self.read_db_config(filename, section)
-        except ConfigParser.Error:
+        except KeyError:  # ConfigParser.Error:
             self.config = {"host": "", "database": "", "user": "", "passwd": ""}
         self.connected = False
         self.db = None
@@ -2763,7 +2763,8 @@ class DatabaseHandler:
             for item in items:
                 db[item[0]] = item[1]
         else:
-            raise Exception('{0} not found in the {1} file'.format(section, filename))
+            # raise Exception('{0} not found in the {1} file'.format(section, filename))
+            raise KeyError('{0} not found in the {1} file'.format(section, filename))
 
         return db
 

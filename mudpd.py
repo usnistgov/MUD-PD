@@ -16,6 +16,8 @@ import src.pcapng_comment as capMeta
 
 from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_acls, make_support_info
 from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
+
+import os
 import random
 from IPy import IP
 import socket
@@ -2746,6 +2748,7 @@ class MUDWizard(tk.Toplevel):
         self.hosts_internet = list()
         self.hosts_local = list()
         self.dns_name = ''
+        self.ipversion = IPVersion.IPV4
 
         self.protocol_options = ('Any', 'TCP', 'UDP')
         self.init_direction_options = ('Either', 'Thing', 'Remote')
@@ -2880,7 +2883,7 @@ class MUDWizard(tk.Toplevel):
             if i[3] == 1:
                 iptest = IP(i[2])
                 if iptest.iptype() != 'ULA' or 'MULTICAST' not in iptest.iptype():
-                    self.hosts_internet.append((i[1], i[2], i[4], i[3]))
+                    self.hosts_internet.append((i[1], i[2], i[4], i[5], i[3]))
             else:
                 iptest = IP(i[2])
                 if iptest.iptype() == 'PUBLIC':
@@ -2889,9 +2892,9 @@ class MUDWizard(tk.Toplevel):
                         print(self.dns_name[0])
                     except socket.herror as he:
                         print("DNS Name not found for", i[2])
-                        self.hosts_internet.append((i[1], i[2], i[4], i[3]))
+                        self.hosts_internet.append((i[1], i[2], i[4], i[5], i[3]))
                         continue
-                    self.hosts_internet.append((i[1], self.dns_name[0], i[4], i[3]))
+                    self.hosts_internet.append((i[1], self.dns_name[0], i[4], i[5], i[3]))
         return self.hosts_internet
 
     def retrieve_hosts_local(self, comm_list):
@@ -2900,11 +2903,11 @@ class MUDWizard(tk.Toplevel):
             if i[3] == 1:
                 iptest = IP(i[2])
                 if iptest.iptype() == 'ULA' or 'MULTICAST' in iptest.iptype():
-                    self.hosts_local.append((i[1], i[2], i[4], i[3]))
+                    self.hosts_local.append((i[1], i[2], i[4], i[5], i[3]))
             else:
                 iptest = IP(i[2])
                 if iptest.iptype() != 'PUBLIC':
-                    self.hosts_local.append((i[1], i[2], i[4], i[3]))
+                    self.hosts_local.append((i[1], i[2], i[4], i[5], i[3]))
         return self.hosts_local
 
 
@@ -3090,7 +3093,14 @@ class MUDWizard(tk.Toplevel):
         #self.domain_warning = False
 
         for direction_initiated in [Direction.TO_DEVICE, Direction.FROM_DEVICE]:
-            for comm in self.rules.keys():
+
+            acl_names = make_acl_names(self.mud_name, IPVersion.IPV4, direction_initiated)
+            self.policies.update(make_policy(direction_initiated, acl_names))
+
+            for (i, comm) in enumerate(self.rules.keys()):
+                # Check if there are any valid entries stored here and continue to next comm if not
+                if not self.cb_v_list[i+1].get():
+                    continue
                 for row in reversed(self.rules[comm]):
                     if row % 2:  # Odd rows
                         # Get values
@@ -3099,8 +3109,6 @@ class MUDWizard(tk.Toplevel):
 
                         #type = MatchType.IS_CLOUD
                         if comm == "local":
-                            # The Host for local must be unspecified/"any"
-                            host = "any"
                             type = MatchType.IS_LOCAL
                         elif comm == "internet":
                             type = MatchType.IS_CLOUD
@@ -3118,147 +3126,88 @@ class MUDWizard(tk.Toplevel):
 
                         if protocol == self.protocol_options[0]:
                             prot = Protocol.ANY
+                            # Override direction_init value since this shall not be specified
+                            if direction_init != direction_initiated:
+                                print("Warning: initiation direction specified when not allowed - ignoring value")
+                            direction_init = direction_initiated
+                            # Override port values since these shall not be specified
+                            if port_local is not None and port_local.upper() != "ANY":
+                                print("Warning: local port specified when not allowed - ignoring value")
+                            port_local = None  # []
+                            if port_remote is not None and port_remote.upper() != "ANY":
+                                print("Warning: remote port specified when not allowed - ignoring value")
+                            port_remote = None  # []
                         elif protocol == self.protocol_options[1]:
                             prot = Protocol.TCP
+                            # Check if the initiation direction matches and skip to next rule if not
+                            if direction_initiated != direction_init:
+                                print("Initiation direction doesn't match, saving for second pass, or already added")
+                                continue
                         elif protocol == self.protocol_options[2]:
                             prot = Protocol.UDP
-                            # Ignore port numbers
-                            # Ignore Initiation Direction?
+                            # Override direction_init value since this shall not be specified
+                            if direction_init != direction_initiated:
+                                print("Warning: initiation direction specified when not allowed - ignoring value")
+                            direction_init = direction_initiated
                         else:
                             print("Protocol type error! Skipping")
                             continue
 
-                        acl_names = make_acl_names(self.mud_name, IPVersion.IPV4, direction_initiated)
-                        self.policies.update(make_policy(direction_initiated, acl_names))
+                        #acl_names = make_acl_names(self.mud_name, IPVersion.IPV4, direction_initiated)
+                        #self.policies.update(make_policy(direction_init, acl_names))
                         #self.acl.append(make_acls([IPVersion.IPV4], host, prot, type, direction_initiated,
                         #                          acl_names=acl_names))
-                        # TODO: Revisit if want to handle non-domain hosts
+                        # TODO: Revisit if want to handle non-domain/URL/URI/URN hosts
                         #if not re.match(r'[a-zA-Z0-9.-]+\.[a-zA-Z]{2,3}$', host):
                         #    self.domain_warning = True
-                        self.acl.append(make_acls([IPVersion.IPV4], host, prot,
-                                                  type,
-                                                  direction_initiated, acl_names=acl_names))
+                        self.acl.append(make_acls([IPVersion.IPV4], host, prot, type, direction_init,
+                                                  local_ports=[port_local], remote_ports=[port_remote],
+                                                  acl_names=acl_names))
                     else:
-                        # Get values
+                        # Get local port
                         port_local = self.rules[comm][row]['port_local'][0].get()
-                        port_remote = self.rules[comm][row]['port_remote'][0].get()
+                        if port_local.upper() == "ANY":
+                            port_local = None
+                        elif port_local.isnumeric:
+                            port_local = int(port_local)
 
+                        # Get remote port
+                        port_remote = self.rules[comm][row]['port_remote'][0].get()
+                        if port_remote.upper() == "ANY":
+                            port_remote = None
+                        elif port_remote.isnumeric:
+                            port_remote = int(port_remote)
+
+                        # Get direction initiated
+                        direction_init = self.rules[comm][row]['initiation_direction'][0].get()
+                        if direction_init == "Either":
+                            direction_init = direction_initiated
+                        elif direction_init == "Thing":
+                            direction_init = Direction.FROM_DEVICE
+                        elif direction_init == "Remote":
+                            direction_init = Direction.TO_DEVICE
+                        else:
+                            print("Error: Unexpected initiation direction value - skipping rule.")
 
         self.mud = make_mud(self.support_info, self.policies, self.acl)
-        return
-
-        # TODO: Complete for real later
-        # TODO: handle IP version
-        # TODO: add source port
-        # TODO: handle direction initiated
-
-        skip = False
-
-        for direction_initiated in [Direction.TO_DEVICE, Direction.FROM_Device]:
-            for comm in self.rules.keys():
-                for row in reversed(self.rules[comm]):
-                    if row % 2:  # Odd rows
-                        # Get values
-                        port_local = self.rules[comm][row]['port_local'][0].get()
-                        port_remote = self.rules[comm][row]['port_remote'][0].get()
-                        initiation_direction = self.rules[comm][row]['initiation_direction'][0].get()
-
-                        # Check if Either
-                        if initiation_direction is self.init_direction_options[0]:
-                            #add rule
-                            #either, thing, remote
-                            pass
-                        elif initiation_direction is self.init_direction_options[1] and \
-                                direction_initiated is Direction.FROM_DEVICE:
-                            #add rule
-                            pass
-                        elif initiation_direction is self.init_direction_options[2] and \
-                                direction_initiated is Direction.TO_DEVICE:
-                            #add rule
-                            pass
-                        else:
-                            skip = True
-                    elif not skip:
-                        # Get values
-                        host = self.rules[comm][row]['host'][0].get()
-                        protocol = self.rules[comm][row]['protocol'][0].get()
-
-                        if comm == "local":
-                            type = MatchType.IS_LOCAL
-                        elif comm == "internet":
-                            type = MatchType.IS_CLOUD
-                        elif comm == "mfr_same":
-                            type = MatchType.IS_MYMFG
-                        elif comm == "mfr_named":
-                            type = MatchType.IS_MFG
-                        elif comm == "controller_my":
-                            type = MatchType.IS_MY_CONTROLLER
-                        elif comm == "controller":
-                            type = MatchType.IS_CONTROLLER
-                        else:
-                            print("Communication type error! Skipping")
-                            continue
-
-                        if protocol is self.protocol_options[0]:
-                            prot = Protocol.TCP
-                        elif protocol is self.protocol_options[1]:
-                            prot = Protocol.UDP
-                        elif protocol is self.protocol_options[2]:
-                            prot = Protocol.ANY
-                            # Ignore port numbers
-                            # Ignore Initiation Direction?
-                        else:
-                            print("Protocol type error! Skipping")
-                            continue
-
-                        if True:
-                            # Add rule
-                            pass
-
-                        pass
-                    else:
-                        skip = False
-            skip = Direction.TO_DEVICE
-        if skip:
-            return
-        for comm in self.rules.keys():
-            for row in self.rules[comm]:
-                if not row % 2:  # Even rows
-                    host = self.rules[comm][row]['host'][0].get()
-                    protocol = self.rules[comm][row]['protocol'][0].get()
-                else:  # Odd rows
-                    port_local = self.rules[comm][row]['port_local'][0].get()
-                    port_remote = self.rules[comm][row]['port_remote'][0].get()
-                    initiation_direction = self.rules[comm][row]['initiation_direction'][0].get()
-
-                    # TODO: Make these actually do something
-                    # Check if protocol is ANY, if so, ignore ports and initiation direction
-                    if protocol.upper() == "ANY":
-                        print("host: ", host)
-                        print("protocol: ", protocol)
-                    # If protocol is UDP, ignore initiation direction
-                    elif protocol.upper() == "UDP":
-                        print("host: ", host)
-                        print("protocol: ", protocol)
-                        print("local port: ", port_local)
-                        print("remote port: ", port_remote)
-                    elif protocol.upper() == "TCP":
-                        print("host: ", host)
-                        print("protocol: ", protocol)
-                        print("local port: ", port_local)
-                        print("remote port: ", port_remote)
-                        print("initiation direction: ", initiation_direction)
-                    else:
-                        print("Error: Unacceptable transport layer protocol (TLP) provided")
-                        print("\tSkipping host: ", host)
-                        continue
-
-        # TODO: Finish setting up the policies and ACL before enabling this
-        #self.mud = make_mud(self.support_info, self.policies, self.acl)
 
     # TODO: Modify this to either prompt asking where to save the file, or display where the file has been outputted
     def generate_mud_file(self):
-        tk.messagebox.showinfo("Generating MUD File", "Note this is just a placeholder")
+        # TODO: rewrite using regex to make cleaner
+        fpath = 'mudfiles/' + self.support_info['mfg-name'].replace(' ', '_').replace(',', '').replace('.', '')
+        if not os.path.isdir(fpath):
+            os.mkdir(fpath)
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        dest_path = fpath + "/" + self.support_info['systeminfo'].replace(' ', '_') + "_" + timestamp + ".json"
+
+        # Save data to file
+        with open(dest_path, 'w') as fp:
+            json.dump(self.mud, fp, indent=4)
+
+        # Notify user of location of file
+        tk.messagebox.showinfo("MUD File Saved", "MUD file saved in " + dest_path)
+
         self.__exit__()
 
     def cancel(self):
@@ -3381,6 +3330,8 @@ class MUDPage0Select(tk.Frame):
             self.controller.next_page()
             return
 
+        ipv4 = False
+        ipv6 = False
         # Autofill Device Details
         self.controller.sv_mfr.set(self.dev_mfr)
 
@@ -3391,14 +3342,21 @@ class MUDPage0Select(tk.Frame):
         if self.hosts_internet:
             self.controller.cb_v_list[1].set(True)
 
-            for host in self.hosts_internet:
+            for (protocol, host, port_remote, port_local, ip_version) in self.hosts_internet:
                 self.controller.add_rule(self.controller.frames[MUDPage2Internet])
                 self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
-                    self.controller.frames[MUDPage2Internet].max_row-1]['host'][0].set(host[1])
+                    self.controller.frames[MUDPage2Internet].max_row-1]['host'][0].set(host)  #set(host[1])
                 self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
-                    self.controller.frames[MUDPage2Internet].max_row-1]['protocol'][0].set(host[0].upper())
+                    self.controller.frames[MUDPage2Internet].max_row-1]['protocol'][0].set(protocol.upper()) #host[
+                # 0].upper())
                 self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
-                    self.controller.frames[MUDPage2Internet].max_row]['port_remote'][0].set(host[2])
+                    self.controller.frames[MUDPage2Internet].max_row]['port_remote'][0].set(port_remote)#host[2])
+                self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
+                    self.controller.frames[MUDPage2Internet].max_row]['port_local'][0].set(port_local)#host[3])
+                if ip_version:
+                    ipv6 = True
+                else:
+                    ipv4 = True
         else:
             self.controller.add_rule(self.controller.frames[MUDPage2Internet])
 
@@ -3406,19 +3364,35 @@ class MUDPage0Select(tk.Frame):
         if self.hosts_local:
             self.controller.cb_v_list[2].set(True)
 
-            for host in self.hosts_local:
+            for (protocol, host, port_remote, port_local, ip_version) in self.hosts_local:
                 self.controller.add_rule(self.controller.frames[MUDPage3Local])
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
-                    self.controller.frames[MUDPage3Local].max_row-1]['host'][0].set(host[1])
+                    self.controller.frames[MUDPage3Local].max_row-1]['host'][0].set(host)#[1])
                 #Disable hostname modification since it will be unused
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
                     self.controller.frames[MUDPage3Local].max_row-1]['host'][2].config(state="disabled")
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
-                    self.controller.frames[MUDPage3Local].max_row-1]['protocol'][0].set(host[0].upper())
+                    self.controller.frames[MUDPage3Local].max_row-1]['protocol'][0].set(protocol.upper())#host[
+                # 0].upper())
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
-                    self.controller.frames[MUDPage3Local].max_row]['port_remote'][0].set(host[2])
+                    self.controller.frames[MUDPage3Local].max_row]['port_remote'][0].set(port_remote)#host[2])
+                self.controller.rules[self.controller.frames[MUDPage3Local].communication][
+                    self.controller.frames[MUDPage3Local].max_row]['port_local'][0].set(port_local)#host[3])
+                if ip_version:
+                    ipv6 = True
+                else:
+                    ipv4 = True
         else:
             self.controller.add_rule(self.controller.frames[MUDPage3Local])
+
+        if ipv4 and ipv6:
+            self.controller.ipversion = IPVersion.BOTH
+        elif ipv4:
+            self.controller.ipversion = IPVersion.IPV4
+        elif ipv6:
+            self.controller.ipversion = IPVersion.IPV6
+        else:
+            print("Warning: Impossible ip version combination found")
 
         self.controller.next_page()
 
@@ -3583,8 +3557,9 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
 
     def next_page(self):
         # TODO: Check what the "1" and "48" are
-        self.support_info = make_support_info(1, self.sv_support_url.get(), 48, True, self.controller.mud_device[1],
-                                              self.sv_doc_url.get(), mfg_name=self.controller.sv_mfr)
+        self.controller.support_info = make_support_info(1, self.sv_support_url.get(), 48, True,
+                                                         self.controller.mud_device[1],
+                                                         self.sv_doc_url.get(), mfg_name=self.controller.sv_mfr.get())
         self.controller.next_page()
 
     # TODO: Future, could update the mfr table at this point if the manufacturer input isn't found in the database or
@@ -4002,10 +3977,10 @@ class MUDPage8Summary(MUDPage0Select, tk.Frame):
 
         # Navigation Buttons
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
-        b_generate = tk.Button(self.navigationFrame, text="Generate", command=lambda: self.controller.generate_mud_file())
+        b_save = tk.Button(self.navigationFrame, text="Save", command=lambda: self.controller.generate_mud_file())
 
         b_back.grid(row=0, column=1, sticky="se")
-        b_generate.grid(row=0, column=2, sticky="se")
+        b_save.grid(row=0, column=2, sticky="se")
 
         # *** Configure the grid *** #
         # Header

@@ -107,7 +107,7 @@ System specifications used for development and testing:
    ```
 
 4. TkInter for Python3 (may already be installed)
-   * macOS: instructions can be found at https://python.org/downloads/mac/tcltk/
+   * macOS: instructions can be found at https://www.python.org/download/mac/tcltk/
 
    * Linux:
    ```sh
@@ -137,11 +137,17 @@ System specifications used for development and testing:
    shell> pip3 install -r requirements.txt
    ```
 
-2. Install MUDgee: (for MUD file generation)
+2. Install MUDgee: (for MUD file generation - will be deprecated)
    * Follow instructions at:  https://github.com/ayyoob/mudgee
    * ***IMPORTANT:***
       * Both the MUDgee and MUD-PD repositories must be installed in the same parent directory
       * Latest verified compatible version: Latest commit f63a88d on Jul 5 2019
+
+3. Install muddy: (for MUD file generation - will be replacing MUDgee)
+   * Follow instructions at: https://github.com/upaulnight/muddy
+   * ***IMPORTANT:***
+      * Install muddy within the root directory of the MUD-PD repository
+      * Latest verified compatible version: TBD
 
 ## Running MUD-PD
 ```sh

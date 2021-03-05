@@ -14,7 +14,7 @@ from src.multicolumn_listbox import MultiColumnListbox
 from src.scrollable_frame import ScrollableFrame
 import src.pcapng_comment as capMeta
 
-from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_acls, make_support_info
+from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_ace, make_acls, make_support_info
 from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
 
 import os
@@ -3094,100 +3094,108 @@ class MUDWizard(tk.Toplevel):
 
         for direction_initiated in [Direction.TO_DEVICE, Direction.FROM_DEVICE]:
 
-            acl_names = make_acl_names(self.mud_name, IPVersion.IPV4, direction_initiated)
+            acl_names = make_acl_names(self.mud_name, self.ipversion, direction_initiated)
             self.policies.update(make_policy(direction_initiated, acl_names))
 
             for (i, comm) in enumerate(self.rules.keys()):
                 # Check if there are any valid entries stored here and continue to next comm if not
                 if not self.cb_v_list[i+1].get():
                     continue
-                for row in reversed(self.rules[comm]):
-                    if row % 2:  # Odd rows
-                        # Get values
-                        host = self.rules[comm][row]['host'][0].get()
-                        protocol = self.rules[comm][row]['protocol'][0].get()
 
-                        #type = MatchType.IS_CLOUD
-                        if comm == "local":
-                            type = MatchType.IS_LOCAL
-                        elif comm == "internet":
-                            type = MatchType.IS_CLOUD
-                        elif comm == "mfr_same":
-                            type = MatchType.IS_MYMFG
-                        elif comm == "mfr_named":
-                            type = MatchType.IS_MFG
-                        elif comm == "controller_my":
-                            type = MatchType.IS_MY_CONTROLLER
-                        elif comm == "controller":
-                            type = MatchType.IS_CONTROLLER
-                        else:
-                            print("Communication type error! Skipping")
-                            continue
+                # Set communication type
+                if comm == "local":
+                    type = MatchType.IS_LOCAL
+                elif comm == "internet":
+                    type = MatchType.IS_CLOUD
+                elif comm == "mfr_same":
+                    type = MatchType.IS_MYMFG
+                elif comm == "mfr_named":
+                    type = MatchType.IS_MFG
+                elif comm == "controller_my":
+                    type = MatchType.IS_MY_CONTROLLER
+                elif comm == "controller":
+                    type = MatchType.IS_CONTROLLER
+                else:
+                    print("Communication type error! Skipping")
+                    continue
 
-                        if protocol == self.protocol_options[0]:
-                            prot = Protocol.ANY
-                            # Override direction_init value since this shall not be specified
-                            if direction_init != direction_initiated:
-                                print("Warning: initiation direction specified when not allowed - ignoring value")
-                            direction_init = direction_initiated
-                            # Override port values since these shall not be specified
-                            if port_local is not None and port_local.upper() != "ANY":
-                                print("Warning: local port specified when not allowed - ignoring value")
-                            port_local = None  # []
-                            if port_remote is not None and port_remote.upper() != "ANY":
-                                print("Warning: remote port specified when not allowed - ignoring value")
-                            port_remote = None  # []
-                        elif protocol == self.protocol_options[1]:
-                            prot = Protocol.TCP
-                            # Check if the initiation direction matches and skip to next rule if not
-                            if direction_initiated != direction_init:
-                                print("Initiation direction doesn't match, saving for second pass, or already added")
-                                continue
-                        elif protocol == self.protocol_options[2]:
-                            prot = Protocol.UDP
-                            # Override direction_init value since this shall not be specified
-                            if direction_init != direction_initiated:
-                                print("Warning: initiation direction specified when not allowed - ignoring value")
-                            direction_init = direction_initiated
-                        else:
-                            print("Protocol type error! Skipping")
-                            continue
+                #for row in enumerate(reversed(self.rules[comm])):
+                for (j, row_a) in enumerate(list(self.rules[comm].keys())[0::2]):
+                    row_b = row_a+1
 
-                        #acl_names = make_acl_names(self.mud_name, IPVersion.IPV4, direction_initiated)
-                        #self.policies.update(make_policy(direction_init, acl_names))
-                        #self.acl.append(make_acls([IPVersion.IPV4], host, prot, type, direction_initiated,
-                        #                          acl_names=acl_names))
-                        # TODO: Revisit if want to handle non-domain/URL/URI/URN hosts
-                        #if not re.match(r'[a-zA-Z0-9.-]+\.[a-zA-Z]{2,3}$', host):
-                        #    self.domain_warning = True
-                        self.acl.append(make_acls([IPVersion.IPV4], host, prot, type, direction_init,
-                                                  local_ports=[port_local], remote_ports=[port_remote],
-                                                  acl_names=acl_names))
+                    # Get host
+                    host = self.rules[comm][row_a]['host'][0].get()
+
+                    # Get protocol
+                    protocol = self.rules[comm][row_a]['protocol'][0].get()
+
+                    # Get local port
+                    port_local = self.rules[comm][row_b]['port_local'][0].get()
+                    if port_local.upper() == "ANY":
+                        port_local = None
+                    elif port_local.isnumeric:
+                        port_local = int(port_local)
+
+                    # Get remote port
+                    port_remote = self.rules[comm][row_b]['port_remote'][0].get()
+                    if port_remote.upper() == "ANY":
+                        port_remote = None
+                    elif port_remote.isnumeric:
+                        port_remote = int(port_remote)
+
+                    # Get direction initiated
+                    direction_init = self.rules[comm][row_b]['initiation_direction'][0].get()
+                    if direction_init == "Either":
+                        direction_init = direction_initiated
+                    elif direction_init == "Thing":
+                        direction_init = Direction.FROM_DEVICE
+                    elif direction_init == "Remote":
+                        direction_init = Direction.TO_DEVICE
                     else:
-                        # Get local port
-                        port_local = self.rules[comm][row]['port_local'][0].get()
-                        if port_local.upper() == "ANY":
-                            port_local = None
-                        elif port_local.isnumeric:
-                            port_local = int(port_local)
+                        print("Error: Unexpected initiation direction value - skipping rule.")
 
-                        # Get remote port
-                        port_remote = self.rules[comm][row]['port_remote'][0].get()
-                        if port_remote.upper() == "ANY":
-                            port_remote = None
-                        elif port_remote.isnumeric:
-                            port_remote = int(port_remote)
+                    # Check values and set appropriate fields
+                    if protocol == self.protocol_options[0]:
+                        prot = Protocol.ANY
+                        # Override direction_init value since this shall not be specified
+                        if direction_init != direction_initiated:
+                            print("Warning: initiation direction specified when not allowed - ignoring value")
+                        direction_init = direction_initiated
+                        # Override port values since these shall not be specified
+                        if port_local is not None and port_local.upper() != "ANY":
+                            print("Warning: local port specified when not allowed - ignoring value")
+                        port_local = None  # []
+                        if port_remote is not None and port_remote.upper() != "ANY":
+                            print("Warning: remote port specified when not allowed - ignoring value")
+                        port_remote = None  # []
+                    elif protocol == self.protocol_options[1]:
+                        prot = Protocol.TCP
+                        # Check if the initiation direction matches and skip to next rule if not
+                        if direction_initiated != direction_init:
+                            print("Initiation direction doesn't match, saving for second pass, or already added")
+                            continue
+                    elif protocol == self.protocol_options[2]:
+                        prot = Protocol.UDP
+                        # Override direction_init value since this shall not be specified
+                        if direction_init != direction_initiated:
+                            print("Warning: initiation direction specified when not allowed - ignoring value")
+                        direction_init = direction_initiated
+                    else:
+                        print("Protocol type error! Skipping")
+                        continue
 
-                        # Get direction initiated
-                        direction_init = self.rules[comm][row]['initiation_direction'][0].get()
-                        if direction_init == "Either":
-                            direction_init = direction_initiated
-                        elif direction_init == "Thing":
-                            direction_init = Direction.FROM_DEVICE
-                        elif direction_init == "Remote":
-                            direction_init = Direction.TO_DEVICE
-                        else:
-                            print("Error: Unexpected initiation direction value - skipping rule.")
+                    # TODO: Revisit if want to handle non-domain/URL/URI/URN hosts
+                    #if not re.match(r'[a-zA-Z0-9.-]+\.[a-zA-Z]{2,3}$', host):
+                    #    self.domain_warning = True
+
+                    # Append rule to acl
+                    self.acl.append(make_acls([self.ipversion], host, prot, type, direction_init,
+                                              local_ports=[port_local], remote_ports=[port_remote],
+                                              acl_names=acl_names))
+
+                    for protocol_direction in [Direction.TO_DEVICE, Direction.FROM_DEVICE]:
+                        ace.append(make_ace(protocol_direction, host, prot, type, direction_init, self.ipversion,
+                                            local_ports=[port_local], remote_ports=[port_remote]))
 
         self.mud = make_mud(self.support_info, self.policies, self.acl)
 

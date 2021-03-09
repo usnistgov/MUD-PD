@@ -3193,9 +3193,9 @@ class MUDWizard(tk.Toplevel):
                                               local_ports=[port_local], remote_ports=[port_remote],
                                               acl_names=acl_names))
 
-                    for protocol_direction in [Direction.TO_DEVICE, Direction.FROM_DEVICE]:
-                        ace.append(make_ace(protocol_direction, host, prot, type, direction_init, self.ipversion,
-                                            local_ports=[port_local], remote_ports=[port_remote]))
+                    #for protocol_direction in [Direction.TO_DEVICE, Direction.FROM_DEVICE]:
+                    #    ace.append(make_ace(protocol_direction, host, prot, type, direction_init, self.ipversion,
+                    #                        local_ports=[port_local], remote_ports=[port_remote]))
 
         self.mud = make_mud(self.support_info, self.policies, self.acl)
 

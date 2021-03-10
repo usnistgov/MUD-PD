@@ -14,11 +14,11 @@ from src.multicolumn_listbox import MultiColumnListbox
 from src.scrollable_frame import ScrollableFrame
 import src.pcapng_comment as capMeta
 
-from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_ace, make_acls, make_support_info
+#from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_ace, make_acls, make_support_info
+from muddy.muddy.mud import MUD  # import muddy.mud as Mud
 from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
 
 import os
-import random
 from IPy import IP
 import socket
 import json
@@ -28,7 +28,6 @@ import json
 from datetime import datetime
 from datetime import timedelta
 import hashlib
-from functools import partial
 # import math
 import multiprocessing as mp
 # from multiprocessing import Process, Queue
@@ -36,7 +35,6 @@ import mysql.connector
 from mysql.connector import errorcode
 # import pyshark
 # import subprocess
-import re
 import sys
 import time
 import tkinter as tk
@@ -235,12 +233,12 @@ class MudCaptureApplication(tk.Frame):
         self.b_main_import.image = icon_import
         self.b_main_import.pack(side="left")
 
-        self.b_main_generate_MUD = tk.Button(self.menuFrame,
-                                             text="Generate MUD File",
-                                             wraplength=80,
-                                             state='disabled',
-                                             command=self.popup_generate_mud_wizard)  # , anchor=tk.N+tk.W)
-        self.b_main_generate_MUD.pack(side="left")
+        self.b_main_mud_wizard = tk.Button(self.menuFrame,
+                                           text="MUD Wizard",
+                                           wraplength=80,
+                                           state="disabled",
+                                           command=lambda p=self: MUDWizard(parent=p))
+        self.b_main_mud_wizard.pack(side="left")
 
         self.b_main_generate_report = tk.Button(self.menuFrame,
                                                 text="Generate Report",
@@ -249,14 +247,14 @@ class MudCaptureApplication(tk.Frame):
                                                 command=self.generate_report_wizard)  # , anchor=tk.N+tk.W)
         self.b_main_generate_report.pack(side="left")
 
-        #start_muddy = MUDWizard()
+        # TODO: Determine if this deprecated code should be entirely removed
+        # self.b_main_mudgee = tk.Button(self.menuFrame,
+        #                                text="MUDgee MUD File",
+        #                                wraplength=80,
+        #                                state='disabled',
+        #                                command=self.popup_generate_mud_wizard)  # , anchor=tk.N+tk.W)
+        # self.b_main_mudgee.pack(side="left")
 
-        #self.b_MUDdy = tk.Button(self.menuFrame, text="MUDdy", command=lambda: start_muddy.mainloop())
-        self.b_MUDdy = tk.Button(self.menuFrame,
-                                 text="MUDdy",
-                                 state="disabled",
-                                 command=lambda p=self: MUDWizard(parent=p))
-        self.b_MUDdy.pack(side="left")
 
         # *** Left (capture) frame *** #
         self.capFrame = tk.Frame(self.parent, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
@@ -645,9 +643,10 @@ class MudCaptureApplication(tk.Frame):
 
             # Enable main menu buttons
             self.b_main_import.config(state='normal')
-            self.b_main_generate_MUD.config(state='normal')
+            self.b_main_mud_wizard.config(state='normal')
+            # TODO: Determine if deprecated mudgee should be removed
+            #self.b_main_mudgee.config(state='normal')
             self.b_main_generate_report.config(state='normal')
-            self.b_MUDdy.config(state='normal')
             self.b_main_inspect.config(state="disabled")
             self.b_ns.config(state='normal')
             self.b_ew.config(state='normal')
@@ -2743,7 +2742,7 @@ class MUDWizard(tk.Toplevel):
         tk.Toplevel.__init__(self, *args, **kwargs)
         self.wm_title("MUD Wizard")
         self.parent = parent
-        self.parent.b_MUDdy.config(state='disabled')
+        self.parent.b_main_mud_wizard.config(state='disabled')
 
         self.hosts_internet = list()
         self.hosts_local = list()
@@ -2763,17 +2762,12 @@ class MUDWizard(tk.Toplevel):
         self.sv_mfr = tk.StringVar()
         self.sv_summary = tk.StringVar()
 
-        self.mud = ''
-        self.mud_name = f'mud-{random.randint(10000, 99999)}'
-        self.acl = []
-        self.policies = {}
         self.cb_v_list = list()
         self.db_handler = self.parent.db_handler
         self.mud_device = dict()
         self.row_nav = 2000
 
-        self.support_info = make_support_info(1, 'https://lighting.example.com/hvac1.json', 48, True, 'Test Device',
-                                 'https://jci.example.com/doc/hvac1', mfg_name='Test Manufacturer')
+        self.mud = None
 
         self.rules = {"internet": dict(),
                       "local": dict(),
@@ -2809,11 +2803,9 @@ class MUDWizard(tk.Toplevel):
             frame.grid(row=0, column=0, sticky="nsew")
 
         print(self.frames)
-        #self.current_page = 0
         self.show_frame(MUDPage0Select)
 
         self.parent.yield_focus(self)
-        #self.mainloop()
 
     def show_frame(self, cont):
         frame = self.frames[cont]
@@ -2836,14 +2828,8 @@ class MUDWizard(tk.Toplevel):
             tk.messagebox.showinfo("Warning", "For proper functionality and alignment with the MUD Specification, "
                                               "these hostnames should be class URIs, NOT IP addresses.")
 
-        #print("width: ", frame.winfo_width())
-        #print("height: ", frame.winfo_height())
-
     def next_page(self):#, current_page): #TODO: Fix this
 
-        #support_info = make_support_info(1, 'https://lighting.example.com/hvac1.json', 48, True, 'Test Device',
-        #                                 'https://jci.example.com/doc/hvac1', mfg_name='Test Manufacturer')
-        #options = []
         if self.current_page == 0:
             self.current_page += 1
             self.show_frame(self.frame_list[self.current_page])
@@ -2860,9 +2846,8 @@ class MUDWizard(tk.Toplevel):
 
             # Check and format MUD file info
             self.format_mud_info()
-            self.sv_summary.set(json.dumps(self.mud, indent=4))
+            self.sv_summary.set(json.dumps(self.mud.mud_file, indent=4))
             self.frames[MUDPage8Summary].fill_summary()
-            #self.frames[MUDPage8Summary].sv_summary.set(json.dumps(self.mud, indent=4))
 
     def prev_page(self): # TODO: Fix this
         if self.current_page > 1:
@@ -3043,7 +3028,7 @@ class MUDWizard(tk.Toplevel):
 
         return combobox
 
-    # TODO: Complete this portion
+    # TODO: Complete this portion to enable/disable other comboboxes
     #def protocol_updated(self, event, frame, row):
     def protocol_updated(self, frame, row):
         event = None
@@ -3085,133 +3070,100 @@ class MUDWizard(tk.Toplevel):
 
         return (e_port_local, e_port_remote)
 
-    # TODO: Finish this method for assembling MUD files
     def format_mud_info(self):
-        # Reset acl and policies
-        self.acl = []
-        self.policies = {}
-        #self.domain_warning = False
 
-        for direction_initiated in [Direction.TO_DEVICE, Direction.FROM_DEVICE]:
+        for (i, comm) in enumerate(self.rules.keys()):
+            # Check if there are any valid entries stored here and continue to next comm if not
+            if not self.cb_v_list[i+1].get():
+                continue
 
-            acl_names = make_acl_names(self.mud_name, self.ipversion, direction_initiated)
-            self.policies.update(make_policy(direction_initiated, acl_names))
+            # Set communication type
+            if comm == "local":
+                type = MatchType.IS_LOCAL
+            elif comm == "internet":
+                type = MatchType.IS_CLOUD
+            elif comm == "mfr_same":
+                type = MatchType.IS_MYMFG
+            elif comm == "mfr_named":
+                type = MatchType.IS_MFG
+            elif comm == "controller_my":
+                type = MatchType.IS_MY_CONTROLLER
+            elif comm == "controller":
+                type = MatchType.IS_CONTROLLER
+            else:
+                print("Communication type error! Skipping")
+                continue
 
-            for (i, comm) in enumerate(self.rules.keys()):
-                # Check if there are any valid entries stored here and continue to next comm if not
-                if not self.cb_v_list[i+1].get():
-                    continue
+            for (j, row_a) in enumerate(list(self.rules[comm].keys())[0::2]):
+                row_b = row_a+1
 
-                # Set communication type
-                if comm == "local":
-                    type = MatchType.IS_LOCAL
-                elif comm == "internet":
-                    type = MatchType.IS_CLOUD
-                elif comm == "mfr_same":
-                    type = MatchType.IS_MYMFG
-                elif comm == "mfr_named":
-                    type = MatchType.IS_MFG
-                elif comm == "controller_my":
-                    type = MatchType.IS_MY_CONTROLLER
-                elif comm == "controller":
-                    type = MatchType.IS_CONTROLLER
+                # Get host
+                host = self.rules[comm][row_a]['host'][0].get()
+
+                # Get protocol
+                protocol = self.rules[comm][row_a]['protocol'][0].get()
+
+                # Get local port
+                port_local = self.rules[comm][row_b]['port_local'][0].get()
+                if port_local.upper() == "ANY":
+                    port_local = None
+                elif port_local.isnumeric:
+                    port_local = int(port_local)
+
+                # Get remote port
+                port_remote = self.rules[comm][row_b]['port_remote'][0].get()
+                if port_remote.upper() == "ANY":
+                    port_remote = None
+                elif port_remote.isnumeric:
+                    port_remote = int(port_remote)
+
+                # Get direction initiated
+                direction_initiated = self.rules[comm][row_b]['initiation_direction'][0].get()
+                if direction_initiated == "Either":
+                    direction_initiated = None  # direction_initiated
+                elif direction_initiated == "Thing":
+                    direction_initiated = Direction.FROM_DEVICE
+                elif direction_initiated == "Remote":
+                    direction_initiated = Direction.TO_DEVICE
                 else:
-                    print("Communication type error! Skipping")
+                    print("Error: Unexpected initiation direction value - skipping rule.")
+
+                # Check values and set appropriate fields
+                if protocol == self.protocol_options[0]:
+                    prot = Protocol.ANY
+                    if port_local is not None and port_local.upper() != "ANY":
+                        print("Warning: local port specified when not allowed - ignoring value")
+                    port_local = None  # []
+                    if port_remote is not None and port_remote.upper() != "ANY":
+                        print("Warning: remote port specified when not allowed - ignoring value")
+                    port_remote = None  # []
+                elif protocol == self.protocol_options[1]:
+                    prot = Protocol.TCP
+                elif protocol == self.protocol_options[2]:
+                    prot = Protocol.UDP
+                else:
+                    print("Protocol type error! Skipping")
                     continue
 
-                #for row in enumerate(reversed(self.rules[comm])):
-                for (j, row_a) in enumerate(list(self.rules[comm].keys())[0::2]):
-                    row_b = row_a+1
+                # Append rule to acl
+                self.mud.add_rule(target_url=host, protocol=prot, match_type=type,
+                                       direction_initiated=direction_initiated,
+                                       local_port=port_local, remote_port=port_remote)
 
-                    # Get host
-                    host = self.rules[comm][row_a]['host'][0].get()
+        self.mud.make_mud()
 
-                    # Get protocol
-                    protocol = self.rules[comm][row_a]['protocol'][0].get()
-
-                    # Get local port
-                    port_local = self.rules[comm][row_b]['port_local'][0].get()
-                    if port_local.upper() == "ANY":
-                        port_local = None
-                    elif port_local.isnumeric:
-                        port_local = int(port_local)
-
-                    # Get remote port
-                    port_remote = self.rules[comm][row_b]['port_remote'][0].get()
-                    if port_remote.upper() == "ANY":
-                        port_remote = None
-                    elif port_remote.isnumeric:
-                        port_remote = int(port_remote)
-
-                    # Get direction initiated
-                    direction_init = self.rules[comm][row_b]['initiation_direction'][0].get()
-                    if direction_init == "Either":
-                        direction_init = direction_initiated
-                    elif direction_init == "Thing":
-                        direction_init = Direction.FROM_DEVICE
-                    elif direction_init == "Remote":
-                        direction_init = Direction.TO_DEVICE
-                    else:
-                        print("Error: Unexpected initiation direction value - skipping rule.")
-
-                    # Check values and set appropriate fields
-                    if protocol == self.protocol_options[0]:
-                        prot = Protocol.ANY
-                        # Override direction_init value since this shall not be specified
-                        if direction_init != direction_initiated:
-                            print("Warning: initiation direction specified when not allowed - ignoring value")
-                        direction_init = direction_initiated
-                        # Override port values since these shall not be specified
-                        if port_local is not None and port_local.upper() != "ANY":
-                            print("Warning: local port specified when not allowed - ignoring value")
-                        port_local = None  # []
-                        if port_remote is not None and port_remote.upper() != "ANY":
-                            print("Warning: remote port specified when not allowed - ignoring value")
-                        port_remote = None  # []
-                    elif protocol == self.protocol_options[1]:
-                        prot = Protocol.TCP
-                        # Check if the initiation direction matches and skip to next rule if not
-                        if direction_initiated != direction_init:
-                            print("Initiation direction doesn't match, saving for second pass, or already added")
-                            continue
-                    elif protocol == self.protocol_options[2]:
-                        prot = Protocol.UDP
-                        # Override direction_init value since this shall not be specified
-                        if direction_init != direction_initiated:
-                            print("Warning: initiation direction specified when not allowed - ignoring value")
-                        direction_init = direction_initiated
-                    else:
-                        print("Protocol type error! Skipping")
-                        continue
-
-                    # TODO: Revisit if want to handle non-domain/URL/URI/URN hosts
-                    #if not re.match(r'[a-zA-Z0-9.-]+\.[a-zA-Z]{2,3}$', host):
-                    #    self.domain_warning = True
-
-                    # Append rule to acl
-                    self.acl.append(make_acls([self.ipversion], host, prot, type, direction_init,
-                                              local_ports=[port_local], remote_ports=[port_remote],
-                                              acl_names=acl_names))
-
-                    #for protocol_direction in [Direction.TO_DEVICE, Direction.FROM_DEVICE]:
-                    #    ace.append(make_ace(protocol_direction, host, prot, type, direction_init, self.ipversion,
-                    #                        local_ports=[port_local], remote_ports=[port_remote]))
-
-        self.mud = make_mud(self.support_info, self.policies, self.acl)
-
-    # TODO: Modify this to either prompt asking where to save the file, or display where the file has been outputted
-    def generate_mud_file(self):
+    def save_mud_file(self):
         # TODO: rewrite using regex to make cleaner
-        fpath = 'mudfiles/' + self.support_info['mfg-name'].replace(' ', '_').replace(',', '').replace('.', '')
+        fpath = 'mudfiles/' + self.mud.support_info['mfg-name'].replace(' ', '_').replace(',', '').replace('.', '')
         if not os.path.isdir(fpath):
             os.mkdir(fpath)
 
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        dest_path = fpath + "/" + self.support_info['systeminfo'].replace(' ', '_') + "_" + timestamp + ".json"
+        dest_path = fpath + "/" + self.mud.support_info['systeminfo'].replace(' ', '_') + "_" + timestamp + ".json"
 
         # Save data to file
         with open(dest_path, 'w') as fp:
-            json.dump(self.mud, fp, indent=4)
+            json.dump(self.mud.mud_file, fp, indent=4)
 
         # Notify user of location of file
         tk.messagebox.showinfo("MUD File Saved", "MUD file saved in " + dest_path)
@@ -3224,7 +3176,7 @@ class MUDWizard(tk.Toplevel):
         self.__exit__()
 
     def __exit__(self):
-        self.parent.b_MUDdy.config(state='normal')
+        self.parent.b_main_mud_wizard.config(state='normal')
         self.destroy()
 
 
@@ -3564,10 +3516,14 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
                                "Use this when you want different types of devices to access the same controller.")
 
     def next_page(self):
-        # TODO: Check what the "1" and "48" are
-        self.controller.support_info = make_support_info(1, self.sv_support_url.get(), 48, True,
-                                                         self.controller.mud_device[1],
-                                                         self.sv_doc_url.get(), mfg_name=self.controller.sv_mfr.get())
+        # TODO: Remove support info part after mud_file has been tested
+        #self.controller.support_info = make_support_info(1, self.sv_support_url.get(), 48, True,
+        #                                                  self.controller.mud_device[1],
+        #                                                  self.sv_doc_url.get(), mfg_name=self.controller.sv_mfr.get())
+        self.controller.mud = MUD(mud_version=1, mud_url=self.sv_support_url.get(), cache_validity=48,
+                                  is_supported=True, system_info=self.controller.mud_device[1],
+                                  documentation=self.sv_doc_url.get(), mfg_name=self.controller.sv_mfr.get(),
+                                  ip_version=self.controller.ipversion)
         self.controller.next_page()
 
     # TODO: Future, could update the mfr table at this point if the manufacturer input isn't found in the database or
@@ -3614,16 +3570,6 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
 
         # Content
         self.contentFrame.grid(row=1, column=0, sticky="nsew")
-        # self.contentFrame.grid_rowconfigure(0, weight=1)
-        # self.contentFrame.grid_columnconfigure(0, weight=1)
-        # self.contentFrame.grid_columnconfigure(1, weight=2)
-        # self.contentFrame.grid_columnconfigure(2, weight=1)
-        # self.contentFrame.grid_columnconfigure(3, weight=2)
-        # self.contentFrame.grid_columnconfigure(4, weight=1)
-        # self.contentFrame.grid_columnconfigure(5, weight=0)
-        # self.contentFrame.grid_columnconfigure(6, weight=0)
-        # self.contentFrame.grid_columnconfigure(7, weight=0)
-        # self.contentFrame.grid_columnconfigure(8, weight=1)
 
         # Navigation
         self.navigationFrame.grid(row=2, column=0, sticky='sew')
@@ -3634,16 +3580,11 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        # Load up 1 instance to fill in at launch
-        #self.add_internet()
-
     # In case anything else should occur beyond the add_rule method
     def add_internet(self):
         self.controller.add_rule(self)
 
     def next_page(self):
-        # TODO: ADD INTERNET ACL
-        #self.controller.acl.append('stuff')
         self.controller.next_page()
 
 
@@ -3694,16 +3635,11 @@ class MUDPage3Local(MUDPage0Select, tk.Frame):
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        # Load up 1 instance to fill in at launch
-        #self.add_local()
-
     # In case anything else should occur beyond the add_rule method
     def add_local(self):
        self.controller.add_rule(self)
 
     def next_page(self):
-        # TODO: ADD Local ACL
-        # self.controller.acl.append('stuff')
         self.controller.next_page()
 
 
@@ -3764,8 +3700,6 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
         self.controller.rules[self.communication][self.max_row - 1]["host"][2].config(state="disabled")
 
     def next_page(self):
-        # TODO: ADD SAME MANUFACTURER ACL
-        # self.controller.acl.append('stuff')
         self.controller.next_page()
 
 
@@ -3824,8 +3758,6 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
         self.controller.add_rule(self)
 
     def next_page(self):
-        # TODO: ADD SAME MANUFACTURER ACL
-        # self.controller.acl.append('stuff')
         self.controller.next_page()
 
 
@@ -3887,8 +3819,6 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
         self.controller.rules[self.communication][self.max_row - 1]["host"][2].config(state="disabled")
 
     def next_page(self):
-        # TODO: ADD MY-CONTROLLER ACL
-        # self.controller.acl.append('stuff')
         self.controller.next_page()
 
 
@@ -3947,8 +3877,6 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
         self.controller.add_rule(self)
 
     def next_page(self):
-        # TODO: ADD CONTROLLER ACL
-        # self.controller.acl.append('stuff')
         self.controller.next_page()
 
 
@@ -3969,23 +3897,13 @@ class MUDPage8Summary(MUDPage0Select, tk.Frame):
         title = tk.Label(self.headerFrame, text="MUD File Summary", bg="#eeeeee")
         title.grid(row=0, columnspan=6, sticky='new')
 
-        # TODO: Implement the actual summary information (probably in a normal listbox with all the text
-        # Summary contents
-        #sv_summary = tk.StringVar()
-        #lb_summary = tk.Label(self.contentFrame, textvariable=sv_summary)
-        #lb_summary.grid(row=1, sticky="w")
-        # TODO: Remove this when real implementation complete
-        #sv_summary.set("This\nis\na\nplaceholder\nfor\nthe\nMUD\nfile\nsummary\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
-        #                   "\nHI!")
         self.st_summary = scrolledtext.ScrolledText(self.contentFrame, wrap=tk.WORD,
                                                width=40, height=10, font=("Times New Roman", 15))
         self.st_summary.grid(row=1, sticky="nsew")
-        #self.st_summary.insert(tk.INSERT, self.controller.sv_summary.get())
-        #st_summary.insert(tk.INSERT, json.dumps(self.controller.mud, indent=4))
 
         # Navigation Buttons
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
-        b_save = tk.Button(self.navigationFrame, text="Save", command=lambda: self.controller.generate_mud_file())
+        b_save = tk.Button(self.navigationFrame, text="Save", command=lambda: self.controller.save_mud_file())
 
         b_back.grid(row=0, column=1, sticky="se")
         b_save.grid(row=0, column=2, sticky="se")

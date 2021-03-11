@@ -156,7 +156,7 @@ def extract_comment(filename, option_type=1, json_only=True):
         remaining_header -= 4
 
     file.close()
-    return None
+    return ""
 
 
 def is_pcapng(file):

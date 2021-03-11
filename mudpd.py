@@ -796,7 +796,7 @@ class MudCaptureApplication(tk.Frame):
                 # Check for metadata embedded in the comment field
                 self.cap_envi_metadata = capMeta.extract_comment(filename)
 
-                if len(self.cap_envi_metadata) > 0:
+                if self.cap_envi_metadata is not None and len(self.cap_envi_metadata) > 0:
                     for i, (x, y) in enumerate (self.capture_entries):
                         # Skip first entry
                         if i:

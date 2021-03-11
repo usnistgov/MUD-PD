@@ -2773,6 +2773,63 @@ class MUDWizard(tk.Toplevel):
                       "controller_my": dict(),
                       "controller": dict()}
 
+        self.help_info_shown = False
+        self.help_info_host = "HOST:\n" \
+                              "For proper functionality and alignment with the MUD specification, these should NOT be IP addresses."
+        self.help_info_protocol = "PROTOCOL:\n" \
+                                  "'ANY' - ports and direction initiated will be IGNORED.\n" \
+                                  "'TCP' - ports and direction initiated will be USED.\n" \
+                                  "'UDP' - direction initiated will be IGNORED."
+        self.help_info_port_any = "PORT:\n" \
+                                  "Use 'ANY' if specific port numbers are not desired."
+        self.help_info_direction = "INITIATED BY:\n" \
+                                   "'Either' - Either the 'thing' (device) or the remote host can initiate " \
+                                   "communication.\n" \
+                                   "'Thing' - Only the 'thing' (device) can initiate communication.\n" \
+                                   "'Remote' - Only the remote host can initiate communication."
+        self.help_info_view_msg = "Select the '?' box at the bottom to view this message again."
+
+        self.help_info_internet = self.help_info_host + "\n\n" + \
+                                  "Internet Hosts: Should be DOMAIN names.\n\n" + \
+                                  self.help_info_protocol + "\n\n" + \
+                                  self.help_info_port_any + "\n\n" + \
+                                  self.help_info_direction + "\n\n" + \
+                                  self.help_info_view_msg
+        self.help_info_local = self.help_info_host + "\n\n" + \
+                               "Local Hosts: Entries are for reference/context during this wizard only and " \
+                               "will neither be saved, nor used in the MUD file. ANY local device can follow the " \
+                               "rules defined.\n\n" + \
+                               self.help_info_protocol + "\n\n" + \
+                               self.help_info_port_any + "\n\n" + \
+                               self.help_info_direction + "\n\n" + \
+                               self.help_info_view_msg
+        self.help_info_same_man = self.help_info_host + "\n\n" + \
+                                  "Same Manufacturer Hosts: Will be autofilled. Any other values will be " \
+                                  "ignored.\n\n" + \
+                                  self.help_info_protocol + "\n\n" + \
+                                  self.help_info_port_any + "\n\n" + \
+                                  self.help_info_direction + "\n\n" + \
+                                  self.help_info_view_msg
+        self.help_info_named_man = self.help_info_host + "\n\n" + \
+                                   "Named Manufacturer Hosts: Should be DOMAIN names.\n\n" + \
+                                   self.help_info_protocol + "\n\n" + \
+                                   self.help_info_port_any + "\n\n" + \
+                                   self.help_info_direction + "\n\n" + \
+                                   self.help_info_view_msg
+        self.help_info_controller_my = self.help_info_host + "\n\n" + \
+                                       "My-Controller Hosts: Will be filled in by the network administrator. " \
+                                       "Any other values will be ignored.\n\n" + \
+                                       self.help_info_protocol + "\n\n" + \
+                                       self.help_info_port_any + "\n\n" + \
+                                       self.help_info_direction + "\n\n" + \
+                                       self.help_info_view_msg
+        self.help_info_controller = self.help_info_host + "\n\n" + \
+                                    "Controller Hosts: Should be class URIs.\n\n" + \
+                                    self.help_info_protocol + "\n\n" + \
+                                    self.help_info_port_any + "\n\n" + \
+                                    self.help_info_direction + "\n\n" + \
+                                    self.help_info_view_msg
+
         print("self.parent.test", self.parent.test)
 
         container = tk.Frame(self)
@@ -2806,24 +2863,30 @@ class MUDWizard(tk.Toplevel):
 
     def show_frame(self, cont):
         frame = self.frames[cont]
-        frame.tkraise()
 
-        time.sleep(0.25)
-        if cont == MUDPage2Internet:
+        # time.sleep(0.25)
+        if cont == MUDPage2Internet and not self.help_info_shown:
             # TODO: Check if page contains any IP addresses, and show message if so
             # Warning about hostnames needing to be domain names, not IP addresses
-            tk.messagebox.showinfo("Warning", "For proper functionality and alignment with the MUD Specification, "
-                                              "these hostnames should be domain names, not IP addresses.")
-        elif cont == MUDPage3Local:
-            tk.messagebox.showinfo("Warning", "Hostnames for Local entries are for reference/context during this "
-                                              "wizard only and will neither be saved, nor used in the MUD file. ANY "
-                                              "local device can follow the rules defined.")
-        elif cont == MUDPage5NamedMan:
-            tk.messagebox.showinfo("Warning", "For proper functionality and alignment with the MUD Specification, "
-                                              "these hostnames should be domain names, NOT IP addresses.")
-        elif cont == MUDPage7Control:
-            tk.messagebox.showinfo("Warning", "For proper functionality and alignment with the MUD Specification, "
-                                              "these hostnames should be class URIs, NOT IP addresses.")
+            tk.messagebox.showinfo("Warning", self.help_info_internet)
+            self.help_info_shown = True
+        elif cont == MUDPage3Local and not self.help_info_shown:
+            tk.messagebox.showinfo("Warning", self.help_info_local)
+            self.help_info_shown = True
+        elif cont == MUDPage4SameMan and not self.help_info_shown:
+            tk.messagebox.showinfo("Warning", self.help_info_same_man)
+            self.help_info_shown = True
+        elif cont == MUDPage5NamedMan and not self.help_info_shown:
+            tk.messagebox.showinfo("Warning", self.help_info_named_man)
+            self.help_info_shown = True
+        elif cont == MUDPage6MyControl and not self.help_info_shown:
+            tk.messagebox.showinfo("Warning", self.help_info_controller_my)
+            self.help_info_shown = True
+        elif cont == MUDPage7Control and not self.help_info_shown:
+            tk.messagebox.showinfo("Warning", self.help_info_controller)
+            self.help_info_shown = True
+
+        frame.tkraise()
 
     def next_page(self):#, current_page): #TODO: Fix this
 
@@ -3554,6 +3617,9 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
+        b_help = tk.Button(self.navigationFrame, text=" ? ", command=lambda: self.help())
+        b_help.grid(row=0, column=0, sticky="sw")
+
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
         b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
         b_back.grid(row=0, column=5, sticky="se")
@@ -3584,6 +3650,9 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
     def next_page(self):
         self.controller.next_page()
 
+    def help(self):
+        tk.messagebox.showinfo("Warning", self.controller.help_info_internet)
+
 
 # TODO: Local
 class MUDPage3Local(MUDPage0Select, tk.Frame):
@@ -3609,6 +3678,9 @@ class MUDPage3Local(MUDPage0Select, tk.Frame):
         b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
+        b_help = tk.Button(self.navigationFrame, text=" ? ", command=lambda: self.help())
+        b_help.grid(row=0, column=0, sticky="sw")
+
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
         b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
         b_back.grid(row=0, column=5, sticky="se")
@@ -3639,6 +3711,9 @@ class MUDPage3Local(MUDPage0Select, tk.Frame):
     def next_page(self):
         self.controller.next_page()
 
+    def help(self):
+        tk.messagebox.showinfo("Warning", self.controller.help_info_local)
+
 
 # TODO: Same Manufacturers
 class MUDPage4SameMan(MUDPage0Select, tk.Frame):
@@ -3664,6 +3739,9 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
         b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
+        b_help = tk.Button(self.navigationFrame, text=" ? ", command=lambda: self.help())
+        b_help.grid(row=0, column=0, sticky="sw")
+
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
         b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
         b_back.grid(row=0, column=5, sticky="se")
@@ -3699,6 +3777,9 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
     def next_page(self):
         self.controller.next_page()
 
+    def help(self):
+        tk.messagebox.showinfo("Warning", self.controller.help_info_same_man)
+
 
 # TODO: Named Manufacturers
 class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
@@ -3724,6 +3805,9 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
         b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
+        b_help = tk.Button(self.navigationFrame, text=" ? ", command=lambda: self.help())
+        b_help.grid(row=0, column=0, sticky="sw")
+
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
         b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
         b_back.grid(row=0, column=5, sticky="se")
@@ -3757,6 +3841,9 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
     def next_page(self):
         self.controller.next_page()
 
+    def help(self):
+        tk.messagebox.showinfo("Warning", self.controller.help_info_named_man)
+
 
 # TODO: My-Controller
 class MUDPage6MyControl(MUDPage0Select, tk.Frame):
@@ -3784,6 +3871,9 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
         b_add_entry.grid(row=0, column=6, sticky="ne")
 
         # Navigation Buttons
+        b_help = tk.Button(self.navigationFrame, text=" ? ", command=lambda: self.help())
+        b_help.grid(row=0, column=0, sticky="sw")
+
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
         b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
         b_back.grid(row=0, column=5, sticky="se")
@@ -3818,6 +3908,9 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
     def next_page(self):
         self.controller.next_page()
 
+    def help(self):
+        tk.messagebox.showinfo("Warning", self.controller.help_info_controller_my)
+
 
 # TODO: Controllers
 class MUDPage7Control(MUDPage0Select, tk.Frame):
@@ -3843,6 +3936,9 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
         b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
+        b_help = tk.Button(self.navigationFrame, text=" ? ", command=lambda: self.help())
+        b_help.grid(row=0, column=0, sticky="sw")
+
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
         b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
         b_back.grid(row=0, column=5, sticky="se")
@@ -3875,6 +3971,9 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
 
     def next_page(self):
         self.controller.next_page()
+
+    def help(self):
+        tk.messagebox.showinfo("Warning", self.controller.help_info_controller)
 
 
 # TODO: Generate MUD File

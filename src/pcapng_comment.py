@@ -135,7 +135,7 @@ def extract_comment(filename, option_type=1, json_only=True):
                     #mydict = json.loads(comment)
                     #print(comment)
                     file.close()
-                    return comment
+                    return json.loads(comment)
             else:
                 #print(comment)
                 file.close()

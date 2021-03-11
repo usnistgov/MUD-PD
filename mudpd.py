@@ -1039,17 +1039,19 @@ class MudCaptureApplication(tk.Frame):
                 # Skip first entry
                 if i:
                     if i == 2:
-                        if y.get() == 1:
+                        if y.get() == 0:
                             self.cap_envi_metadata[ field2db[x.cget("text")] ] = "setup"
-                        elif y.get() == 2:
+                        elif y.get() == 1:
                             self.cap_envi_metadata[ field2db[x.cget("text")] ] = "normal operation"
-                        elif y.get() == 3:
+                        elif y.get() == 2:
                             self.cap_envi_metadata[ field2db[x.cget("text")] ] = "removal"
                     else:
-                        if type(y) == type(tk.IntVar()):
+                        if type(y) == tk.IntVar:
                             self.cap_envi_metadata[ field2db[x] ] = str(bool(y.get()))
-                        else:
+                        elif type(y) == tk.StringVar:
                             self.cap_envi_metadata[ field2db[x] ] = y.get()
+                        else:
+                            print("Unexpected variable type {type(y)}, {y}, {x}")
 
             self.cap.embed_meta(self.cap_envi_metadata)
 

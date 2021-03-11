@@ -1697,8 +1697,11 @@ class CaptureDigest:
                     print("No fingerprint found")
                 if yes:
                     output = lookup_fingerbank(dhcp_fingerprint, hostname, mac, self.api_key)
-                    print("Fingerprint Result:", output["name"])
-                    self.modellookup.update({mac: output["name"]})
+                    #print("Fingerprint Result:", output["name"])
+                    #self.modellookup.update({mac: output["name"]})
+                    if output.get("name") is not None:
+                        print("Fingerprint Result:", output.get("name"))
+                        self.modellookup.update({mac: output.get("name")})
             else:
                 print("No Fingerbank API Key Present")
         print("End Fingerprint Extraction")

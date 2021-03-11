@@ -1125,9 +1125,12 @@ class CaptureDigest:
                     # Should handle the error more gracefully than ignoring
                     subprocess.call('rm ' + self.tempDir + '*/*', shell=True)
                 else:
-                    os.makedirs(self.tempDir)
-                    os.makedirs(self.tempFullCapDir)
-                    os.makedirs(self.tempSplitCapDir)
+                    if not os.path.exists(self.tempDir):
+                        os.makedirs(self.tempDir)
+                    if not os.path.exists(self.tempFullCapDir):
+                        os.makedirs(self.tempFullCapDir)
+                    if not os.path.exists(self.tempSplitCapDir):
+                        os.makedirs(self.tempSplitCapDir)
 
 
                 # Check filetype

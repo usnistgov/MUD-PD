@@ -5,6 +5,9 @@ import subprocess
 
 
 def parse_comment(comment):
+    if comment == None:
+        raise ValueError('No JSON formatted comment exists')
+        return None
     try:
         envi_dict = json.loads(comment)
     except json.decoder.JSONDecodeError:
@@ -15,25 +18,145 @@ def parse_comment(comment):
     return envi_dict
 
 
-def extract_comment(filename):
+# Borrowed from: https://stackoverflow.com/questions/5508509/how-do-i-check-if-a-string-is-valid-json-in-python
+def is_json(string):
+    try:
+        json_object = json.loads(string)
+    except ValueError as e:
+        return False
+    return True
+
+
+def get_comment_length(filename, option_type=1, json_only=True):
     file = open(filename, 'rb')
 
-    # Discard beginning of header
-    file.read(44)
+    # Discard Block Type (because assumed pcapng file)
+    file.read(4)
 
-    # Check for presence of comment
-    if not struct.unpack('<H', file.read(2))[0]:
-        return
+    # Get block total length
+    block_length = struct.unpack('<L', file.read(4))[0]
 
-    # Get COMMENT LENGTH
-    comment_length = struct.unpack('<H', file.read(2))[0]
+    # Discard byte-order magic
+    file.read(4)
+    # Discard major and minor versions
+    file.read(4)
+    # TODO: Correct this so it handles lengths other than -1
+    # Discard Section Length (Typically 32 bit -1)
+    file.read(16)
 
-    # Read COMMENT
-    comment = file.read(comment_length).decode('utf-8')
+    remaining_header = block_length - 32
 
-    print(comment)
+    # Get first option type and length and decrement the remaining header byte count
+    opt_type = struct.unpack('<H', file.read(2))[0]
+    opt_length = struct.unpack('<H', file.read(2))[0]
+    remaining_header -= 4
+
+    # Loop through remaining header to check each option if comment
+    while remaining_header > 0 and opt_type != 0:
+        # Process comment (opt_type = 1)
+        if opt_type == option_type:
+            opt_length = struct.unpack('<H', file.read(2))[0]
+            remaining_header -= 2
+
+            # Read COMMENT
+            comment = file.read(opt_length).decode('utf-8')
+
+            # Check if ONLY JSON is acceptable
+            if json_only:
+                # Check if Comment is JSON
+                if is_json(comment):
+                    # TODO: Check if the JSON is the one of interest. If there are more than one json formatted comment,
+                    #  and the first on is not the one of interest, then it will be unreachable
+                    #mydict = json.loads(comment)
+                    #print(opt_length)
+                    file.close()
+                    return opt_length
+            else:
+                #print(opt_length)
+                file.close()
+                return opt_length
+
+        # Decrement remaining header based on opt_length and padding
+        padding = 4 - opt_length % 4
+        if padding == 4:
+            padding = 0
+        # Discard padding
+        else:
+            file.read(padding)
+        remaining_header -= (opt_length + padding)
+
+        # Read next option type and length and adjust remaining header
+        opt_type = struct.unpack('<H', file.read(2))[0]
+        opt_length = struct.unpack('<H', file.read(2))[0]
+        remaining_header -= 4
+
     file.close()
-    return comment
+    return None
+
+
+# TODO: May want to rename this as "extract option", but right now only using this for specific json formatted comment
+def extract_comment(filename, option_type=1, json_only=True):
+    file = open(filename, 'rb')
+
+    file.read(4)
+
+    # Get block total length
+    block_length = struct.unpack('<L', file.read(4))[0]
+
+    # Discard byte-order magic
+    byte_order_magic = file.read(4)
+    # Discard major and minor versions
+    version_major = file.read(2)
+    version_minor = file.read(2)
+    # TODO: Enable the ability to handle lengths other than -1
+    # Discard Section Length (Typically 64 bit -1)
+    section_length = file.read(8)
+
+    remaining_header = block_length - 24
+
+    # Get first option type and length and decrement the remaining header byte count
+    opt_type = struct.unpack('<H', file.read(2))[0]
+    opt_length = struct.unpack('<H', file.read(2))[0]
+    remaining_header -= 4
+
+    # Loop through remaining header to check each option if comment
+    while remaining_header > 0 and opt_type != 0:
+        # Process comment (opt_type = 1)
+        if opt_type == option_type:
+            # Read COMMENT
+            comment = file.read(opt_length).decode('utf-8')
+
+            # Check if ONLY JSON is acceptable
+            if json_only:
+                # Check if Comment is JSON
+                if is_json(comment):
+                    # TODO: Check if the JSON is the one of interest. If there are more than one json formatted comment,
+                    #  and the first on is not the one of interest, then it will be unreachable
+                    #mydict = json.loads(comment)
+                    #print(comment)
+                    file.close()
+                    return comment
+            else:
+                #print(comment)
+                file.close()
+                return comment
+
+        # Decrement remaining header based on opt_length and padding
+        padding = 4 - opt_length % 4
+        if padding == 4:
+            padding = 0
+        # Discard padding
+        else:
+            file.read(padding)
+        remaining_header -= (opt_length + padding)
+
+        # Read next option type and length and adjust remaining header
+        opt_type = struct.unpack('<H', file.read(2))[0]
+        opt_length = struct.unpack('<H', file.read(2))[0]
+        remaining_header -= 4
+
+    file.close()
+    return None
 
 
 def is_pcapng(file):
@@ -59,15 +182,20 @@ def is_pcap(file):
 
 
 def insert_comment(filename_in, comment, filename_out=None):
+    opt_comment = 1
+
     # Double check if PcapNg file. If not, make a copy of pcap file as PcapNg
     if not is_pcapng(filename_in):
     #if filename_in.lower().endswith(".pcap"):
         fname_in = filename_in + ".pcapng"
         subprocess.call('tshark -F pcapng -r ' + filename_in + ' -w ' + fname_in, stderr=subprocess.PIPE, shell=True)
+        comment_length_old = 0
     else:
         fname_in = filename_in
+        comment_length_old = get_comment_length(filename_in)
+        if comment_length_old is None:
+            comment_length_old = 0
 
-    #file_in = open(filename_in, 'rb')
     file_in = open(fname_in, 'rb')
 
     if filename_out is None:
@@ -78,47 +206,151 @@ def insert_comment(filename_in, comment, filename_out=None):
 
     # TODO: CHECK IF COMMENT ALREADY EXISTS
 
-    # Copy first header
+    # Copy first header (Block type)
     header = file_in.read(4)
     file_out.write(header)
 
-    # Replace HEADER END ADDRESS
-    end_address_in = struct.unpack('<L', file_in.read(4))[0]
-    # TODO: Figure out how to calculate end address
-    comment_length_out = len(comment)
-    end_address_out = end_address_in + comment_length_out
-    if end_address_out % 8 != 0:
-        padding_out = 8 - end_address_out % 8
-        end_address_out += padding_out
+    # Replace BLOCK TOTAL LENGTH
+    block_length_old = struct.unpack('<L', file_in.read(4))[0]
+    comment_length_new = len(comment)
+    block_length_new = block_length_old + (comment_length_new - comment_length_old) + 4
+    if block_length_new % 4 != 0:
+        comment_padding_new = 4 - block_length_new % 4
+        block_length_new += comment_padding_new
     else:
-        padding_out = 0
+        comment_padding_new = 0
 
-    file_out.write(struct.pack('<L', end_address_out))
+    # Get length of old comment padding
+    if comment_length_old % 4 != 0:
+        comment_padding_old = 4 - block_length_old % 4
+    else:
+        comment_padding_old = 0
 
-    # Copy next header segment
-    header = file_in.read(36)
+    file_out.write(struct.pack('<L', block_length_new))
+
+    # Copy byte-order magic, and major and minor versions header segment, and Section Length (assumed to be 8 Bytes
+    # of FF)
+    header = file_in.read(16)
     file_out.write(header)
+    remaining_header = block_length_old - 24
 
-    # Check comment presence:
-    comment_present = struct.unpack('<L', file_in.read(4))[0]
-    if comment_present != 0:
-        # TODO: Soften Error to Warning
-        # TODO: Check for error in calling function to offer solution to force overwrite
-        raise ValueError('Comment already exists.')
+    # If correctly formatted comment does not exist, insert comment
+    if comment_length_old == 0:
+        # Insert option type and un-padded length
+        file_out.write(struct.pack('<H', 1))
+        file_out.write(struct.pack('<H', comment_length_new))
 
-    # Replace COMMENT LENGTH
-    file_out.write(struct.pack('<H', 1))  # Write comment present
-    file_out.write(struct.pack('<H', comment_length_out))  # Write comment length
+        # Insert new comment and padding
+        file_out.write(bytes(comment, 'utf-8'))
+        file_out.write(b'\x00' * comment_padding_new)
 
-    # Insert Comment
-    file_out.write(bytes(comment, 'utf-8'))
+        # Get first option type and length and decrement the remaining header byte count
+        opt_type = struct.unpack('<H', file_in.read(2))[0]
+        opt_length = struct.unpack('<H', file_in.read(2))[0]
+        if opt_length % 4 != 0:
+            opt_padding = 4 - opt_length % 4
+        else:
+            opt_padding = 0
+        remaining_header -= 4
 
-    # TODO Replace PADDING to 8-byte boundary
+        # Loop through remaining header to check each option if comment
+        while remaining_header > 0 and opt_type != 0:
+            # Copy option type
+            file_out.write(struct.pack('<H', opt_type))
+            # COpy option length
+            file_out.write(struct.pack('<H', opt_length))
+            # Copy option value
+            file_out.write(file_in.read(opt_length))
+            remaining_header -= opt_length
+            # Copy option padding
+            file_out.write(file_in.read(opt_padding))
+            remaining_header -= opt_padding
+
+            # Read next option type and length and adjust remaining header
+            opt_type = struct.unpack('<H', file_in.read(2))[0]
+            opt_length = struct.unpack('<H', file_in.read(2))[0]
+            if opt_length % 4 != 0:
+                opt_padding = 4 - opt_length % 4
+            else:
+                opt_padding = 0
+            remaining_header -= 4
+    # Else: locate comment option, replace it, and copy everything else
+    else:
+        # Get first option type and length and decrement the remaining header byte count
+        opt_type = struct.unpack('<H', file_in.read(2))[0]
+        opt_length = struct.unpack('<H', file_in.read(2))[0]
+        if opt_length % 4 != 0:
+            opt_padding = 4 - opt_length % 4
+        else:
+            opt_padding = 0
+        remaining_header -= 4
+
+        # Loop through remaining header to check each option if comment
+        while remaining_header > 0 and opt_type != 0:
+            # Process comment (opt_type = 1)
+            if opt_type == opt_comment:
+                # Read COMMENT
+                comment = file_in.read(opt_length).decode('utf-8')
+                remaining_header -= opt_length
+
+                # If proper format, Discard old
+                if is_json(comment):
+                    # TODO: Check if the JSON is the one of interest. If there are more than one json formatted comment,
+                    #  and the first on is not the one of interest, then it will be unreachable
+                    # mydict = json.loads(comment)
+
+                    # Discard old padding:
+                    file_in.read(comment_padding_old)
+                    remaining_header -= comment_padding_old
+
+                    # Insert option type and un-padded length
+                    file_out.write(struct.pack('<H', 1))
+                    file_out.write(struct.pack('<H', comment_length_new))
+
+                    # Insert new comment and padding
+                    file_out.write(bytes(comment, 'utf-8'))
+                    file_out.write(b'\x00' * comment_padding_new)
+                # If not the correct comment, copy into new
+                else:
+                    # Copy option type
+                    file_out.write(struct.pack('<H', opt_type))
+                    # Copy option length
+                    file_out.write(struct.pack('<H', opt_length))
+                    # Copy old comment
+                    file_out.write(bytes(comment, 'utf-8'))
+                    # Copy comment padding
+                    file_out.write(file_in.read(opt_padding))
+                    remaining_header -= opt_padding
+            else:
+                # Copy option type
+                file_out.write(struct.pack('<H', opt_type))
+                # COpy option length
+                file_out.write(struct.pack('<H', opt_length))
+                # Copy option value
+                file_out.write(file_in.read(opt_length))
+                remaining_header -= opt_length
+                # Copy option padding
+                file_out.write(file_in.read(opt_padding))
+                remaining_header -= opt_padding
+
+            # Read next option type and length and adjust remaining header
+            opt_type = struct.unpack('<H', file_in.read(2))[0]
+            opt_length = struct.unpack('<H', file_in.read(2))[0]
+            if opt_length % 4 != 0:
+                opt_padding = 4 - opt_length % 4
+            else:
+                opt_padding = 0
+            remaining_header -= 4
+
+    # Write end_of_options
+    # Copy option type
+    file_out.write(struct.pack('<H', opt_type))
+    # COpy option length
+    file_out.write(struct.pack('<H', opt_length))
+
+    # Replace BLOCK TOTAL LENGTH (ending)
     file_in.read(4)
-    file_out.write(b'\x00'*padding_out)
-
-    # Insert HEADER END ADDRESS
-    file_out.write(struct.pack('<L', end_address_out))
+    file_out.write(struct.pack('<L', block_length_new))
 
     # Copy Remaining Data
     data = file_in.read(1024*1024)
@@ -134,8 +366,11 @@ if __name__ == '__main__':
     envi_vars = {'internet': True,
                  'isolated': False}
     comment_envi = json.dumps(envi_vars)
-    insert_comment('ietf-hackathon_pieces_nocomment.pcapng', comment_envi, 'testx.pcapng')
+    file_in = '../captures/cap10/ietf-hackathon_pieces_wireshark-commented.pcapng'
+    print(extract_comment(file_in, json_only=False))
+
+    insert_comment(file_in, comment_envi, 'testx.pcapng')
 
     comment_xtrcted = extract_comment('testx.pcapng')
 
-    parse_comment(comment_xtrcted)
+    print(parse_comment(comment_xtrcted))

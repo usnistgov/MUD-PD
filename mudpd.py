@@ -802,30 +802,37 @@ class MudCaptureApplication(tk.Frame):
                         if i:
                             if i == 2:
                                 try:
-                                    phase = x.cget('text')
-                                    if self.cap_envi_metadata[ field2db[phase] ].lower() == "setup":
-                                        y.set(0)
-                                    elif self.cap_envi_metadata[ field2db[phase] ].lower() == "normal operation":
-                                        y.set(1)
-                                    elif self.cap_envi_metadata[field2db[phase]].lower() == "removal":
-                                        y.set(2)
-                                    else:
-                                        print("Warning unexpected phase provided")
+                                    phase = self.cap_envi_metadata.get( field2db[x.cget('text')])
+                                    if phase is not None:
+                                        phase = phase.lower()
+                                        if phase == "setup":
+                                            y.set(0)
+                                        elif phase == "normal operation":
+                                            y.set(1)
+                                        elif phase == "removal":
+                                            y.set(2)
+                                        else:
+                                            print("Warning unexpected phase provided")
 
-                                    print("Phase", phase, y.get())
+                                        print("Phase", phase, y.get())
                                 except:
                                     print("Warning: Likely field missing in file comment")
                             else:
                                 try:
                                     if type(y) == tk.IntVar:
-                                        if self.cap_envi_metadata[ field2db[x] ].lower() == "true":
-                                            y.set(1)
-                                        elif self.cap_envi_metadata[ field2db[x] ].lower() == "false":
-                                            y.set(0)
-                                        else:
-                                            print("Warning! non true/false value provided")
+                                        bool_val = self.cap_envi_metadata.get(field2db[x])
+                                        if bool_val is not None:
+                                            bool_val = bool_val.lower()
+                                            if bool_val == "true":
+                                                y.set(1)
+                                            elif bool_val == "false":
+                                                y.set(0)
+                                            else:
+                                                print("Warning! non true/false value provided")
                                     elif type(y) == tk.StringVar:
-                                        y.set(self.cap_envi_metadata[ field2db[x] ])
+                                        str_val = self.cap_envi_metadata.get(field2db[x])
+                                        if str_val is not None:
+                                            y.set(str_val)
                                     else:
                                         print("Warning! Unexpected variable type")
                                     #self.cap_envi_metadata[field2db[x.cget: y.get()]]

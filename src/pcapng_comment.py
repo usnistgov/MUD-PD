@@ -182,6 +182,12 @@ def is_pcap(file):
 
 
 def insert_comment(filename_in, comment, filename_out=None):
+
+    if type(comment) is dict:
+        comment = json.dumps(comment, indent=4)
+    elif type(comment) is not str:
+        raise TypeError("Comment must be of type 'str' or 'dict'")
+
     opt_comment = 1
 
     # Double check if PcapNg file. If not, make a copy of pcap file as PcapNg

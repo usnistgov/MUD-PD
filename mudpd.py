@@ -787,8 +787,6 @@ class MudCaptureApplication(tk.Frame):
 
         filename = askopenfilename()  # show an "Open" dialog box and return the path to the selected file
         sv_entry.set(filename)
-        #entry.delete(0, tk.END)
-        #entry.insert(0, filename)
 
         # TODO: Check if selected file is the previously selected one
         if filename != self.filename_prev:
@@ -798,44 +796,36 @@ class MudCaptureApplication(tk.Frame):
                 # Check for metadata embedded in the comment field
                 self.cap_envi_metadata = capMeta.extract_comment(filename)
 
-                # 'File': 'fileName', 'Activity': 'activity', 'Notes (optional)': 'details',
-                #                    'Lifecycle Phase': 'lifecyclePhase', 'Setup': 'setup', 'Normal Operation': 'normalOperation',
-                #                    'Removal': 'removal',
-                #                    'Internet': 'internet', 'Human Interaction': 'humanInteraction',
-                #                    'Preferred DNS Enabled': 'preferredDNS', 'Isolated': 'isolated',
-                #                    'Duration-based': 'durationBased', 'Duration': 'duration', 'Action-based': 'actionBased',
-                #                    'Action': 'deviceAction',
-                # field2db[self.capture_entries[2][0].cget('text')]:
-                #                     field2db[lifecyclePhaseFields[self.capture_entries[2][1].get()]]
-                if len(self.cap_envi_metada) > 0:
+                if len(self.cap_envi_metadata) > 0:
                     for i, (x, y) in enumerate (self.capture_entries):
                         # Skip first entry
                         if i:
                             if i == 2:
                                 try:
-                                    if self.cap_envi_metadata[ field2db[x] ].lower() == "setup":
+                                    phase = x.cget('text')
+                                    if self.cap_envi_metadata[ field2db[phase] ].lower() == "setup":
+                                        y.set(0)
+                                    elif self.cap_envi_metadata[ field2db[phase] ].lower() == "normal operation":
                                         y.set(1)
-                                    elif self.cap_envi_metadata[ field2db[x] ].lower() == "normal operation":
+                                    elif self.cap_envi_metadata[field2db[phase]].lower() == "removal":
                                         y.set(2)
-                                    elif self.cap_envi_metadata[field2db[x]].lower() == "removal":
-                                        y.set(3)
                                     else:
                                         print("Warning unexpected phase provided")
 
-                                    print("Phase", x.cget("text"), y.get())
+                                    print("Phase", phase, y.get())
                                 except:
                                     print("Warning: Likely field missing in file comment")
                             else:
                                 try:
-                                    if type(y) == type(tk.IntVar()):
-                                        if self.cap_env_envi_metadata[ field2db[x] ].lower() == "true":
+                                    if type(y) == tk.IntVar:
+                                        if self.cap_envi_metadata[ field2db[x] ].lower() == "true":
                                             y.set(1)
                                         elif self.cap_envi_metadata[ field2db[x] ].lower() == "false":
                                             y.set(0)
                                         else:
                                             print("Warning! non true/false value provided")
-                                    elif type(y) == type(tk.StringVar()):
-                                        y.set(self.cap_env_envi_metadata[ field2db[x] ])
+                                    elif type(y) == tk.StringVar:
+                                        y.set(self.cap_envi_metadata[ field2db[x] ])
                                     else:
                                         print("Warning! Unexpected variable type")
                                     #self.cap_envi_metadata[field2db[x.cget: y.get()]]

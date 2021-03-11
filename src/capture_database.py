@@ -1104,6 +1104,9 @@ class CaptureDigest:
         self.fileHash = hashlib.sha256(open(fpath, 'rb').read()).hexdigest()
         self.id = None
 
+        self.pkt = []
+        self.pkt_info = []  # needs to be a list of dictionary
+
         #self.cap_envi_metadata = dict()
 
         # Multiprocessing
@@ -1118,15 +1121,13 @@ class CaptureDigest:
                 self.tempDir = './.temp/'
                 self.tempFullCapDir = self.tempDir + 'full_cap/'
                 self.tempSplitCapDir = self.tempDir + 'split_cap/'
-                if not os.path.exists(self.tempDir):
-                    os.makedirs(self.tempDir)
-                    # os.makedirs(self.tempDir + 'full_cap/')
-                    os.makedirs(self.tempFullCapDir)
-                    # os.makedirs(self.tempDir + 'split_cap/')
-                    os.makedirs(self.tempSplitCapDir)
-                else:
+                if os.path.exists(self.tempDir) and os.path.exists(self.tempFullCapDir) and os.path.exists(self.tempSplitCapDir):
                     # Should handle the error more gracefully than ignoring
                     subprocess.call('rm ' + self.tempDir + '*/*', shell=True)
+                else:
+                    os.makedirs(self.tempDir)
+                    os.makedirs(self.tempFullCapDir)
+                    os.makedirs(self.tempSplitCapDir)
 
 
                 # Check filetype
@@ -1238,12 +1239,10 @@ class CaptureDigest:
             self.uniqueIP_dst = []
             self.uniqueIPv6_dst = []
 
-            self.protocol = []
+            #self.protocol = []
 
-            self.num_pkts = 0
-            self.pkt = []
+            #self.num_pkts = 0
 
-            self.pkt_info = [] #needs to be a list of dictionary
 
         self.dhcp_pkts = pyshark.FileCapture(fpath, display_filter='dhcp')
         self.modellookup = {}
@@ -1650,9 +1649,9 @@ class CaptureDigest:
         self.uniqueIP_dst = []
         self.uniqueIPv6_dst = []
 
-        self.protocol = []
+        #self.protocol = []
 
-        self.num_pkts = 0
+        #self.num_pkts = 0
         self.pkt = []
 
     def extract_fingerprint(self):

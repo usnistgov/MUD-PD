@@ -18,6 +18,7 @@ from mysql.connector import Error
 import os
 import src.pcapng_comment as capMeta
 import pyshark
+import re
 import subprocess
 # import tempfile
 
@@ -1165,8 +1166,8 @@ class CaptureDigest:
                 # subprocess.call(
                 #     'tcpdump -r "' + self.fpath + '" -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize),
                 #     stderr=subprocess.PIPE, shell=True)
-                subprocess.call('tcpdump -r ' + capfile + ' -w ' + self.tempSplitCapDir + 'temp_cap -C ' + str(
-                    self.splitSize),
+                subprocess.call('tcpdump -r ' + re.escape(capfile) + ' -w ' + self.tempSplitCapDir + 'temp_cap -C ' +
+                                                          str(self.splitSize),
                                 stderr=subprocess.PIPE, shell=True)
                 # self.files = subprocess.check_output('ls ' + self.tempDir, stderr=subprocess.STDOUT,
                 self.files = subprocess.check_output('ls ' + self.tempSplitCapDir, stderr=subprocess.STDOUT,
@@ -1181,7 +1182,7 @@ class CaptureDigest:
                     print("WARNING! the file has been split into more pieces than processes.")
                 elif len(self.files) < self.numProcesses:
                     print("WARNING! the file has been split into fewer pieces than processes.")
-                    raise ValueError("The file has been split into fewer pieces than the adjusted number of "
+                    raise ValueError(f"The file has been split into fewer pieces than the adjusted number of "
                                      "processes: {len(self.files)} files, {self.numProcesses} processes")
 
                 stop = datetime.now()

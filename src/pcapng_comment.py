@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import struct
 import subprocess
 
@@ -193,11 +194,14 @@ def insert_comment(filename_in, comment, filename_out=None):
 
     opt_comment = 1
 
+    #filename_in = re.escape(filename_in)
+
     # Double check if PcapNg file. If not, make a copy of pcap file as PcapNg
     if not is_pcapng(filename_in):
     #if filename_in.lower().endswith(".pcap"):
-        fname_in = filename_in + ".pcapng"
-        subprocess.call('tshark -F pcapng -r ' + filename_in + ' -w ' + fname_in, stderr=subprocess.PIPE, shell=True)
+        fname_in = filename_in.replace(".pcap",".pcapng")  # + ".pcapng"
+        subprocess.call('tshark -F pcapng -r ' + re.escape(filename_in) + ' -w ' + re.escape(fname_in),
+                        stderr=subprocess.PIPE, shell=True)
         comment_length_old = 0
     else:
         fname_in = filename_in
@@ -205,13 +209,13 @@ def insert_comment(filename_in, comment, filename_out=None):
         if comment_length_old is None:
             comment_length_old = 0
 
-    file_in = open(fname_in, 'rb')
+    file_in = open(fname_in, 'rb')  # re.escape(fname_in), 'rb')
 
     if filename_out is None:
         filename, file_ext = os.path.splitext(fname_in)  # filename_in)
         filename_out = filename + '_commented' + file_ext
 
-    file_out = open(filename_out, 'wb')
+    file_out = open(filename_out, 'wb')  # re.escape(filename_out), 'wb')
 
     # TODO: CHECK IF COMMENT ALREADY EXISTS
 

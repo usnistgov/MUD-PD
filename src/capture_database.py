@@ -16,6 +16,7 @@ import mysql.connector
 # from mysql.connector import MySQLConnection, Error
 from mysql.connector import Error
 import os
+import src.pcapng_comment as capMeta
 import pyshark
 import subprocess
 # import tempfile
@@ -368,6 +369,17 @@ class CaptureDatabase:
         "    %(protocol)s, %(ip_ver)s, %(ip_src)s, %(ip_dst)s, %(ew)s, "
         "    %(tlp)s, %(tlp_srcport)s, %(tlp_dstport)s, %(length)s; ")
 
+    add_device_protocol = (
+                    "INSERT INTO protocol "
+                    # INT     INT       TEXT      INT       TEXT         INT
+                    "(fileID, deviceID, protocol, src_port, dst_ip_addr, dst_port) "
+                    "SELECT DISTINCT p.fileID, d.id, p.tlp, p.tlp_srcport, p.ip_dst, tlp_dstport "
+                    "FROM packet p INNER JOIN device d ON p.mac_addr=d.mac_addr "
+                    "WHERE NOT EXISTS "
+                    "(SELECT fileID, deviceID, protocol, src_port, dst_ip_addr, dst_port FROM protocol WHERE p.fileID=protocol.fileID AND d.id=protocol.deviceID AND p.tlp=protocol.protocol AND p.tlp_srcport=protocol.src_port AND p.ip_dst=protocol.dst_ip_addr AND tlp_dstport=protocol.dst_port)"
+                    "AND d.unlabeled=0 AND p.tlp!='';"
+                    )
+
     # Not yet in use...
     add_protocol = ("INSERT INTO protocol "
                     # INT     INT       TEXT      INT       TEXT         BOOL  TEXT     INT       TEXT
@@ -492,6 +504,11 @@ class CaptureDatabase:
         "WHERE d.id!=%(ignored_device_id)s AND "
         "s.ipv4_addr!='Not found' AND s.ipv4_addr!='0.0.0.0' AND "
         "s.ipv6_addr!='Not found' AND s.ipv6_addr!='::';")
+
+    query_device_communication_info = (
+        "SELECT DISTINCT deviceID, protocol, dst_ip_addr, ipv6, dst_port, src_port "
+        "FROM protocol "
+        "WHERE deviceID=%(new_deviceID)s;")
 
     query_gateway_ips = (
         "SELECT DISTINCT ipv4_addr, ipv6_addr "
@@ -723,6 +740,10 @@ class CaptureDatabase:
         self.cursor.execute(self.add_protocol, data_protocol)
         self.cnx.commit()
 
+    def insert_protocol_device(self):
+        self.cursor.execute(self.add_device_protocol)
+        self.cnx.commit()
+
     ######################
     # SQL Query Commands #
     ######################
@@ -784,6 +805,10 @@ class CaptureDatabase:
 
     def select_devices_imported_ignore(self, ignored_deviceID):
         self.cursor.execute(self.query_devices_imported_ignore, ignored_deviceID)
+        return self.cursor.fetchall()
+
+    def select_device_communication_info(self, new_deviceID):
+        self.cursor.execute(self.query_device_communication_info, new_deviceID)
         return self.cursor.fetchall()
 
     def select_gateway_ips(self, gatewayID):
@@ -1063,7 +1088,7 @@ class CaptureDigest:
 
     IPS_2_IGNORE = ['RESERVED', 'UNSPECIFIED', 'LOOPBACK', 'UNASSIGNED', 'DOCUMENTATION']  # 'LINKLOCAL'
 
-    def __init__(self, fpath, api_key="", mp=True):  # , gui=False):
+    def __init__(self, fpath, api_key="", mp=True): #  , q=None):  # , gui=False):
         #from mudpd import MudCaptureApplication
         #self.api_key = MudCaptureApplication.read_api_config(self)
         self.api_key = api_key
@@ -1079,6 +1104,11 @@ class CaptureDigest:
         self.fileHash = hashlib.sha256(open(fpath, 'rb').read()).hexdigest()
         self.id = None
 
+        self.pkt = []
+        self.pkt_info = []  # needs to be a list of dictionary
+
+        #self.cap_envi_metadata = dict()
+
         # Multiprocessing
         if mp:
             self.ip2mac = Mac2IP()
@@ -1087,17 +1117,61 @@ class CaptureDigest:
 
             self.numProcesses = os.cpu_count() - 2  # One thread for GUI / One thread to handle I/O Queueing
             if self.numProcesses > 1:
-                self.splitSize = math.ceil(self.fsize / self.numProcesses / math.pow(2,20))
-                self.numProcesses = math.ceil(self.fsize / (self.splitSize * math.pow(2,20)))
-                self.tempDir = './.temp/'
-                if not os.path.exists(self.tempDir):
-                    os.makedirs(self.tempDir)
-                else:
-                    subprocess.call('rm ' + self.tempDir + '*', shell=True)
 
-                subprocess.call('tcpdump -r "' + self.fpath + '" -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize), stderr=subprocess.PIPE, shell=True)
-                self.files = subprocess.check_output('ls ' + self.tempDir, stderr=subprocess.STDOUT,
+                self.tempDir = './.temp/'
+                self.tempFullCapDir = self.tempDir + 'full_cap/'
+                self.tempSplitCapDir = self.tempDir + 'split_cap/'
+                if os.path.exists(self.tempDir) and os.path.exists(self.tempFullCapDir) and os.path.exists(self.tempSplitCapDir):
+                    # Should handle the error more gracefully than ignoring
+                    subprocess.call('rm ' + self.tempDir + '*/*', shell=True)
+                else:
+                    if not os.path.exists(self.tempDir):
+                        os.makedirs(self.tempDir)
+                    if not os.path.exists(self.tempFullCapDir):
+                        os.makedirs(self.tempFullCapDir)
+                    if not os.path.exists(self.tempSplitCapDir):
+                        os.makedirs(self.tempSplitCapDir)
+
+
+                # Check filetype
+                # if pcap, process normally, if pcapng, look for metadata and convert to pcap for processing
+                #ret = subprocess.run('file ' + fpath, shell=True, capture_output=True)
+                #if b'pcap-ng' in ret.stdout:
+                if capMeta.is_pcapng(fpath):
+                #if self.fname.lower().endswith(".pcapng"):
+                    # Check for metadata embedded in the comment field
+                    #self.cap_envi_metadata = capMeta.extract_comment(self.fpath)
+
+                    # Convert the pcapng file to pcap
+                    capfile = self.tempDir + "full_cap/temp_cap.pcap"
+                    subprocess.call('tshark -F pcap -r ' + self.fpath + ' -w ' + capfile, stderr=subprocess.PIPE,
+                                    shell=True)  #
+                    # self.tempDir + "temp.pcap")
+                    fsize = os.path.getsize(capfile)  # self.tempDir + "temp.pcap")
+
+                else:
+                    fsize = self.fsize
+                    capfile = self.fpath
+
+                # self.splitSize = math.ceil(self.fsize / self.numProcesses / math.pow(2, 20))
+                # self.numProcesses = math.ceil(self.fsize / (self.splitSize * math.pow(2, 20)))
+
+                self.splitSize = math.ceil(fsize / self.numProcesses / math.pow(2, 20))
+                self.numProcesses = math.ceil(fsize / (self.splitSize * math.pow(2, 20)))
+
+                # subprocess.call(
+                #     'tcpdump -r "' + self.fpath + '" -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize),
+                #     stderr=subprocess.PIPE, shell=True)
+                subprocess.call('tcpdump -r ' + capfile + ' -w ' + self.tempSplitCapDir + 'temp_cap -C ' + str(
+                    self.splitSize),
+                                stderr=subprocess.PIPE, shell=True)
+                # self.files = subprocess.check_output('ls ' + self.tempDir, stderr=subprocess.STDOUT,
+                self.files = subprocess.check_output('ls ' + self.tempSplitCapDir, stderr=subprocess.STDOUT,
                                                      shell=True).decode('ascii').split()
+
+                # provide the full path to avoid conflicts when the file cannot be split or there is one process
+                for i, file in enumerate(self.files):
+                    self.files[i] = self.tempSplitCapDir + file
 
                 if len(self.files) > self.numProcesses:
                     print("WARNING! the file has been split into more pieces than processes.")
@@ -1118,14 +1192,18 @@ class CaptureDigest:
             print("Time for full process:", stop1 - start)
         else:
             ew_filter_start = datetime.now()
-            ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
-            ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
+            ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ' \
+                           'ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
+            ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or ' \
+                           '!ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
             ew_ipv6_filter = 'ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8}'
             ns_ipv6_filter = '!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8}'
 
             # (ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or (ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})
             # ew_filter = ['(', ew_ip_filter, ') or (', ew_ipv6_filter, ')']
-            ew_filter = '(ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or (ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})'
+            ew_filter = '(ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ' \
+                        'ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or ' \
+                        '(ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})'
             # (!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) and (!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8})
             ns_filter = ['(', ns_ip_filter, ') and (', ns_ipv6_filter, ')']
 
@@ -1164,12 +1242,10 @@ class CaptureDigest:
             self.uniqueIP_dst = []
             self.uniqueIPv6_dst = []
 
-            self.protocol = []
+            #self.protocol = []
 
-            self.num_pkts = 0
-            self.pkt = []
+            #self.num_pkts = 0
 
-            self.pkt_info = [] #needs to be a list of dictionary
 
         self.dhcp_pkts = pyshark.FileCapture(fpath, display_filter='dhcp')
         self.modellookup = {}
@@ -1226,7 +1302,10 @@ class CaptureDigest:
                 addr_ipv6_dst_set.append(manager.list())
                 ip2mac_m.append(manager.list())
 
-                import_args.append((i, self.tempDir + self.files[i], pkts_info_m[i],
+                # import_args.append((i, self.tempDir + self.files[i], pkts_info_m[i],
+                # import_args.append((i, self.tempSplitCapDir + self.files[i], pkts_info_m[i],
+                #import_args.append((i, self.files[i], pkts_info_m[i],
+                import_args.append((self.files[i], pkts_info_m[i],
                                     addr_mac_src_set[i], addr_mac_dst_set[i],
                                     addr_ip_src_set[i], addr_ip_dst_set[i],
                                     addr_ipv6_src_set[i], addr_ipv6_dst_set[i], ip2mac_m[i]))
@@ -1251,7 +1330,8 @@ class CaptureDigest:
         stop = datetime.now()
         print("Time for full multi-process:", stop - start)
 
-    def process_pkts_mp(self, proc, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
+    #def process_pkts_mp(self, proc, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
+    def process_pkts_mp(self, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
                         addr_ipv6_src, addr_ipv6_dst, ip2mac):
         cap = pyshark.FileCapture(file, keep_packets=False)
 
@@ -1341,7 +1421,8 @@ class CaptureDigest:
                 src_type = IP(ip_src).iptype()
                 dst_type = IP(ip_dst).iptype()
                 # TODO: CHECK IF PUTTING THIS CHECK INTO THE IPS_2_IGNORE if true
-                if src_type == 'PUBLIC' or dst_type == 'PUBLIC':
+                #if src_type == 'PUBLIC' or dst_type == 'PUBLIC':
+                if src_type == 'GLOBAL-UNICAST' or dst_type == 'GLOBAL-UNICAST':
                     pkt_dict['ew'] = False
                 # TODO: DOUBLE CHECK THAT THIS NEW CHECK WORKS
                 if src_type in self.IPS_2_IGNORE:
@@ -1571,9 +1652,9 @@ class CaptureDigest:
         self.uniqueIP_dst = []
         self.uniqueIPv6_dst = []
 
-        self.protocol = []
+        #self.protocol = []
 
-        self.num_pkts = 0
+        #self.num_pkts = 0
         self.pkt = []
 
     def extract_fingerprint(self):
@@ -1618,11 +1699,18 @@ class CaptureDigest:
                     print("No fingerprint found")
                 if yes:
                     output = lookup_fingerbank(dhcp_fingerprint, hostname, mac, self.api_key)
-                    print("Fingerprint Result:", output["name"])
-                    self.modellookup.update({mac: output["name"]})
+                    #print("Fingerprint Result:", output["name"])
+                    #self.modellookup.update({mac: output["name"]})
+                    if output.get("name") is not None:
+                        print("Fingerprint Result:", output.get("name"))
+                        self.modellookup.update({mac: output.get("name")})
             else:
                 print("No Fingerbank API Key Present")
         print("End Fingerprint Extraction")
+
+    # Write the metadata to the pcapng
+    def embed_meta(self, capture_data):
+        capMeta.insert_comment(self.fpath, capture_data)  # , self.fpath)
 
     # def __del__(self):
     def __exit__(self):

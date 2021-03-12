@@ -72,3 +72,4 @@ def lookup_fingerbank(dhcp_fingerprint, device_hostname, mac, api_key):
         return response
     else:
         print("Fingerprint not retrieved")
+        return {}

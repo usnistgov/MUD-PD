@@ -109,7 +109,7 @@ System specifications used for development and testing:
    ```
 
 4. TkInter for Python3 (may already be installed)
-   * macOS: instructions can be found at https://python.org/downloads/mac/tcltk/
+   * macOS: instructions can be found at https://www.python.org/download/mac/tcltk/
 
    * Linux:
    ```sh

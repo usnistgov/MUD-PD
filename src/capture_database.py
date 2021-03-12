@@ -1159,6 +1159,9 @@ class CaptureDigest:
                 self.splitSize = math.ceil(fsize / self.numProcesses / math.pow(2, 20))
                 self.numProcesses = math.ceil(fsize / (self.splitSize * math.pow(2, 20)))
 
+                print("Split size: ", self.splitSize)
+                print("Adjusted numProcess: ", self.numProcesses)
+
                 # subprocess.call(
                 #     'tcpdump -r "' + self.fpath + '" -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize),
                 #     stderr=subprocess.PIPE, shell=True)
@@ -1169,12 +1172,17 @@ class CaptureDigest:
                 self.files = subprocess.check_output('ls ' + self.tempSplitCapDir, stderr=subprocess.STDOUT,
                                                      shell=True).decode('ascii').split()
 
+                print("split files: ", self.files)
                 # provide the full path to avoid conflicts when the file cannot be split or there is one process
                 for i, file in enumerate(self.files):
                     self.files[i] = self.tempSplitCapDir + file
 
                 if len(self.files) > self.numProcesses:
                     print("WARNING! the file has been split into more pieces than processes.")
+                elif len(self.files) < self.numProcesses:
+                    print("WARNING! the file has been split into fewer pieces than processes.")
+                    raise ValueError("The file has been split into fewer pieces than the adjusted number of "
+                                     "processes: {len(self.files)} files, {self.numProcesses} processes")
 
                 stop = datetime.now()
 

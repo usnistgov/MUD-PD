@@ -146,6 +146,7 @@ System specifications used for development and testing:
       * Verified to work when muddy is installed within the root directory of the MUD-PD repository
 
 **[Deprecated]** References to MUDgee still exist in the sourcecode, but methods are unreachable
+
 3. ~~Install MUDgee: (for MUD file generation)~~
    * ~~Follow instructions at:  https://github.com/ayyoob/mudgee~~
    * ~~***IMPORTANT:***~~

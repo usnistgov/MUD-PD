@@ -1117,6 +1117,7 @@ class CaptureDigest:
             start = datetime.now()
 
             self.numProcesses = os.cpu_count() - 2  # One thread for GUI / One thread to handle I/O Queueing
+            print("Attempted numProcesses: ", self.numProcesses)
             if self.numProcesses > 1:
 
                 self.tempDir = './.temp/'
@@ -1154,14 +1155,11 @@ class CaptureDigest:
                     fsize = self.fsize
                     capfile = self.fpath
 
-                # self.splitSize = math.ceil(self.fsize / self.numProcesses / math.pow(2, 20))
-                # self.numProcesses = math.ceil(self.fsize / (self.splitSize * math.pow(2, 20)))
-
-                self.splitSize = math.ceil(fsize / self.numProcesses / math.pow(2, 20))
-                self.numProcesses = math.ceil(fsize / (self.splitSize * math.pow(2, 20)))
+                self.splitSize = math.ceil(fsize / self.numProcesses / math.pow(10, 6))
+                self.numProcesses = math.ceil(fsize / (self.splitSize * math.pow(10, 6)))
 
                 print("Split size: ", self.splitSize)
-                print("Adjusted numProcess: ", self.numProcesses)
+                print("Adjusted numProcesses: ", self.numProcesses)
 
                 # subprocess.call(
                 #     'tcpdump -r "' + self.fpath + '" -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize),
@@ -1178,12 +1176,24 @@ class CaptureDigest:
                 for i, file in enumerate(self.files):
                     self.files[i] = self.tempSplitCapDir + file
 
-                if len(self.files) > self.numProcesses:
-                    print("WARNING! the file has been split into more pieces than processes.")
+                # Check the number of split files and processors and send warnings/make adjustements as necessary
+                if len(self.files) == 0:
+                    print("WARNING! Multiprocessing Error: No split capture files found. Running in single-process "
+                          "mode with one processor and the original file")
+                    self.files = [capfile]
+                    self.numProcesses = 1
+                elif len(self.files) > self.numProcesses:
+                    print(f"WARNING! Multiprocessing Error: The capture file has been split into more pieces "
+                          f"({len(self.files)}) than processors ({self.numProcesses}). Capture file processing will "
+                          f"continue with {len(self.numProcessors)}, but may take longer to process than what may be "
+                          f"optimal.")
+                    self.numProcesses = len(self.files)
                 elif len(self.files) < self.numProcesses:
-                    print("WARNING! the file has been split into fewer pieces than processes.")
-                    raise ValueError(f"The file has been split into fewer pieces than the adjusted number of "
-                                     "processes: {len(self.files)} files, {self.numProcesses} processes")
+                    print(f"WARNING! Multiprocessing Error: The file has been split into fewer pieces "
+                          f"({len(self.files)}) than available processors ({self.numProcesses}). Capture file "
+                          f"processing will continue with {len(self.files)} processes, so it may not be optimal in its "
+                          f"efficiency.")
+                    self.numProcesses = len(self.files)
 
                 stop = datetime.now()
 

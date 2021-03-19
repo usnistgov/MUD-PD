@@ -2,25 +2,23 @@
 
 import hashlib
 
-# MySQl libraries
-# from configparser import ConfigParser
+# Local Modules
+from src.lookup import *
+import src.pcapng_comment as capMeta
+
+# External Modules
 from datetime import datetime
 from functools import partial
-# from lookup import *
 from IPy import IP
-from src.lookup import *
 import logging
 import math
 from multiprocessing import Pool, Manager
 import mysql.connector
-# from mysql.connector import MySQLConnection, Error
 from mysql.connector import Error
 import os
-import src.pcapng_comment as capMeta
 import pyshark
 import re
 import subprocess
-# import tempfile
 
 
 class CaptureDatabase:
@@ -283,7 +281,6 @@ class CaptureDatabase:
         "FROM capture "
         "WHERE fileID=%(cap_id)s;")
 
-    # device toi
     drop_device_toi = (
         "DROP TEMPORARY TABLE IF EXISTS dev_toi;")
 
@@ -301,7 +298,6 @@ class CaptureDatabase:
         "WHERE d.deviceID=%(deviceID)s;")
 
     create_device_toi_from_capture_id_list = (
-        # "DROP TEMPORARY TABLE IF EXISTS dev_toi;"
         "CREATE TEMPORARY TABLE dev_toi "
         "SELECT ds.fileID, ds.deviceID, d.mac_addr, ds.ipv4_addr, ds.ipv6_addr "
         "FROM device_state ds "
@@ -389,7 +385,7 @@ class CaptureDatabase:
                     "%(dst_url)s, %(dst_port)s, %(notes)s);")
 
     # Queries
-    # TODO: CHECKS  QUERY IS NECESSARY OR SHOULD BE REPLACED WITH FOLLOWING LINE
+    # TODO: CHECKS QUERY IS NECESSARY OR SHOULD BE REPLACED WITH FOLLOWING LINE
     query_unique_capture = "SELECT fileHash FROM capture;"
     # query_unique_capture = ("SELECT id FROM capture;")
 
@@ -679,17 +675,6 @@ class CaptureDatabase:
         self.cursor.execute(self.query_device_from_capture_list % format_strings, tuple(captureIDs))
         return self.cursor.fetchall()
 
-    # def select_identified_devices_from_cap(self, fileHash):
-    #    self.cursor.execute(self.query_identified_devices_from_capture, (fileHash,))
-    # def select_identified_devices_from_cap(self, fileID):
-    #    self.cursor.execute(self.query_identified_devices_from_capture, (fileID,))
-
-    # Deprecated
-    # def select_labeled_devices_from_cap(self, fileID):
-    #    self.cursor.execute(self.query_labeled_devices_from_capture, (fileID,))
-
-    # def select_most_recent_fw_ver(self, macdatemac):
-    #    self.cursor.execute(self.query_most_recent_fw_ver, macdatemac)
     def select_most_recent_fw_ver(self, deviceID_date_deviceID):
         self.cursor.execute(self.query_most_recent_fw_ver, deviceID_date_deviceID)
         try:
@@ -727,58 +712,22 @@ class CaptureDatabase:
         self.cursor.execute(self.query_caps_with_device_where + conditions, mac_addr_data)
         return self.cursor.fetchall()
 
-    # Deprecated
-    # def select_capID_where_capName(self, capName):
-    #    self.cursor.execute(self.query_capID_where_capName, (capName,))
-
-    # def select_device(self, mac):
-    #    self.cursor.execute(self.query_device_info, (mac,))
     def select_device(self, deviceID):
         self.cursor.execute(self.query_device_info, (deviceID,))
         return self.cursor.fetchall()
 
-    # def select_device_state(self, hash, mac):
-    #    self.cursor.execute(self.query_device_state, (hash, mac))
     def select_device_state(self, fileID, deviceID):
         self.cursor.execute(self.query_device_state, (fileID, deviceID))
         return self.cursor.fetchall()
-
-    # Deprecated
-    # def select_device_state_exact(self, device_state_data):
-    #    self.cursor.execute(self.query_device_state_exact, device_state_data)
 
     def select_device_macs(self):
         self.cursor.execute(self.query_device_macs)
         return self.cursor.fetchall()
 
-    # Deprecated
-    # def select_device_ids_from_macs(self, deviceMACs):
-    #    format_strings = ",".join(['%s'] * len(self.deviceMACs))
-    #    self.cursor.execute(self.query_device_ids_from_macs % format_strings, tuple(deviceMACs))
-
     # work to be done
     def select_packets(self):
         self.cursor.execute(self.query_pkts)
 
-    '''
-    def select_packets_by_capture(self, pkt_data_capture):
-        self.cursor.execute(self.query_pkt_by_capture, pkt_data_capture)
-
-    def select_packets_by_device(self, pkt_data_device):
-        self.cursor.execute(self.query_pkt_by_device, pkt_data_device)
-
-    # unknown if this should be changed
-    def select_packets_by_capture_and_device(self, pkt_data):
-        self.cursor.execute(self.query_pkt_by_capture_and_device, pkt_data)
-    '''
-
-    '''
-    def select_device_communication(self, device):
-        self.cursor.execute(self.query_device_communication, device)
-    '''
-
-    # def select_device_strings(self, device):
-    #    self.cursor.execute(self.query_device_strings, device)
     def select_device_strings(self, deviceID):
         self.cursor.execute(self.query_device_strings, deviceID)
 
@@ -807,58 +756,29 @@ class CaptureDatabase:
         self.cursor.execute(self.drop_device_toi)
         self.cnx.commit()
 
-    # def create_dev_toi(self, mac=None):
-    #    if mac == None:
     def create_dev_toi(self, deviceID=None):
         if deviceID == None:
             self.cursor.execute(self.create_device_toi_all)
         else:
-            # self.cursor.execute(self.create_device_toi, mac)
             self.cursor.execute(self.create_device_toi, deviceID)
         self.cnx.commit()
 
-    # def create_dev_toi_from_device_id_list(self):
     def create_dev_toi_from_fileID_list(self):
-        # self.cursor.execute(self.create_device_toi_from_device_id_list, ( ",".join( map(str, self.device_id_list) ),
-        # ) )
-        # format_strings = ",".join(['%s'] * len(self.device_id_list))
         format_strings = ",".join(['%s'] * len(self.capture_id_list))
-        # self.cursor.execute(self.create_device_toi_from_device_id_list % format_strings, tuple(self.device_id_list))
         self.cursor.execute(self.create_device_toi_from_capture_id_list % format_strings, tuple(self.capture_id_list))
         self.cnx.commit()
-        # print(self.create_device_toi_from_device_id_list % format_strings, tuple(self.device_id_list))
-        # print(self.create_device_toi_from_capture_id_list % format_strings, tuple(self.capture_id_list))
 
     def update_dev_toi(self, deviceID):
-        # self.cursor.execute(self.update_device_toi, mac)
         self.cursor.execute(self.update_device_toi, deviceID)
         self.cnx.commit()
 
     # Packet table of interest
-    # def select_pkt_toi(self, ew):
     def select_pkt_toi(self, ew, num_pkts):
-        # self.cursor.execute(self.query_packet_toi, {**ew, **{"num_pkts":num_pkts}})
-        # format_strings = ",".join(['%s'] * len(self.device_id_list))
-        # self.cursor.execute(self.query_packet_toi % {"deviceIDs":format_strings, **ew, "num_pkts":num_pkts},
-        # tuple(self.device_id_list))# + ew["ew"] + num_pkts)
-
-        # format_strings = ",".join(['%s'] * len(self.device_id_list))
-        # self.cursor.execute(self.query_packet_toi % {"deviceIDs":format_strings, **ew, "num_pkts":num_pkts} %
-        # tuple(self.device_id_list))
         format_dev = ",".join(['%s'] * len(self.device_id_list))
         format_ew = ",".join(['%s'] * len(ew))
         self.cursor.execute(
             self.query_packet_toi % {"deviceIDs": format_dev, "ew": format_ew, "num_pkts": num_pkts} % tuple(
                 self.device_id_list + ew))
-        # self.cursor.execute(self.query_packet_toi % {"ew":format_ew, "num_pkts":num_pkts} % tuple(ew))
-
-        # print(self.query_packet_toi)
-        # print(self.device_id_list)
-        # print(ew)
-        # print(num_pkts)
-        # print(self.query_packet_toi % {"deviceIDs":format_strings, **ew, "num_pkts":num_pkts} % tuple(
-        # self.device_id
-        # ID_list))
         return self.cursor.fetchall()
 
     def drop_pkt_toi(self):
@@ -871,8 +791,6 @@ class CaptureDatabase:
 
     def create_pkt_toi_from_capture_id_list(self):
         format_strings = ",".join(['%s'] * len(self.capture_id_list))
-        # self.cursor.execute(self.create_packet_toi_from_capture_id_list, (",".join( map(str, self.capture_id_list)
-# ), ) )
         self.cursor.execute(self.create_packet_toi_from_capture_id_list % format_strings, tuple(self.capture_id_list))
         self.cnx.commit()
 
@@ -885,57 +803,6 @@ class CaptureDatabase:
         self.cnx.close()
         print("Connection closed.")
 
-
-'''
-from configparser import ConfigParser
-#import json
-#import requests
-#import socket
-class DatabaseHandler:
-
-
-    def __init__(self, filename='config.ini', section='mysql'):
-
-        try:
-            self.config = read_db_config(filename, section)
-        except:
-            self.config = {"host": "", "database" : "", "user" : "", "passwd" : ""}
-
-    def read_db_config(self, filename='config.ini', section='mysql'):
-        parser = ConfigParser()
-        parser.read(filename)
-
-        db = {}
-        if parser.has_section(section):
-            items = parser.items(section)
-            for item in items:
-                db[item[0]] = item[1]
-        else:
-            raise Exception('{0} not found in the {1} file'.format(section, filename))
-
-        return db
-
-    def save_db_config(self, filename='config.ini', section='mysql'):
-        f = open(filename, "w")
-        f.write("[{%s}]", section)
-        for key,val in self.db_config:
-            f.write("\n{%s} = {%s}", key, val)
-        f.close()
-
-    def db_connect(self, entries):
-        db_config = {}
-
-        for entry in entries:
-            field = entry[0]
-            text  = entry[1].get()
-            db_config[field] = text
-            print('%s: "%s"' % (field, text)) 
-
-        self.db = CaptureDatabase(db_config)
-
-    def __exit__(self):
-        self.db.__exit__()
-#'''
 
 class Mac2IP(dict):
 
@@ -991,12 +858,9 @@ class CaptureDigest:
 
     IPS_2_IGNORE = ['RESERVED', 'UNSPECIFIED', 'LOOPBACK', 'UNASSIGNED', 'DOCUMENTATION']  # 'LINKLOCAL'
 
-    def __init__(self, fpath, api_key="", mp=True): #  , q=None):  # , gui=False):
-        #from mudpd import MudCaptureApplication
-        #self.api_key = MudCaptureApplication.read_api_config(self)
+    def __init__(self, fpath, api_key="", mp=True):
         self.api_key = api_key
         if self.api_key != "":
-            #self.api_key = self.api_key['api_key']
             print("Fingerbank API Key: ", self.api_key)
         self.fpath = fpath
         self.fdir, self.fname = os.path.split(fpath)
@@ -1009,8 +873,6 @@ class CaptureDigest:
 
         self.pkt = []
         self.pkt_info = []  # needs to be a list of dictionary
-
-        #self.cap_envi_metadata = dict()
 
         # Multiprocessing
         if mp:
@@ -1043,15 +905,11 @@ class CaptureDigest:
                 #if b'pcap-ng' in ret.stdout:
                 if capMeta.is_pcapng(fpath):
                 #if self.fname.lower().endswith(".pcapng"):
-                    # Check for metadata embedded in the comment field
-                    #self.cap_envi_metadata = capMeta.extract_comment(self.fpath)
-
                     # Convert the pcapng file to pcap
                     capfile = self.tempDir + "full_cap/temp_cap.pcap"
                     subprocess.call('tshark -F pcap -r ' + self.fpath + ' -w ' + capfile, stderr=subprocess.PIPE,
-                                    shell=True)  #
-                    # self.tempDir + "temp.pcap")
-                    fsize = os.path.getsize(capfile)  # self.tempDir + "temp.pcap")
+                                    shell=True)
+                    fsize = os.path.getsize(capfile)
 
                 else:
                     fsize = self.fsize
@@ -1063,13 +921,9 @@ class CaptureDigest:
                 print("Split size: ", self.splitSize)
                 print("Adjusted numProcesses: ", self.numProcesses)
 
-                # subprocess.call(
-                #     'tcpdump -r "' + self.fpath + '" -w ' + self.tempDir + 'temp_cap -C ' + str(self.splitSize),
-                #     stderr=subprocess.PIPE, shell=True)
                 subprocess.call('tcpdump -r ' + re.escape(capfile) + ' -w ' + self.tempSplitCapDir + 'temp_cap -C ' +
                                                           str(self.splitSize),
                                 stderr=subprocess.PIPE, shell=True)
-                # self.files = subprocess.check_output('ls ' + self.tempDir, stderr=subprocess.STDOUT,
                 self.files = subprocess.check_output('ls ' + self.tempSplitCapDir, stderr=subprocess.STDOUT,
                                                      shell=True).decode('ascii').split()
 
@@ -1113,23 +967,18 @@ class CaptureDigest:
             print("Time for full process:", stop1 - start)
         else:
             ew_filter_start = datetime.now()
-            ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ' \
-                           'ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
-            ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or ' \
-                           '!ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
-            ew_ipv6_filter = 'ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8}'
-            ns_ipv6_filter = '!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8}'
+            # ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ' \
+            #                'ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
+            # ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or ' \
+            #                '!ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
+            # ew_ipv6_filter = 'ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8}'
+            # ns_ipv6_filter = '!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8}'
 
-            # (ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or (ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})
-            # ew_filter = ['(', ew_ip_filter, ') or (', ew_ipv6_filter, ')']
             ew_filter = '(ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ' \
                         'ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or ' \
                         '(ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})'
-            # (!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or !ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) and (!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8})
-            ns_filter = ['(', ns_ip_filter, ') and (', ns_ipv6_filter, ')']
 
-            # start = datetime.now()
-            # self.cap = pyshark.FileCapture(fpath)
+            # ns_filter = ['(', ns_ip_filter, ') and (', ns_ipv6_filter, ')']
 
             self.ew_index = []
             cap_ew = pyshark.FileCapture(fpath, display_filter=ew_filter, keep_packets=False)
@@ -1145,13 +994,7 @@ class CaptureDigest:
             self.cap_timestamp = self.cap[0].sniff_timestamp
 
             # TODO CHANGE capDuration format from seconds to days, hours, minutes, seconds
-            self.capDuration = 0  # timedelta(0)
-
-            #(self.cap_date, self.cap_time) = datetime.utcfromtimestamp(float(self.cap_timestamp)).strftime(
-            #    '%Y-%m-%d %H:%M:%S').split()
-
-            #print(self.cap_date)
-            #print(self.cap_time)
+            self.capDuration = 0
 
             self.uniqueIP = []
             self.uniqueIPv6 = []
@@ -1163,17 +1006,11 @@ class CaptureDigest:
             self.uniqueIP_dst = []
             self.uniqueIPv6_dst = []
 
-            #self.protocol = []
-
-            #self.num_pkts = 0
-
-
         self.dhcp_pkts = pyshark.FileCapture(fpath, display_filter='dhcp')
         self.modellookup = {}
         if self.api_key != "":
             self.extract_fingerprint()
             print("Identified devices for this capture: ", self.modellookup)
-
 
         # TODO: VERIFY REMOVAL
         #self.cap_timestamp = self.cap[0].sniff_timestamp
@@ -1213,7 +1050,6 @@ class CaptureDigest:
             # Prepare shared variables and input arguments
             import_args = []
             for i in range(self.numProcesses):
-                #pkts_m.append(manager.list())
                 pkts_info_m.append(manager.list())
                 addr_mac_src_set.append(manager.list())
                 addr_mac_dst_set.append(manager.list())
@@ -1223,9 +1059,6 @@ class CaptureDigest:
                 addr_ipv6_dst_set.append(manager.list())
                 ip2mac_m.append(manager.list())
 
-                # import_args.append((i, self.tempDir + self.files[i], pkts_info_m[i],
-                # import_args.append((i, self.tempSplitCapDir + self.files[i], pkts_info_m[i],
-                #import_args.append((i, self.files[i], pkts_info_m[i],
                 import_args.append((self.files[i], pkts_info_m[i],
                                     addr_mac_src_set[i], addr_mac_dst_set[i],
                                     addr_ip_src_set[i], addr_ip_dst_set[i],
@@ -1242,7 +1075,6 @@ class CaptureDigest:
             self.uniqueIP_dst = list(set([item for sublist in addr_ip_dst_set for item in sublist]))
             self.uniqueIPv6 = list(set([item for sublist in addr_ipv6_src_set for item in sublist]))
             self.uniqueIPv6_dst = list(set([item for sublist in addr_ipv6_dst_set for item in sublist]))
-            #self.ip2mac = dict(set([item for sublist in ip2mac_m for item in sublist]))
             self.ip2mac = Mac2IP([item for sublist in ip2mac_m for item in sublist])
 
             self.cap_timestamp = self.pkt_info[0]['pkt_timestamp']
@@ -1251,7 +1083,6 @@ class CaptureDigest:
         stop = datetime.now()
         print("Time for full multi-process:", stop - start)
 
-    #def process_pkts_mp(self, proc, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
     def process_pkts_mp(self, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
                         addr_ipv6_src, addr_ipv6_dst, ip2mac):
         cap = pyshark.FileCapture(file, keep_packets=False)
@@ -1263,9 +1094,8 @@ class CaptureDigest:
         addr_ipv6_src_set = set()
         addr_ipv6_dst_set = set()
         mac2ip = Mac2IP()
-        #ip2mac_set = set()
         func = partial(self.extract_info_mp, pkts_info, addr_mac_src_set, addr_mac_dst_set,
-                       addr_ip_src_set, addr_ip_dst_set, addr_ipv6_src_set, addr_ipv6_dst_set, mac2ip)  # ip2mac_set)
+                       addr_ip_src_set, addr_ip_dst_set, addr_ipv6_src_set, addr_ipv6_dst_set, mac2ip)
         cap.apply_on_packets(func)
 
         addr_mac_src += list(addr_mac_src_set)
@@ -1278,14 +1108,14 @@ class CaptureDigest:
         ip2mac.append(mac2ip)
 
     def extract_info_mp(self, pkt_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst, addr_ipv6_src,
-                        addr_ipv6_dst, ip2mac, pkt): # *args
+                        addr_ipv6_dst, ip2mac, pkt):
         p = pkt
         pkt_dict = {"pkt_timestamp": p.sniff_timestamp,
                     "mac_addr": '',
                     "mac_src": '',
                     "mac_dst": '',
                     "protocol": p.layers[-1].layer_name.upper(),
-                    "ip_ver": None,  # changed '-1' to None and then ''
+                    "ip_ver": None,
                     "ip_src": None,
                     "ip_dst": None,
                     "ew": True, # TODO: Verify this works
@@ -1363,11 +1193,9 @@ class CaptureDigest:
                 pkt_dict["tlp_srcport"] = l.srcport
                 pkt_dict["tlp_dstport"] = l.dstport
             elif l.layer_name != p.layers[-1].layer_name:
-                pass
-                #print("Warning: Unknown/Unsupported layer seen here:", l.layer_name)
+                print("Warning: Unknown/Unsupported layer seen here:", l.layer_name)
 
         pkt_info.append(pkt_dict.copy())
-
         addr_mac_src.add(mac_src)
         addr_mac_dst.add(mac_dst)
 
@@ -1395,24 +1223,16 @@ class CaptureDigest:
         print("Time to extract:", stop_xtrct-stop_append)
         print("Time for full process:", stop-start)
 
-        # datetime.utcfromtimestamp(float(self.cap_timestamp)).strftime('%Y-%m-%d %H:%M:%S').split()
-        # print(self.pkt[0].sniff_timestamp)
-        # print(self.pkt[-1].sniff_timestamp)
         self.capDuration = round(float(self.pkt[-1].sniff_timestamp) - float(self.cap_timestamp))
 
-    #    def import_pkts(self, *args):
     def append_pkt(self, *args):
-        # print("length = ", args[0].length)
         self.progress += int(args[0].length) + 16  # packet header
-        # print(self.progress, "/", self.fsize)
         self.pkt.append(args[0])
-        # exit()
 
     def print_init(self):
         print(self.fname)
         print(self.fdir)
         print(self.fileHash)
-        #print(self.capDate)
         print(self.cap_date)
 
     # TODO: Verify this new version is acceptable, or remove if not needed
@@ -1443,7 +1263,7 @@ class CaptureDigest:
             self.pkt_info.append({"pkt_timestamp": p.sniff_timestamp,
                                   "mac_addr": '',
                                   "protocol": p.layers[-1].layer_name.upper(),
-                                  "ip_ver": None,  # changed '-1' to None and then ''
+                                  "ip_ver": None,
                                   "ip_src": None,
                                   "ip_dst": None,
                                   "ew": p.number in self.ew_index,
@@ -1490,12 +1310,8 @@ class CaptureDigest:
             pMAC = pkt.sll.src_eth
 
         pMAC = pMAC.upper()
-        # ;lkj
-        # self.pkt_info.append({})
-        # self.pkt_info[-1]["mac"] = pMAC
 
         if pMAC not in self.uniqueMAC:
-            # print(pMAC)
             self.uniqueMAC.append(pMAC)
 
         # Try to get packet IP address
@@ -1511,21 +1327,13 @@ class CaptureDigest:
                 if (pMAC, "ipv6") not in self.ip2mac:
                     self.ip2mac[(pMAC, "ipv6")] = pIPv6
                 if pIPv6 not in self.uniqueIPv6:
-                    # print(pIPv6)
                     self.uniqueIPv6.append(pIPv6)
-
-                # self.pkt_info[-1]["src_ip"] = pIPv6
-                # self.pkt_info[-1]["ver"] = "v6"
         else:
             if (pMAC, "ipv4") not in self.ip2mac:
                 self.ip2mac[(pMAC, "ipv4")] = pIP
-            # Add unique IPs to the list
             if pIP not in self.uniqueIP:
                 # print(pIP)
                 self.uniqueIP.append(pIP)
-
-            # self.pkt_info[-1]["src_ip"] = pIP
-            # self.pkt_info[-1]["ver"] = "v4"
 
         # Try to get destination IP address
         try:
@@ -1538,21 +1346,16 @@ class CaptureDigest:
                 pass
             else:
                 if pIPv6_dst not in self.uniqueIPv6_dst:
-                    # print(pIPv6)
                     self.uniqueIPv6_dst.append(pIPv6_dst)
         else:
             # Add unique IPs to the list
             if pIP_dst not in self.uniqueIP_dst:
-                # print(pIP)
                 self.uniqueIP_dst.append(pIP_dst)
 
-    # Need to check on what this is for (2020-02-20)
-    # TBD in the future (2019-06-13)
     # TODO: Update this to pull necessary information from the Database rather than opening the file again
     def load_from_db(self, fpath):
         self.fpath = fpath
         self.fdir, self.fname = os.path.split(fpath)
-        # self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
         self.fileHash = hashlib.sha256(open(fpath, 'rb').read()).hexdigest()
 
         self.cap = pyshark.FileCapture(fpath)
@@ -1646,14 +1449,11 @@ if __name__ == "__main__":
 
     fname = "/Users/ptw/Documents/GRA-MITRE-DDoS/captures/ecobee/ecobeeThermostat_iphone_setup.pcap"
     capture = CaptureDigest(fname)
-    # import_file(fname)
     capture.print_init()
     print("Unique IP addresses:")
     print(*capture.uniqueIP, sep="\n")
     print("\n\nUnique IPv6 addresses:")
     print(*capture.uniqueIPv6, sep="\n")
-    #    print("\n\nUnique MAC addresses:")
-    #    print(*capture.uniqueMAC, sep="\n")
     print("\n")
 
     for mac in capture.uniqueMAC:

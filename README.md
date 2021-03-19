@@ -28,11 +28,7 @@ the comment field). MUD files are now generated through a newly designed wizard 
 
 2020-06-25: Multiprocessing of PCAP files enabled (4+ threads recommended)
 
-~~2019-10-31: MUD file generation wizard powered by MUDgee *see prerequisites~~ [DEPRECATED 2021-03-12]
-
 2019-10-22: Generation of human readable reports enabled
-
-~~**see README_FF.md for future feature development~~ [No future features planned]
 
 # Prerequisites and use
 
@@ -144,15 +140,6 @@ System specifications used for development and testing:
    * IMPORTANT:
       * Latest verified compatible commit: c498ea9b159c5881ffbaacc2e4064c2cf9081775 (2021-03-12)
       * Verified to work when muddy is installed within the root directory of the MUD-PD repository
-
-**[Deprecated]** References to MUDgee still exist in the sourcecode, but methods are unreachable
-
-3. ~~Install MUDgee: (for MUD file generation)~~
-   * ~~Follow instructions at:  https://github.com/ayyoob/mudgee~~
-   * ~~***IMPORTANT:***~~
-      * ~~Both the MUDgee and MUD-PD repositories must be installed in the same parent directory~~
-      * ~~Latest verified compatible version: Latest commit f63a88d on Jul 5 2019~~
-    
 
 ## Running MUD-PD
 ```sh

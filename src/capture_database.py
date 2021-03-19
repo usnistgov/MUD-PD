@@ -9,7 +9,7 @@ from functools import partial
 # from lookup import *
 from IPy import IP
 from src.lookup import *
-# import logging
+import logging
 import math
 from multiprocessing import Pool, Manager
 import mysql.connector
@@ -395,77 +395,29 @@ class CaptureDatabase:
 
     query_imported_capture = "SELECT * FROM capture;"
 
-    query_imported_capture_with = (
-        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, "
-        "    cap.lifecyclePhase, cap.internet, cap.humanInteraction, cap.preferredDNS, cap.isolated, "
-        "    cap.durationBased, cap.duration, cap.actionBased, cap.deviceAction, cap.details "
-        "FROM capture as cap "
-        "    INNER JOIN ( "
-        "      SELECT * FROM device_in_capture "
-        # "      WHERE mac_addr=%(dev_mac)s) device "
-        # "        ON device.fileHash = cap.fileHash "
-        "      WHERE deviceID=%(deviceID)s) device "
-        "        ON device.fileID = cap.id "
-        "    INNER JOIN ( "
-        "      SELECT * FROM device_in_capture "
-        # "      WHERE mac_addr=%(gateway_mac)s) gateway "
-        # "        ON gateway.fileHash = cap.fileHash;")
-        "      WHERE deviceID=%(gatewayID)s) gateway "
-        "        ON gateway.fileID = cap.id;")
-
-    query_imported_capture_with_device = (
-        # "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration,
-        # cap.activity, cap.details "
-        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, "
-        "    cap.lifecyclePhase, cap.internet, cap.humanInteraction, cap.preferredDNS, cap.isolated, "
-        "    cap.durationBased, cap.duration, cap.actionBased, cap.deviceAction, cap.details "
-        "FROM capture as cap "
-        "    INNER JOIN ( "
-        "      SELECT * FROM device_in_capture "
-        # "      WHERE mac_addr=%(dev_mac)s) device "
-        # "        ON device.fileHash = cap.fileHash;")
-        "      WHERE deviceID=%(deviceID)s) device "
-        "        ON device.fileID = cap.id;")
-
-    # query_device_from_capture = ("SELECT * FROM device WHERE fileName=%s;")
-    # query_device_from_capture = ("SELECT * FROM device_in_capture WHERE fileHash=%s;")
     query_device_from_capture = ("SELECT * FROM device WHERE mac_addr = ANY "
-                                 # "(SELECT mac_addr FROM device_in_capture WHERE"
                                  "(SELECT deviceID FROM device_in_capture \n"
-                                 # " fileHash=%s);"
-                                 # " fileName=%s);")
                                  " WHERE fileID=%s);")
 
     query_device_from_capture_list = ("SELECT * FROM device WHERE id = ANY "
                                       "(SELECT DISTINCT deviceID FROM device_in_capture \n"
                                       " WHERE fileID IN (%s) );")
 
-    # query_identified_devices_from_capture = ("SELECT * FROM device_in_capture "
-    #                                    "WHERE fileHash = %s AND mac_addr = %s;")
-    # query_identified_devices_from_capture = ("SELECT id, mac_addr, imported FROM device_in_capture "
-    # query_identified_devices_from_capture = ("SELECT * FROM device_in_capture "
     query_labeled_devices_from_capture = ("SELECT * FROM device_in_capture "
-                                          # "WHERE fileHash = %s;")
                                           "WHERE fileID = %s;")
-    # "WHERE fileHash = %s AND imported = TRUE;")
 
     query_most_recent_fw_ver = ("SELECT ds.fw_ver FROM device_state AS ds "
                                 "INNER JOIN "
-                                # "    (SELECT capture.fileHash as fileHash "
                                 "    (SELECT capture.id as fileID "
                                 "     FROM capture "
                                 "     INNER JOIN "
                                 "         (SELECT MAX(c.capDate) as capDate "
                                 "          FROM device_state as ds "
                                 "          INNER JOIN "
-                                # "              capture as c on ds.fileHash = c.fileHash "
-                                # "          WHERE ds.mac_addr = %(mac_addr)s AND "
                                 "              capture as c on ds.fileID = c.id "
                                 "          WHERE ds.deviceID = %(deviceID)s AND "
                                 "                c.capDate <= %(capDate)s "
                                 "         ) AS q1 ON capture.capDate=q1.capDate "
-                                # "     ) AS q2 ON ds.fileHash=q2.fileHash "
-                                # " WHERE ds.mac_addr = %(mac_addr)s;")
                                 "     ) AS q2 ON ds.fileID=q2.fileID "
                                 " WHERE ds.deviceID = %(deviceID)s;")
 
@@ -473,52 +425,28 @@ class CaptureDatabase:
 
     query_devices = "SELECT * FROM device;"
 
-    # query_devices_imported = ("SELECT * FROM device WHERE not ISNULL(internalName);")
     query_devices_imported = (
         "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
         "FROM device "
         "WHERE NOT ISNULL(internalName);")
 
+    # TODO: See if this needs to exist
     query_devices_imported_ignore_noIPs = (
         "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
         "FROM device "
-        # "WHERE internalName!=%(internalName)s AND NOT ISNULL(internalName);")
-        # "WHERE mac_addr!=%(ignored_dev)s AND NOT ISNULL(internalName);")
         "WHERE mac_addr!=%(ignored_deviceID)s AND NOT ISNULL(internalName);")
 
+    # TODO: See if this needs to exist
     query_devices_imported_ignore_known = (
         "SELECT DISTINCT d.id, d.mfr, d.model, d.mac_addr, d.internalName, d.deviceCategory, s.ipv4_addr, s.ipv6_addr "
         "FROM device AS d "
-        # "    INNER JOIN (SELECT * FROM device_state) AS s ON d.mac_addr=s.mac_addr "
-        # "WHERE d.mac_addr!=%(ignored_dev)s AND NOT ISNULL(d.internalName);")
         "    INNER JOIN (SELECT * FROM device_state) AS s ON d.id=s.deviceID "
         "WHERE d.id!=%(ignored_deviceID)s AND NOT ISNULL(d.internalName);")
-
-    query_devices_imported_ignore = (
-        "SELECT DISTINCT d.id, d.mfr, d.model, d.mac_addr, d.internalName, d.deviceCategory, s.ipv4_addr, s.ipv6_addr "
-        "FROM device AS d "
-        # "    INNER JOIN (SELECT * FROM device_state) AS s ON d.mac_addr=s.mac_addr "
-        "    INNER JOIN (SELECT * FROM device_state) AS s ON d.id=s.deviceID "
-        # "WHERE d.mac_addr!=%(ignored_dev)s;")
-        # "WHERE d.mac_addr!=%(ignored_dev)s AND s.ipv4_addr!='Not found';")
-        # "WHERE d.mac_addr!=%(ignored_dev)s AND "
-        "WHERE d.id!=%(ignored_device_id)s AND "
-        "s.ipv4_addr!='Not found' AND s.ipv4_addr!='0.0.0.0' AND "
-        "s.ipv6_addr!='Not found' AND s.ipv6_addr!='::';")
 
     query_device_communication_info = (
         "SELECT DISTINCT deviceID, protocol, dst_ip_addr, ipv6, dst_port, src_port "
         "FROM protocol "
         "WHERE deviceID=%(new_deviceID)s;")
-
-    query_gateway_ips = (
-        "SELECT DISTINCT ipv4_addr, ipv6_addr "
-        "FROM device_state "
-        # "WHERE mac_addr=%(gateway_mac)s;")
-        # "WHERE mac_addr=%(gateway_mac)s AND "
-        "WHERE deviceID=%(gatewayID)s AND "
-        "ipv4_addr!='Not found' AND ipv4_addr!='0.0.0.0' AND "
-        "ipv6_addr!='Not found' AND ipv6_addr!='::';")
 
     query_devices_in_caps_except = (
         "SELECT DISTINCT dc.id, d.internalName, dc.mac_addr "
@@ -527,13 +455,10 @@ class CaptureDatabase:
         "        SELECT * "
         "        FROM capture "
         "        WHERE id=%(captureID)s) AS c "
-        # "    ON dc.fileHash=c.fileHash "
         "    ON dc.fileID=c.id "
         "    INNER JOIN ( "
         "        SELECT * "
         "        FROM device) AS d "
-        # "    ON dc.mac_addr = d.mac_addr "
-        # "WHERE dc.mac_addr != %(mac_addr)s;")
         "    ON dc.deviceID = d.id "
         "WHERE dc.deviceID != %(deviceID)s;")
 
@@ -546,8 +471,6 @@ class CaptureDatabase:
         "    INNER JOIN ( "
         "        SELECT * "
         "        FROM device_in_capture "
-        # "        WHERE mac_addr = %(mac_addr)s) AS d "
-        # "    ON c.fileHash=d.fileHash")
         "        WHERE deviceID = %(deviceID)s) AS d "
         "    ON c.id=d.fileID")
     '''
@@ -564,23 +487,16 @@ class CaptureDatabase:
 
     query_capID_where_capName = "SELECT id FROM capture WHERE fileName=%s;"
 
-    # query_device_info =  ("SELECT * FROM device WHERE mac_addr=%s;")
     query_device_info = "SELECT * FROM device WHERE id=%s;"
 
-    # query_device_macs = ("SELECT mac_addr FROM device;")
-    # query_device_macs = ("SELECT id, mac_addr FROM device;")
     query_device_macs = "SELECT id, mac_addr, unlabeled FROM device;"
 
     query_device_ids_from_macs = "SELECT id, mac_addr FROM device WHERE mac_addr IN (%s);"
 
-    # query_device_state = ("SELECT * FROM device_state WHERE fileHash=%s AND mac_addr=%s;")
     query_device_state = "SELECT * FROM device_state WHERE fileID=%s AND deviceID=%s;"
 
     query_device_state_exact = (
         "SELECT * FROM device_state WHERE "
-        # " fileHash=%(fileHash)s AND mac_addr=%(mac_addr)s AND "
-        # " internalName=%(internalName)s AND fw_ver=%(fw_ver)s AND "
-        # " ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
         " fileID=%(fileID)s AND deviceID=%(deviceID)s AND "
         " fw_ver=%(fw_ver)s AND ipv4_addr=%(ipv4_addr)s AND ipv6_addr=%(ipv6_addr)s;")
 
@@ -601,10 +517,7 @@ class CaptureDatabase:
     query_cache_device = (
         "SELECT * FROM cache WHERE model=%(model)s;")
 
-    def __init__(self, db_config):  # =None, new_db=False):
-        # if new_db:
-        #    pass
-        # else:
+    def __init__(self, db_config):
         try:
             print("Connecting to MySQL database...")
             self.cnx = mysql.connector.connect(**db_config)
@@ -616,9 +529,6 @@ class CaptureDatabase:
 
         except Error as error:
             print(error)
-        # finally:
-        #    self.cnx.close()
-        #    print("Connection closed.")
 
         self.cursor = self.cnx.cursor(buffered=True)
 
@@ -804,16 +714,8 @@ class CaptureDatabase:
         self.cursor.execute(self.query_devices_imported)
         return self.cursor.fetchall()
 
-    def select_devices_imported_ignore(self, ignored_deviceID):
-        self.cursor.execute(self.query_devices_imported_ignore, ignored_deviceID)
-        return self.cursor.fetchall()
-
     def select_device_communication_info(self, new_deviceID):
         self.cursor.execute(self.query_device_communication_info, new_deviceID)
-        return self.cursor.fetchall()
-
-    def select_gateway_ips(self, gatewayID):
-        self.cursor.execute(self.query_gateway_ips, gatewayID)
         return self.cursor.fetchall()
 
     def select_devices_in_caps_except(self, condition_data):

@@ -1,48 +1,35 @@
 #!/usr/bin/python3
 
 # Local Modules
-# import _mysql_connector
-
 from src.bidict import BiDict
-from src.capture_database import CaptureDatabase
-# from capture_database import DatabaseHandler
-from src.capture_database import CaptureDigest
-from src.lookup import lookup_mac  # , lookup_hostname
-from src.generate_mudfile import MUDgeeWrapper
+from src.capture_database import CaptureDatabase, CaptureDigest
+from src.lookup import lookup_mac
 from src.generate_report import ReportGenerator
 from src.multicolumn_listbox import MultiColumnListbox
 from src.scrollable_frame import ScrollableFrame
 import src.pcapng_comment as capMeta
 
-#from muddy.muddy.maker import make_mud, make_acl_names, make_policy, make_ace, make_acls, make_support_info
+# Muddy Modules
 from muddy.muddy.mud import MUD  # import muddy.mud as Mud
 from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
 
-import os
-from IPy import IP
-import socket
-import json
-
 # External Modules
-# import concurrent
-from datetime import datetime
-from datetime import timedelta
+from configparser import ConfigParser
+from datetime import datetime, timedelta
 import hashlib
-# import math
+from IPy import IP
+import json
+import logging
 import multiprocessing as mp
-# from multiprocessing import Process, Queue
 import mysql.connector
 from mysql.connector import errorcode
-# import pyshark
-# import subprocess
+import os
+import socket
 import sys
 import time
 import tkinter as tk
-from tkinter import ttk
-from tkinter import scrolledtext
-from tkinter import messagebox
+from tkinter import messagebox, scrolledtext, ttk
 from tkinter.filedialog import askopenfilename
-from configparser import ConfigParser
 
 field2db = BiDict({'File': 'fileName', 'Activity': 'activity', 'Notes (optional)': 'details',
                    'Lifecycle Phase': 'lifecyclePhase', 'Setup': 'setup', 'Normal Operation': 'normalOperation',
@@ -246,15 +233,6 @@ class MudCaptureApplication(tk.Frame):
                                                 state="disabled",
                                                 command=self.generate_report_wizard)  # , anchor=tk.N+tk.W)
         self.b_main_generate_report.pack(side="left")
-
-        # TODO: Determine if this deprecated code should be entirely removed
-        # self.b_main_mudgee = tk.Button(self.menuFrame,
-        #                                text="MUDgee MUD File",
-        #                                wraplength=80,
-        #                                state='disabled',
-        #                                command=self.popup_generate_mud_wizard)  # , anchor=tk.N+tk.W)
-        # self.b_main_mudgee.pack(side="left")
-
 
         # *** Left (capture) frame *** #
         self.capFrame = tk.Frame(self.parent, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
@@ -644,8 +622,6 @@ class MudCaptureApplication(tk.Frame):
             # Enable main menu buttons
             self.b_main_import.config(state='normal')
             self.b_main_mud_wizard.config(state='normal')
-            # TODO: Determine if deprecated mudgee should be removed
-            #self.b_main_mudgee.config(state='normal')
             self.b_main_generate_report.config(state='normal')
             self.b_main_inspect.config(state="disabled")
             self.b_ns.config(state='normal')
@@ -2127,337 +2103,6 @@ class MudCaptureApplication(tk.Frame):
 
     '''
 
-    '''
-    def generate_MUD_wizard(self):
-        #print("You shouldn't have gotten to the generate MUD wizard yet")
-
-        self.w_gen_mud = tk.Toplevel()
-        self.w_gen_mud.wm_title('Generate MUD File Wizard')
-
-        # Prompt for selecting the device
-        prompt_row = tk.Frame(self.w_gen_mud)
-        prompt_row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-
-        dev_select_label = tk.Label(prompt_row, width=45, text="Please select the device you would like to profile:",
-                                    anchor='w')
-        dev_select_label.pack(side=tk.LEFT)
-
-
-        list_row = tk.Frame(self.w_gen_mud)
-        list_row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-
-        self.mud_dev_header = ["Manufacturer", "Model", "Internal Name", "Category", "MAC"]#, "IPv4", "IPv6"]
-        #self.mud_dev_list = MultiColumnListbox(parent=self.mudDevFrame,
-        self.mud_dev_list = MultiColumnListbox(parent=list_row,
-                                                   header=self.mud_dev_header,
-                                                   list=list(), selectmode="browse")
-        self.mud_dev_list.bind("<<TreeviewSelect>>", self.update_mud_device_selection)
-
-        #self.w_gen_mud.bind('<Return>', (lambda event, n=internalName, m=mac: self.select_mud_dev(n, m)))
-        self.w_gen_mud.bind('<Return>', (lambda event : self.select_mud_dev()))
-
-        b_select = tk.Button(self.w_gen_mud, text='select',
-                             #command=(lambda n=internalName, m=mac: self.select_mud_dev(n, m)))
-                             command=(self.select_mud_dev()))
-
-        b_cancel = tk.Button(self.w_gen_mud, text='Cancel', command=self.w_gen_mud.destroy)
-
-        if sys.platform == "win32":
-            b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
-            b_select.pack(side=tk.RIGHT, padx=5, pady=5)
-        else:
-            b_select.pack(side=tk.RIGHT, padx=5, pady=5)
-            b_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
-
-        self.populate_mud_dev_list()
-
-        self.yield_focus(self.w_gen_mud)
-
-    '''
-
-    def select_mud_dev(self):
-        pass
-
-    def popup_generate_mud_wizard(self):
-        self.w_gen_mud = tk.Toplevel()
-        self.w_gen_mud.wm_title('Generate MUD File Wizard')
-
-        # Frames for Device, Gateway, and PCAPs
-        self.topMudDevFrame = tk.Frame(self.w_gen_mud, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.midMudGateFrame = tk.Frame(self.w_gen_mud, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-        self.botMudPCAPFrame = tk.Frame(self.w_gen_mud, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
-
-        # ** Top Device Frame ** #
-        # dev_select_label = tk.Label(self.topDevFrame, width=20, text="Select the device to profile:", anchor='w')
-        # dev_select_label.pack(side=tk.LEFT)
-
-        # self.cap_dev_title = tk.Label(self.botDevFrame, text="Devices", bg="#dfdfdf", bd=1, relief="flat", anchor="n")
-
-        self.mud_dev_title_var = tk.StringVar()
-        self.mud_dev_title_var.set("Device to Profile:")
-        self.mud_dev_title = tk.Label(self.topMudDevFrame, textvariable=self.mud_dev_title_var,
-                                      bg="#eeeeee", bd=1, relief="flat")
-        self.mud_dev_title.pack(side="top", fill=tk.X)
-
-        # self.mud_dev_header = ["Manufacturer", "Model", "MAC Address", "Internal Name", "Category"]
-        self.mud_dev_header = ["id", "Internal Name", "Manufacturer", "Model", "MAC Address", "Category"]
-        self.mud_dev_list = MultiColumnListbox(parent=self.topMudDevFrame, header=self.mud_dev_header,
-                                               input_list=list(), select_mode="browse", exclusion_list=["id"])
-        # unidentified_list_selection
-        # self.mud_dev_list.bind("<<TreeviewSelect>>", self.update_gateway_list_selection)
-        self.mud_dev_list.bind("<<TreeviewSelect>>", self.populate_mud_gate_list)
-
-        # ** Middle Gateway Frame ** #
-        self.mud_gate_title_var = tk.StringVar()
-        self.mud_gate_title_var.set("Network Gateway:")
-        self.mud_gate_title = tk.Label(self.midMudGateFrame, textvariable=self.mud_gate_title_var,
-                                       bg="#eeeeee", bd=1, relief="flat")
-        self.mud_gate_title.pack(side="top", fill=tk.X)
-
-        self.mud_gate_header = ["id", "Internal Name", "Manufacturer", "Model", "Category",
-                                "MAC Address", "IPv4", "IPv6"]
-        self.mud_gate_list = MultiColumnListbox(parent=self.midMudGateFrame, header=self.mud_gate_header,
-                                                input_list=list(), select_mode="browse", exclusion_list=["id"])
-        # identified_list_selection
-        # self.mud_gate_list.bind("<<TreeviewSelect>>", self.update_pcap_list_selection)
-        self.mud_gate_list.bind("<<TreeviewSelect>>", self.populate_mud_pcap_list)
-
-        # ** Bot PCAP Frame ** #
-        self.mud_pcap_title_var = tk.StringVar()
-        self.mud_pcap_title_var.set("Select Packet Captures (PCAPs):")
-        self.mud_pcap_title = tk.Label(self.botMudPCAPFrame, textvariable=self.mud_pcap_title_var,
-                                       bg="#eeeeee", bd=1, relief="flat")
-        self.mud_pcap_title.pack(side="top", fill=tk.X)
-
-        self.mud_pcap_header = ["id", "Date", "Capture Name", "Activity", "Duration (seconds)", "Details",
-                                "Capture File Location"]
-        # self.mud_pcap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
-        self.mud_pcap_list = MultiColumnListbox(parent=self.botMudPCAPFrame, header=self.mud_pcap_header,
-                                                input_list=list(), keep_first=True, exclusion_list=["id"])
-        # identified_list_selection
-        self.mud_pcap_list.bind("<<TreeviewSelect>>", self.select_mud_pcaps)
-
-        # Grid placements #
-        self.topMudDevFrame.grid(row=0, column=0, sticky="nsew")  # new
-        self.midMudGateFrame.grid(row=1, column=0, sticky="nsew")
-        self.botMudPCAPFrame.grid(row=2, column=0, sticky="nsew")
-
-        # Grid configuration #
-        # self.topMudDevFrame.grid_rowconfigure(0, weight=1)
-        # self.midMudGateFrame.grid_rowconfigure(1, weight=1)
-        # self.botMudPCAPFrame.grid_rowconfigure(2, weight=1)
-
-        self.w_gen_mud.grid_rowconfigure(0, weight=1)
-        self.w_gen_mud.grid_rowconfigure(1, weight=1)
-        self.w_gen_mud.grid_rowconfigure(2, weight=1)
-
-        self.b_mud_generate = tk.Button(self.botMudPCAPFrame, text='Generate', state='disabled',
-                                        command=self.generate_mud_file)
-
-        self.b_mud_cancel = tk.Button(self.botMudPCAPFrame, text='Cancel', command=self.w_gen_mud.destroy)
-
-        if sys.platform == "win32":
-            self.b_mud_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
-            self.b_mud_generate.pack(side=tk.RIGHT, padx=5, pady=5)
-        else:
-            self.b_mud_generate.pack(side=tk.RIGHT, padx=5, pady=5)
-            self.b_mud_cancel.pack(side=tk.RIGHT, padx=5, pady=5)
-
-        # Update unidentified, identified lists and try to select the first element
-        # self.refresh_mud_lists()
-        self.populate_mud_dev_list()
-
-        # Select first element of each list
-        # Try becuase the list might be empty
-        self.mud_dev_list.focus(0)
-        self.mud_dev_list.selection_set(0)
-        self.mud_gate_list.focus(0)
-        self.mud_gate_list.selection_set(0)
-        self.mud_pcap_list.focus(0)
-        self.mud_pcap_list.selection_set(0)
-
-        self.yield_focus(self.w_gen_mud)
-
-    def select_mud_pcaps(self, _):
-        print("Select MUD pcaps")
-        self.mud_pcap_sel = []
-
-        print("mud_pcap_list.selection():", self.mud_pcap_list.selection())
-
-        for pcap_item in self.mud_pcap_list.selection():
-            pcap = self.mud_pcap_list.get(pcap_item)
-            print("pcap:", pcap)
-
-            if pcap[1] == "All...":
-                caps_imported = self.db_handler.db.select_imported_captures_with({"deviceID": self.device_id,
-                                                                                  "gatewayID": self.gatewayID})
-
-                for (cap_id, fileName, fileLoc, fileHash, cap_date, capDuration, lifecyclePhase,
-                     internet, humanInteraction, preferredDNS, isolated, durationBased,
-                     duration, actionBased, deviceAction, details) in caps_imported:
-                    self.mud_pcap_sel.append(fileLoc + "/" + fileName)
-                break
-            else:
-                self.mud_pcap_sel.append(pcap[4] + pcap[1])
-
-        self.b_mud_generate.config(state='normal')
-
-    def generate_mud_file(self):  # , event):
-        print("Preparing to generate mud file")
-        self.mud_gen_obj = MUDgeeWrapper()
-
-        # self.mud_gen_obj.set_device(mac=self.mud_device[3], name=self.mud_device[2])
-        self.mud_gen_obj.set_device(mac=self.mud_device[4], name=self.mud_device[3])
-        # self.mud_config = MUDgeeWrapper({'device_config':{'device':mac, 'deviceName':internalName}})
-
-        gateway_ips = self.db_handler.db.select_gateway_ips({'gateway_mac': self.gateway_mac})
-
-        ip = None
-        ipv6 = None
-
-        for (ipv4_addr, ipv6_addr) in gateway_ips:
-            print("ipv4_addr:", ipv4_addr)
-            print("ipv4:", ip)
-            print("ipv6_addr:", ipv6_addr)
-            print("ipv6:", ipv6)
-
-            if ip is not None and ip != ipv4_addr:
-                if ip == "Not found" or ip == "0.0.0.0":
-                    if ipv4_addr != "Not found" and ipv4_addr != "0.0.0.0":
-                        ip = ipv4_addr
-                else:
-                    messagebox.showerror("MUD Gateway Selection Error",
-                                         "The selected gateway appears to have either multiple IPv4 addresses"
-                                         " or IPv6 addresses!")
-                    return
-            else:
-                ip = ipv4_addr
-
-            if ipv6 is not None and ipv6 != ipv6_addr:
-                if ipv6 == "Not found" or ipv6 == "::":
-                    if ipv6_addr != "Not found" and ipv6_addr != "::":
-                        ipv6 = ipv6_addr
-                else:
-                    messagebox.showerror("MUD Gateway Selection Error",
-                                         "The selected gateway appears to have either multiple IPv4 addresses"
-                                         " or IPv6 addresses!")
-                    return
-            else:
-                ipv6 = ipv6_addr
-
-        if ip == "Not found" or ip == "0.0.0.0":
-            if ipv6 == "Not found" or ipv6 == "::":
-                messagebox.showwarning("MUD Gateway Selection Warning",
-                                       "The selected gateway does not have valid IPv4 or IPV6 addresses.")
-            else:
-                messagebox.showwarning("MUD Gateway Selection Warning",
-                                       "The selected gateway does not have a valid IPv4 address.")
-                # return
-        elif ipv6 == "Not found" or ipv6 == "::":
-            messagebox.showwarning("Problem with MUD Gateway Selection",
-                                   "The selected gateway does not have a valid IPv6 address.")
-            # return
-
-        # self.mud_gate_list.append((mfr, model, internalName, category, mac))
-
-        # self.mud_gen_obj.set_gateway(mac=self.mud_gateway[4], ip=ip, ipv6=ipv6)
-        self.mud_gen_obj.set_gateway(mac=self.mud_gateway[5], ip=ip, ipv6=ipv6)
-
-        # pcap_list = self.mud_pcap_sel
-
-        # self.mud_gen_obj.gen_mudfile(pcap_list)
-        print("Generating MUD file")
-        self.mud_gen_obj.gen_mudfile(self.mud_pcap_sel)
-        messagebox.showinfo("MUD File Generation Complete", "The generated MUD file is in the 'mudfiles' directory.")
-
-    def populate_mud_dev_list(self):
-        # Get and insert all captures currently added to database
-        self.mud_dev_list.clear()
-        print("Populating MUD Device List")
-        devices = self.db_handler.db.select_devices_imported()
-
-        for (dev_id, mfr, model, mac, internalName, category) in devices:
-            self.mud_dev_list.append((dev_id, internalName, mfr, model, mac, category))
-            # self.mud_dev_list.append(internalName + ' | ' + mac)
-
-        # self.gate_select_list = tk.OptionMenu(self.row_gate, self.mud_gate_var, *self.mud_gate_list)
-        # self.gate_select_list.pack(side=tk.LEFT)
-
-    def populate_mud_gate_list(self, _):  # , ignored_dev = None):
-        print("Populating MUD Gateway list")
-        self.mud_gate_list.clear()
-        # self.mud_gate_list.append(('--',))
-
-        # device = self.mud_dev_list.get_selected_row()
-        self.mud_device = self.mud_dev_list.get(self.mud_dev_list.selection())
-        print("device:", self.mud_device)
-        # ignored_dev = self.mud_device[4]
-        # self.dev_mac = self.mud_device[3]
-        self.dev_mac = self.mud_device[4]
-        self.device_id = self.mud_device[0]
-        print("self.dev_mac:")
-        print("\t", self.dev_mac)
-        print("self.device_id:")
-        print("\t", self.device_id)
-
-        if self.dev_mac is None or self.device_id is None or self.device_id == 0:
-            print("Returning from gate selection early")
-            return
-
-        # Get and insert all captures currently added to database
-        devices = self.db_handler.db.select_devices_imported_ignore({'ignored_device_id': self.device_id})
-
-        for (dev_id, mfr, model, mac, internalName, category, ipv4, ipv6) in devices:
-            self.mud_gate_list.append((dev_id, internalName, mfr, model, category, mac, ipv4, ipv6))
-            # self.mud_gate_list.append(internalName + ' | ' + mac)
-            # print("\t" + internalName + ' | ' + mac)
-
-        # Set focus on the first element
-        self.mud_gate_list.focus(0)
-        self.mud_gate_list.selection_set(0)
-
-        self.populate_mud_pcap_list(_)  # '--','--')
-
-    def populate_mud_pcap_list(self, _):  # , device=None, gateway=None):
-        print("Populating MUD PCAP list")
-
-        # clear previous list
-        self.mud_pcap_list.clear()
-
-        self.mud_device = self.mud_dev_list.get(self.mud_dev_list.selection())
-        # self.dev_mac = self.mud_device[3]
-        self.dev_mac = self.mud_device[4]
-        self.device_id = self.mud_device[0]
-
-        self.mud_gateway = self.mud_gate_list.get(self.mud_gate_list.selection())
-        # self.gateway_mac = self.mud_gateway[4]
-        self.gateway_mac = self.mud_gateway[5]
-        self.gatewayID = self.mud_gateway[0]
-
-        print("device:", self.dev_mac)
-        print("device_id:", self.device_id)
-        print("gateway:", self.gateway_mac)
-        print("gatewayID:", self.gatewayID)
-
-        if self.device_id is None or self.device_id == 0 or self.gatewayID is None or self.gatewayID == 0:
-            print("Returning from mud pcap selection early")
-            return
-        self.mud_pcap_list.append((0, "All..."))
-
-        # Get and insert all captures currently added to database
-        caps_imported = self.db_handler.db.select_imported_captures_with({"deviceID": self.device_id,
-                                                                          "gatewayID": self.gatewayID})
-
-        for (cap_id, fileName, fileLoc, fileHash, cap_date, capDuration, lifecyclePhase,
-             internet, humanInteraction, preferredDNS, isolated, durationBased,
-             duration, actionBased, deviceAction, details) in caps_imported:
-            self.mud_pcap_list.append(
-                (cap_id, cap_date, fileName, deviceAction, duration, details, fileLoc))  # for early stages
-
-        # Set focus on the first element
-        self.mud_pcap_list.focus(0)
-        self.mud_pcap_list.selection_set(0)
-
     def generate_report_wizard(self):
         self.w_gen_report = tk.Toplevel()
         self.w_gen_report.wm_title('Generate Device Report Wizard')
@@ -2734,7 +2379,6 @@ class MudCaptureApplication(tk.Frame):
         self.parent.quit()
 
 
-#class MUDWizard(tk.Tk):
 class MUDWizard(tk.Toplevel):
 
     def __init__(self, parent, *args, **kwargs):

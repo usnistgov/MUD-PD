@@ -6,8 +6,8 @@ import subprocess
 
 
 def parse_comment(comment):
-    if comment == None:
-        raise ValueError('No JSON formatted comment exists')
+    if comment is None:
+        print('No JSON formatted comment exists')
         return None
     try:
         envi_dict = json.loads(comment)
@@ -22,8 +22,9 @@ def parse_comment(comment):
 # Borrowed from: https://stackoverflow.com/questions/5508509/how-do-i-check-if-a-string-is-valid-json-in-python
 def is_json(string):
     try:
-        json_object = json.loads(string)
+        json.loads(string)  # Formerly set equal to "json_object"
     except ValueError as e:
+        print("Error:", e)
         return False
     return True
 
@@ -68,12 +69,9 @@ def get_comment_length(filename, option_type=1, json_only=True):
                 if is_json(comment):
                     # TODO: Check if the JSON is the one of interest. If there are more than one json formatted comment,
                     #  and the first on is not the one of interest, then it will be unreachable
-                    #mydict = json.loads(comment)
-                    #print(opt_length)
                     file.close()
                     return opt_length
             else:
-                #print(opt_length)
                 file.close()
                 return opt_length
 
@@ -105,13 +103,13 @@ def extract_comment(filename, option_type=1, json_only=True):
     block_length = struct.unpack('<L', file.read(4))[0]
 
     # Discard byte-order magic
-    byte_order_magic = file.read(4)
+    file.read(4)  # byte order magic
     # Discard major and minor versions
-    version_major = file.read(2)
-    version_minor = file.read(2)
+    file.read(2)  # major version
+    file.read(2)  # minor version
     # TODO: Enable the ability to handle lengths other than -1
     # Discard Section Length (Typically 64 bit -1)
-    section_length = file.read(8)
+    file.read(8)  # section length
 
     remaining_header = block_length - 24
 
@@ -133,12 +131,9 @@ def extract_comment(filename, option_type=1, json_only=True):
                 if is_json(comment):
                     # TODO: Check if the JSON is the one of interest. If there are more than one json formatted comment,
                     #  and the first on is not the one of interest, then it will be unreachable
-                    #mydict = json.loads(comment)
-                    #print(comment)
                     file.close()
                     return json.loads(comment)
             else:
-                #print(comment)
                 file.close()
                 return comment
 
@@ -174,11 +169,9 @@ def is_pcapng(file):
 
 
 def is_pcap(file):
-    #if not is_pcapng(file):
-    #    if b': tcpdump capture file' in ret.std
     ret = subprocess.run('file ' + file, shell=True, capture_output=True)
 
-    # TODO: Make sure this isn't too specific
+    # TODO: Make sure this isn't OS-specific
     if b': tcpdump capture file' in ret.stdout:
         return True
     else:
@@ -194,12 +187,9 @@ def insert_comment(filename_in, comment, filename_out=None):
 
     opt_comment = 1
 
-    #filename_in = re.escape(filename_in)
-
     # Double check if PcapNg file. If not, make a copy of pcap file as PcapNg
     if not is_pcapng(filename_in):
-    #if filename_in.lower().endswith(".pcap"):
-        fname_in = filename_in.replace(".pcap",".pcapng")  # + ".pcapng"
+        fname_in = filename_in.replace(".pcap", ".pcapng")
         subprocess.call('tshark -F pcapng -r ' + re.escape(filename_in) + ' -w ' + re.escape(fname_in),
                         stderr=subprocess.PIPE, shell=True)
         comment_length_old = 0
@@ -216,8 +206,6 @@ def insert_comment(filename_in, comment, filename_out=None):
         filename_out = filename + '_commented' + file_ext
 
     file_out = open(filename_out, 'wb')  # re.escape(filename_out), 'wb')
-
-    # TODO: CHECK IF COMMENT ALREADY EXISTS
 
     # Copy first header (Block type)
     header = file_in.read(4)

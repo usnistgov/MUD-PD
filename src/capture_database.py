@@ -373,7 +373,10 @@ class CaptureDatabase:
                     "SELECT DISTINCT p.fileID, d.id, p.tlp, p.tlp_srcport, p.ip_dst, tlp_dstport "
                     "FROM packet p INNER JOIN device d ON p.mac_addr=d.mac_addr "
                     "WHERE NOT EXISTS "
-                    "(SELECT fileID, deviceID, protocol, src_port, dst_ip_addr, dst_port FROM protocol WHERE p.fileID=protocol.fileID AND d.id=protocol.deviceID AND p.tlp=protocol.protocol AND p.tlp_srcport=protocol.src_port AND p.ip_dst=protocol.dst_ip_addr AND tlp_dstport=protocol.dst_port)"
+                    "(SELECT fileID, deviceID, protocol, src_port, dst_ip_addr, dst_port FROM protocol "
+                    "WHERE p.fileID=protocol.fileID AND d.id=protocol.deviceID AND p.tlp=protocol.protocol AND "
+                    "    p.tlp_srcport=protocol.src_port AND p.ip_dst=protocol.dst_ip_addr AND "
+                    "    tlp_dstport=protocol.dst_port)"
                     "AND d.unlabeled=0 AND p.tlp!='';"
                     )
 
@@ -390,6 +393,16 @@ class CaptureDatabase:
     # query_unique_capture = ("SELECT id FROM capture;")
 
     query_imported_capture = "SELECT * FROM capture;"
+
+    query_imported_capture_with_device = (
+        "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, "
+        "    cap.lifecyclePhase, cap.internet, cap.humanInteraction, cap.preferredDNS, cap.isolated, "
+        "    cap.durationBased, cap.duration, cap.actionBased, cap.deviceAction, cap.details "
+        "FROM capture as cap "
+        "    INNER JOIN ( "
+        "      SELECT * FROM device_in_capture "
+        "      WHERE deviceID=%(deviceID)s) device "
+        "        ON device.fileID = cap.id;")
 
     query_device_from_capture = ("SELECT * FROM device WHERE mac_addr = ANY "
                                  "(SELECT deviceID FROM device_in_capture \n"
@@ -662,21 +675,17 @@ class CaptureDatabase:
         self.cursor.execute(self.query_imported_capture)
         return self.cursor.fetchall()
 
-    def select_imported_captures_with(self, deviceIDs):
-        self.cursor.execute(self.query_imported_capture_with, deviceIDs)
+    def select_imported_captures_with_device(self, device_id):
+        self.cursor.execute(self.query_imported_capture_with_device, device_id)
         return self.cursor.fetchall()
 
-    def select_imported_captures_with_device(self, deviceID):
-        self.cursor.execute(self.query_imported_capture_with_device, deviceID)
+    def select_devices_from_caplist(self, capture_ids):
+        format_strings = ",".join(['%s'] * len(capture_ids))
+        self.cursor.execute(self.query_device_from_capture_list % format_strings, tuple(capture_ids))
         return self.cursor.fetchall()
 
-    def select_devices_from_caplist(self, captureIDs):
-        format_strings = ",".join(['%s'] * len(captureIDs))
-        self.cursor.execute(self.query_device_from_capture_list % format_strings, tuple(captureIDs))
-        return self.cursor.fetchall()
-
-    def select_most_recent_fw_ver(self, deviceID_date_deviceID):
-        self.cursor.execute(self.query_most_recent_fw_ver, deviceID_date_deviceID)
+    def select_most_recent_fw_ver(self, device_id):
+        self.cursor.execute(self.query_most_recent_fw_ver, device_id)
         try:
             (fw_ver,) = self.cursor.fetchone()
         except TypeError as te:
@@ -699,8 +708,8 @@ class CaptureDatabase:
         self.cursor.execute(self.query_devices_imported)
         return self.cursor.fetchall()
 
-    def select_device_communication_info(self, new_deviceID):
-        self.cursor.execute(self.query_device_communication_info, new_deviceID)
+    def select_device_communication_info(self, new_device_id):
+        self.cursor.execute(self.query_device_communication_info, new_device_id)
         return self.cursor.fetchall()
 
     def select_devices_in_caps_except(self, condition_data):
@@ -712,12 +721,12 @@ class CaptureDatabase:
         self.cursor.execute(self.query_caps_with_device_where + conditions, mac_addr_data)
         return self.cursor.fetchall()
 
-    def select_device(self, deviceID):
-        self.cursor.execute(self.query_device_info, (deviceID,))
+    def select_device(self, device_id):
+        self.cursor.execute(self.query_device_info, (device_id,))
         return self.cursor.fetchall()
 
-    def select_device_state(self, fileID, deviceID):
-        self.cursor.execute(self.query_device_state, (fileID, deviceID))
+    def select_device_state(self, file_id, device_id):
+        self.cursor.execute(self.query_device_state, (file_id, device_id))
         return self.cursor.fetchall()
 
     def select_device_macs(self):
@@ -728,8 +737,8 @@ class CaptureDatabase:
     def select_packets(self):
         self.cursor.execute(self.query_pkts)
 
-    def select_device_strings(self, deviceID):
-        self.cursor.execute(self.query_device_strings, deviceID)
+    def select_device_strings(self, device_id):
+        self.cursor.execute(self.query_device_strings, device_id)
 
     def select_last_insert_id(self):
         self.cursor.execute(self.query_last_insert_id)
@@ -741,7 +750,7 @@ class CaptureDatabase:
         self.cnx.commit()
 
     def create_cap_toi(self, capture=None):
-        if capture == None:
+        if capture is None:
             self.cursor.execute(self.create_capture_toi_all)
         else:
             self.cursor.execute(self.create_capture_toi, capture)
@@ -756,20 +765,22 @@ class CaptureDatabase:
         self.cursor.execute(self.drop_device_toi)
         self.cnx.commit()
 
-    def create_dev_toi(self, deviceID=None):
-        if deviceID == None:
+    # TODO: Determine if can be removed
+    def create_dev_toi(self, device_id=None):
+        if device_id is None:
             self.cursor.execute(self.create_device_toi_all)
         else:
-            self.cursor.execute(self.create_device_toi, deviceID)
+            self.cursor.execute(self.create_device_toi, device_id)
         self.cnx.commit()
 
-    def create_dev_toi_from_fileID_list(self):
+    def create_dev_toi_from_file_id_list(self):
         format_strings = ",".join(['%s'] * len(self.capture_id_list))
         self.cursor.execute(self.create_device_toi_from_capture_id_list % format_strings, tuple(self.capture_id_list))
         self.cnx.commit()
 
-    def update_dev_toi(self, deviceID):
-        self.cursor.execute(self.update_device_toi, deviceID)
+    # TODO: Determine if can be removed
+    def update_dev_toi(self, device_id):
+        self.cursor.execute(self.update_device_toi, device_id)
         self.cnx.commit()
 
     # Packet table of interest
@@ -826,7 +837,8 @@ class Mac2IP(dict):
             self[mac][ip_ver] = set()
         self[mac][ip_ver].add(ip)
 
-    def findIP(self, mac, ip_ver=None):
+    # TODO: Determine if can be removed
+    def find_ip(self, mac, ip_ver=None):
         if mac in self:
             if ip_ver is None:
                 return self[mac]
@@ -834,7 +846,8 @@ class Mac2IP(dict):
                 return self[mac][ip_ver]
         return {}
 
-    def hasMultipleIP(self, mac, ip_ver=None):
+    # TODO: Determine if can be removed
+    def has_multiple_ip(self, mac, ip_ver=None):
         if mac in self:
             if ip_ver is not None:
                 if ip_ver in self[mac]:
@@ -846,7 +859,8 @@ class Mac2IP(dict):
                         return True
         return False
 
-    def removeIP(self, mac, ip, ip_ver=None):
+    # TODO: Determine if can be removed
+    def remove_ip(self, mac, ip, ip_ver=None):
         if mac in self:
             if ip_ver is None:
                 ip_ver = IP(ip).version()
@@ -887,7 +901,8 @@ class CaptureDigest:
                 self.tempDir = './.temp/'
                 self.tempFullCapDir = self.tempDir + 'full_cap/'
                 self.tempSplitCapDir = self.tempDir + 'split_cap/'
-                if os.path.exists(self.tempDir) and os.path.exists(self.tempFullCapDir) and os.path.exists(self.tempSplitCapDir):
+                if os.path.exists(self.tempDir) and os.path.exists(self.tempFullCapDir) and \
+                        os.path.exists(self.tempSplitCapDir):
                     # Should handle the error more gracefully than ignoring
                     subprocess.call('rm ' + self.tempDir + '*/*', shell=True)
                 else:
@@ -898,13 +913,8 @@ class CaptureDigest:
                     if not os.path.exists(self.tempSplitCapDir):
                         os.makedirs(self.tempSplitCapDir)
 
-
                 # Check filetype
-                # if pcap, process normally, if pcapng, look for metadata and convert to pcap for processing
-                #ret = subprocess.run('file ' + fpath, shell=True, capture_output=True)
-                #if b'pcap-ng' in ret.stdout:
                 if capMeta.is_pcapng(fpath):
-                #if self.fname.lower().endswith(".pcapng"):
                     # Convert the pcapng file to pcap
                     capfile = self.tempDir + "full_cap/temp_cap.pcap"
                     subprocess.call('tshark -F pcap -r ' + self.fpath + ' -w ' + capfile, stderr=subprocess.PIPE,
@@ -922,8 +932,7 @@ class CaptureDigest:
                 print("Adjusted numProcesses: ", self.numProcesses)
 
                 subprocess.call('tcpdump -r ' + re.escape(capfile) + ' -w ' + self.tempSplitCapDir + 'temp_cap -C ' +
-                                                          str(self.splitSize),
-                                stderr=subprocess.PIPE, shell=True)
+                                str(self.splitSize), stderr=subprocess.PIPE, shell=True)
                 self.files = subprocess.check_output('ls ' + self.tempSplitCapDir, stderr=subprocess.STDOUT,
                                                      shell=True).decode('ascii').split()
 
@@ -941,7 +950,7 @@ class CaptureDigest:
                 elif len(self.files) > self.numProcesses:
                     print(f"WARNING! Multiprocessing Error: The capture file has been split into more pieces "
                           f"({len(self.files)}) than processors ({self.numProcesses}). Capture file processing will "
-                          f"continue with {len(self.numProcessors)}, but may take longer to process than what may be "
+                          f"continue with {self.numProcesses}, but may take longer to process than what may be "
                           f"optimal.")
                     self.numProcesses = len(self.files)
                 elif len(self.files) < self.numProcesses:
@@ -988,7 +997,7 @@ class CaptureDigest:
             ew_filter_stop = datetime.now()
             print("time to filter ew: ", ew_filter_stop - ew_filter_start)
 
-            start = datetime.now()
+            # start = datetime.now()
             self.cap = pyshark.FileCapture(fpath, keep_packets=False)
 
             self.cap_timestamp = self.cap[0].sniff_timestamp
@@ -999,6 +1008,7 @@ class CaptureDigest:
             self.uniqueIP = []
             self.uniqueIPv6 = []
             self.uniqueMAC = []
+            self.uniqueMAC_dst = []
 
             # TODO Check if this is now broken
             self.ip2mac = {}
@@ -1013,16 +1023,16 @@ class CaptureDigest:
             print("Identified devices for this capture: ", self.modellookup)
 
         # TODO: VERIFY REMOVAL
-        #self.cap_timestamp = self.cap[0].sniff_timestamp
+        # self.cap_timestamp = self.cap[0].sniff_timestamp
 
-        (self.cap_date, self.cap_time) = datetime.utcfromtimestamp(float(self.cap_timestamp)).strftime('%Y-%m-%d '
-                                                                                                    '%H:%M:%S').split()
+        (self.cap_date, self.cap_time) = datetime.utcfromtimestamp(
+            float(self.cap_timestamp)).strftime('%Y-%m-%d %H:%M:%S').split()
 
         # TODO CHANGE capDuration format from seconds to days, hours, minutes, seconds
-        #self.capDuration = 0 # timedelta(0)
-        #self.capDuration = datetime.fromtimestamp(int(math.trunc(float(self.pkt_info[-1]['pkt_timestamp'])))) - \
-        #                   datetime.fromtimestamp(int(math.trunc(float(self.cap_timestamp))))  # 0#timedelta(0)
-        #self.capDuration = int(math.trunc(float(self.pkt_info[-1]['pkt_timestamp']) - float(self.cap_timestamp)))
+        # self.capDuration = 0 # timedelta(0)
+        # self.capDuration = datetime.fromtimestamp(int(math.trunc(float(self.pkt_info[-1]['pkt_timestamp'])))) - \
+        #                    datetime.fromtimestamp(int(math.trunc(float(self.cap_timestamp))))  # 0#timedelta(0)
+        # self.capDuration = int(math.trunc(float(self.pkt_info[-1]['pkt_timestamp']) - float(self.cap_timestamp)))
 
         print(self.cap_date)
         print(self.cap_time)
@@ -1036,7 +1046,7 @@ class CaptureDigest:
         start = datetime.now()
 
         with Manager() as manager:
-            #pkts_m = []
+            # pkts_m = []
             pkts_info_m = []
             addr_mac_src_set = []  # manager.list()
             addr_mac_dst_set = []  # manager.list()
@@ -1065,7 +1075,7 @@ class CaptureDigest:
                                     addr_ipv6_src_set[i], addr_ipv6_dst_set[i], ip2mac_m[i]))
 
             with Pool(self.numProcesses) as p:
-                #p.starmap_async(self.process_pkts_mp, import_args)
+                # p.starmap_async(self.process_pkts_mp, import_args)
                 p.starmap(self.process_pkts_mp, import_args)
 
             self.pkt_info = [item for sublist in pkts_info_m for item in sublist]
@@ -1104,7 +1114,6 @@ class CaptureDigest:
         addr_ip_dst += list(addr_ip_dst_set)
         addr_ipv6_src += list(addr_ipv6_src_set)
         addr_ipv6_dst += list(addr_ipv6_dst_set)
-        #ip2mac += list(ip2mac_set)
         ip2mac.append(mac2ip)
 
     def extract_info_mp(self, pkt_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst, addr_ipv6_src,
@@ -1118,7 +1127,7 @@ class CaptureDigest:
                     "ip_ver": None,
                     "ip_src": None,
                     "ip_dst": None,
-                    "ew": True, # TODO: Verify this works
+                    "ew": True,  # TODO: Verify this works
                     "tlp": '',
                     "tlp_srcport": None,
                     "tlp_dstport": None,
@@ -1128,8 +1137,8 @@ class CaptureDigest:
         mac_dst = None
         ip_src = None
         ip_dst = None
-        notReserved_src = True
-        notReserved_dst = True
+        not_reserved_src = True
+        not_reserved_dst = True
 
         for l in p.layers:
             if l.layer_name == "sll":
@@ -1156,13 +1165,13 @@ class CaptureDigest:
                     pkt_dict['ew'] = False
                 # TODO: DOUBLE CHECK THAT THIS NEW CHECK WORKS
                 if src_type in self.IPS_2_IGNORE:
-                    notReserved_src = False
+                    not_reserved_src = False
                 # if src_type == 'RESERVED' or src_type == 'LOOPBACK' or ip_src == '0.0.0.0':
-                #    notReserved_src = False
+                #    not_reserved_src = False
                 if dst_type in self.IPS_2_IGNORE:
-                    notReserved_dst = False
+                    not_reserved_dst = False
                 # if dst_type == 'RESERVED' or dst_type == 'LOOPBACK' or ip_dst == '0.0.0.0':
-                #    notReserved_dst = False
+                #    not_reserved_dst = False
             elif l.layer_name == "ipv6":
                 pkt_dict["ip_ver"] = l.version
                 pkt_dict["ip_src"] = l.src
@@ -1177,13 +1186,13 @@ class CaptureDigest:
                     pkt_dict['ew'] = False
                 # TODO: DOUBLE CHECK THAT THIS NEW CHECK WORKS
                 if src_type in self.IPS_2_IGNORE:
-                    notReserved_src = False
+                    not_reserved_src = False
                 # if src_type == 'RESERVED' or src_type == 'LOOPBACK' or ip_src == '::':
-                #    notReserved_src = False
+                #    not_reserved_src = False
                 if dst_type in self.IPS_2_IGNORE:
-                    notReserved_dst = False
+                    not_reserved_dst = False
                 # if dst_type == 'RESERVED' or dst_type == 'LOOPBACK' or ip_dst == '::':
-                #    notReserved_dst = False
+                #    not_reserved_dst = False
             elif l.layer_name == "tcp":
                 pkt_dict["tlp"] = "tcp"
                 pkt_dict["tlp_srcport"] = l.srcport
@@ -1199,14 +1208,14 @@ class CaptureDigest:
         addr_mac_src.add(mac_src)
         addr_mac_dst.add(mac_dst)
 
-        if notReserved_src and (mac_src == 'FF:FF:FF:FF:FF:FF' or mac_src == '00:00:00:00:00:00'):
-            notReserved_src = False
-        if notReserved_dst and (mac_dst == 'FF:FF:FF:FF:FF:FF' or mac_dst == '00:00:00:00:00:00'):
-            notReserved_dst = False
+        if not_reserved_src and (mac_src == 'FF:FF:FF:FF:FF:FF' or mac_src == '00:00:00:00:00:00'):
+            not_reserved_src = False
+        if not_reserved_dst and (mac_dst == 'FF:FF:FF:FF:FF:FF' or mac_dst == '00:00:00:00:00:00'):
+            not_reserved_dst = False
 
-        if ip_src is not None and notReserved_src:
+        if ip_src is not None and not_reserved_src:
             ip2mac.add(mac_src, ip_src)
-        if ip_dst is not None and notReserved_dst:
+        if ip_dst is not None and not_reserved_dst:
             ip2mac.add(mac_dst, ip_dst)
 
     def import_pkts(self):
@@ -1236,15 +1245,15 @@ class CaptureDigest:
         print(self.cap_date)
 
     # TODO: Verify this new version is acceptable, or remove if not needed
-    def findIP(self, mac, v6=False):
+    def find_ip(self, mac, v6=False):
         if v6:
             ip_ver = 6
         else:
             ip_ver = 4
-        return self.ip2mac.findIP(mac, ip_ver)
+        return self.ip2mac.find_ip(mac, ip_ver)
 
-    def findIPs(self, mac):
-        ips = self.ip2mac.findIP(mac)
+    def find_ips(self, mac):
+        ips = self.ip2mac.find_ip(mac)
         if 4 in ips:
             ipv4_set = ips[4]
         else:
@@ -1254,8 +1263,8 @@ class CaptureDigest:
         else:
             ipv6_set = {'Not found'}
 
-        hasMultiple = self.ip2mac.hasMultipleIP(mac)
-        return (ipv4_set, ipv6_set, hasMultiple)
+        has_multiple = self.ip2mac.has_multiple_ip(mac)
+        return ipv4_set, ipv6_set, has_multiple
 
     def extract_pkts(self):
         # This should be parallelizeable
@@ -1376,9 +1385,9 @@ class CaptureDigest:
         self.uniqueIP_dst = []
         self.uniqueIPv6_dst = []
 
-        #self.protocol = []
+        # self.protocol = []
 
-        #self.num_pkts = 0
+        # self.num_pkts = 0
         self.pkt = []
 
     def extract_fingerprint(self):
@@ -1387,7 +1396,7 @@ class CaptureDigest:
             for p in self.dhcp_pkts:
                 dhcp_fingerprint = ""
                 hostname = ""
-                output = ""
+                # output = ""
                 yes = True
                 first = True
                 try:
@@ -1423,8 +1432,6 @@ class CaptureDigest:
                     print("No fingerprint found")
                 if yes:
                     output = lookup_fingerbank(dhcp_fingerprint, hostname, mac, self.api_key)
-                    #print("Fingerprint Result:", output["name"])
-                    #self.modellookup.update({mac: output["name"]})
                     if output.get("name") is not None:
                         print("Fingerprint Result:", output.get("name"))
                         self.modellookup.update({mac: output.get("name")})
@@ -1434,9 +1441,8 @@ class CaptureDigest:
 
     # Write the metadata to the pcapng
     def embed_meta(self, capture_data):
-        capMeta.insert_comment(self.fpath, capture_data)  # , self.fpath)
+        capMeta.insert_comment(self.fpath, capture_data)
 
-    # def __del__(self):
     def __exit__(self):
         self.cap.close()
         self.dhcp_pkts.close()

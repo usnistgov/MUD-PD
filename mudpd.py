@@ -1330,7 +1330,7 @@ class MudCaptureApplication(tk.Frame):
                     device_id = temp_device_id[0]
 
                     # TODO COMPLETE THE REPLACEMENT OF THE OLD findIP and findIPs functions
-                    (ip_set, ipv6_set, hasMultiple) = self.cap.findIPs(mac)
+                    (ip_set, ipv6_set, hasMultiple) = self.cap.find_ips(mac)
                     if hasMultiple:
                         print("Warning: multiple IPv4 or IPv6 addresses found, providing the first one only")
                     ip = list(ip_set)[0]
@@ -1365,7 +1365,7 @@ class MudCaptureApplication(tk.Frame):
                         (deviceStateID, _, _, fw_ver, ip, ipv6) = device_state[0]
                     elif len(device_state) == 0:
                         # TODO COMPLETE THE REPLACEMENT OF THE OLD findIP and findIPs functions
-                        (ip_set, ipv6_set, hasMultiple) = self.cap.findIPs(mac)
+                        (ip_set, ipv6_set, hasMultiple) = self.cap.find_ips(mac)
                         if hasMultiple:
                             print("Warning: multiple IPv4 or IPv6 addresses found, providing the first one only")
                         ip = list(ip_set)[0]
@@ -1926,7 +1926,7 @@ class MudCaptureApplication(tk.Frame):
                 self.db_handler.db.device_id_list.append(dev_details[0])
 
         print("device_id_list", self.db_handler.db.device_id_list)
-        self.db_handler.db.create_dev_toi_from_fileID_list()
+        self.db_handler.db.create_dev_toi_from_file_id_list()
 
         # Selecting based on E/W or N/S
         if self.comm_state == "any":

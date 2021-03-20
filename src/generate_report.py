@@ -44,8 +44,7 @@
 #                            ...]
 #                           }
 
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 
 class ReportGenerator:
@@ -100,14 +99,6 @@ class ReportGenerator:
                 f.write('     MAC:  %s\n' % dev['mac'])
 
             f.write('Notes:\n\t%s\n' % capture_info['details'])
-
-    '''
-    def prepare_communication_info(self, ew, communication_info):
-        if ew:
-            self.comm_info{'devices'}.append(communication_info)
-        else:
-            self.comm_info{'serv'}.append(communication_info)
-    '''
 
     def write_communication_info(self, communication_info):
         with open(self.file, 'a') as f:

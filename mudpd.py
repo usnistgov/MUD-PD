@@ -10,7 +10,7 @@ from src.scrollable_frame import ScrollableFrame
 import src.pcapng_comment as capMeta
 
 # Muddy Modules
-from muddy.muddy.mud import MUD  # import muddy.mud as Mud
+from muddy.muddy.mud import MUD
 from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
 
 # External Modules
@@ -218,11 +218,11 @@ class MudCaptureApplication(tk.Frame):
                                                 text="Generate Report",
                                                 wraplength=80,
                                                 state="disabled",
-                                                command=self.generate_report_wizard)  # , anchor=tk.N+tk.W)
+                                                command=self.generate_report_wizard)
         self.b_main_generate_report.pack(side="left")
 
         # *** Left (capture) frame *** #
-        self.capFrame = tk.Frame(self.parent, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.capFrame = tk.Frame(self.parent, width=300, bd=1, bg="#eeeeee")
 
         # title
         self.cap_title_var = tk.StringVar()
@@ -232,10 +232,8 @@ class MudCaptureApplication(tk.Frame):
 
         # capture list
         self.cap_header = ["id", "Date", "Capture Name", "Activity", "Duration", "Details", "Capture File Location"]
-        # self.cap_header = ["Date","Capture Name","Activity", "Details","Capture File Location"]
         self.cap_list = MultiColumnListbox(parent=self.capFrame, header=self.cap_header, input_list=list(),
                                            keep_first=True, exclusion_list=["id"])
-        # self.cap_list.bind("<<ListboxSelect>>", self.update_dev_list)
         self.cap_list.bind("<<TreeviewSelect>>", self.update_dev_list)
         '''
         self.cap_list.bind("<Double-Button-1>>", (lambda idx=0, hd0=4, hd1=1
@@ -244,20 +242,7 @@ class MudCaptureApplication(tk.Frame):
                                   self.cap_list.get(self.cap_list.selection()[idx])[hd1]))))
         '''
 
-        # (lambda d=unknown_dev_list.curselection(): self.popup_import_device(d)))
-        self.b_main_inspect = tk.Button(self.capFrame, text="Inspect",
-                                        # command=(lambda c=CaptureDigest((lambda x=None, idx=0, hd0=4, hd1=1
-                                        # : self.cap_list.selection(x)[idx].get(self.cap_header[hd0]) +
-                                        # self.cap_list.selection(x)[idx].get(self.cap_header[hd1])))
-                                        #         : self.popup_import_capture_devices(c)))
-                                        command=self.pre_popup_import_capture_devices)
-        '''
-                              command=(lambda hd0=4, hd1=1 :
-                                           self.popup_import_capture_devices(
-                    CaptureDigest(
-                        self.cap_list.get_selected_row()[hd0] + "/" +
-                        self.cap_list.get_selected_row()[hd1]))))
-        '''
+        self.b_main_inspect = tk.Button(self.capFrame, text="Inspect", command=self.pre_popup_import_capture_devices)
         self.b_main_inspect.pack(side="right")
         self.b_main_inspect.config(state="disabled")
         self.cap = None
@@ -266,7 +251,7 @@ class MudCaptureApplication(tk.Frame):
         self.rightFrame = tk.Frame(self.parent, width=500, bd=1, bg="#dfdfdf")
 
         # ** Top Right (device) frame  ** #
-        self.devFrame = tk.Frame(self.rightFrame, width=500)  # , bd=1, bg="#eeeeee")
+        self.devFrame = tk.Frame(self.rightFrame, width=500)
 
         # title
         self.dev_title_var = tk.StringVar()
@@ -278,7 +263,6 @@ class MudCaptureApplication(tk.Frame):
         self.dev_header = ["id", "Manufacturer", "Model", "Internal Name", "MAC", "Category"]
         self.dev_list = MultiColumnListbox(parent=self.devFrame, header=self.dev_header, input_list=list(),
                                            keep_first=True, exclusion_list=["id"])
-        # self.dev_list.bind("<<ListboxSelect>>", self.update_comm_list)
         self.dev_list.bind("<<TreeviewSelect>>", self.update_comm_list)
 
         self.devFrame.pack(side="top", fill="both", expand=True)
@@ -292,12 +276,6 @@ class MudCaptureApplication(tk.Frame):
         self.comm_title = tk.Label(self.commFrame, textvariable=self.comm_title_var, bg="#eeeeee", bd=1, relief="flat")
         self.comm_title.pack(fill=tk.X)
 
-        # scrollbar
-        '''
-        self.comm_scrollbar = tk.Scrollbar(self.commFrame)
-        self.comm_scrollbar.pack(side="right", fill="both")
-        '''
-
         # communication list
         self.comm_header = ["id", "fileID", "Time", "MAC", "IPver", "Source", "Destination", "E/W",
                             "Protocol", "Transport Protocol", "Source Port",
@@ -305,16 +283,7 @@ class MudCaptureApplication(tk.Frame):
                             # "Destination Port", "Length", "Raw"] #Direction being NS or EW
                             "Destination Port", "Length"]  # Direction being NS or EW
         self.comm_list = MultiColumnListbox(parent=self.commFrame, header=self.comm_header, input_list=list(),
-                                            exclusion_list=["id", "fileID"])  # , keep1st=True)
-        # self.comm_list.bind("<<ListboxSelect>>", self.update_comm_list)
-
-        '''
-        self.comm_list = tk.Listbox(self.commFrame, yscrollcommand = self.comm_scrollbar.set, 
-                                    selectmode="extended", exportselection=0, bd=0)
-
-        self.comm_list.pack(side="left", fill="both", expand=True)
-        self.comm_scrollbar.config( command = self.comm_list.yview )
-        '''
+                                            exclusion_list=["id", "fileID"])
 
         # To be added once packets have been added to the table
         self.comm_state = "any"

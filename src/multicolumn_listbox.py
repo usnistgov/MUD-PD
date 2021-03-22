@@ -32,7 +32,7 @@ class MultiColumnListbox(object):
         self.keep_first = keep_first
 
     def _setup_widgets(self, select_mode, row=None, column=None, sticky=None):
-        #container = ttk.Frame(self.parent)
+        # container = ttk.Frame(self.parent)
         if row is None and column is None:
             self.container.pack(fill='both', expand=True)
         else:
@@ -63,7 +63,7 @@ class MultiColumnListbox(object):
             self.tree.insert('', 'end', values=item)
             self._adjust_width(item)
 
-        self._update_displayColumns()
+        self._update_display_columns()
 
     # adjust column's width if necessary to fit each value
     def _adjust_width(self, item):
@@ -91,7 +91,7 @@ class MultiColumnListbox(object):
         # switch the heading so it will sort in the opposite direction
         self.tree.heading(col, command=lambda col=col: self._sortby(col, int(not descending)))
 
-    def _update_displayColumns(self):
+    def _update_display_columns(self):
         self.display_columns = list()
 
         for h in self.header:
@@ -193,12 +193,12 @@ class MultiColumnListbox(object):
     def exclude_column(self, exclusion):
         if exclusion not in self.exclusion_list:
             self.exclusion_list.append(exclusion)
-        self._update_displayColumns
+        self._update_display_columns
 
     def include_column(self, inclusion):
         if inclusion in self.exclusion_list:
             self.exclusion_list.remove(inclusion)
-        self._update_displayColumns
+        self._update_display_columns
 
     def is_empty(self):
         if self.num_nodes == 0:
@@ -229,19 +229,12 @@ def printSelection(tree):  # , event=None):
     # textList = tree.item(tree.focus())["values"]
 
     for sel in tree.selection():
-        itemList = tree.item(sel)["values"]
+        item_list = tree.item(sel)["values"]
         line = ''
-        for item in itemList:
+        for item in item_list:
             line += str(item) + " "
 
         print(line)
-
-
-'''
-#def clearListbox(tree, event=None):
-def clearListbox(tree):
-    tree.delete(*tree.get_children())
-'''
 
 
 def populateListbox(lb):

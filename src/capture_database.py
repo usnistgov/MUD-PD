@@ -688,7 +688,7 @@ class CaptureDatabase:
         self.cursor.execute(self.query_most_recent_fw_ver, device_id)
         try:
             (fw_ver,) = self.cursor.fetchone()
-        except TypeError as te:
+        except TypeError:  # as te:
             fw_ver = ''
         return fw_ver
 
@@ -1181,7 +1181,7 @@ class CaptureDigest:
                 src_type = IP(ip_src).iptype()
                 dst_type = IP(ip_dst).iptype()
                 # TODO: CHECK IF PUTTING THIS CHECK INTO THE IPS_2_IGNORE if true
-                #if src_type == 'PUBLIC' or dst_type == 'PUBLIC':
+                # if src_type == 'PUBLIC' or dst_type == 'PUBLIC':
                 if src_type == 'GLOBAL-UNICAST' or dst_type == 'GLOBAL-UNICAST':
                     pkt_dict['ew'] = False
                 # TODO: DOUBLE CHECK THAT THIS NEW CHECK WORKS

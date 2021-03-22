@@ -70,8 +70,6 @@ class MudCaptureApplication(tk.Frame):
         self.window_stack = []
         self.yield_focus(self.parent)
 
-        self.test = "testing"
-
         # Multiprocessing
         self.p_file = None
         self.m = mp.Manager()

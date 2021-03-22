@@ -48,22 +48,13 @@ field2db = BiDict({'File': 'fileName', 'Activity': 'activity', 'Notes (optional)
 dbFields = 'host', 'database', 'user', 'passwd'
 dbNewFields = 'host', 'user', 'passwd', 'new database'
 APIFields = 'api_key'
-# dbField2Var = {'Host' : 'host', 'Database' : 'database', 'Username' : 'user', 'Password' : 'passwd'}
-# captureFields = 'File', 'Activity', 'Notes (optional)'
 captureFields = 'File', 'Notes (optional)'
 lifecyclePhaseFields = 'Setup', 'Normal Operation', 'Removal'
 captureEnvFields = 'Internet', 'Human Interaction', 'Preferred DNS Enabled', 'Isolated'
 captureTypeFields = 'Duration-based', 'Duration', 'Action-based', 'Action'
-# captureField2Var = {'File' : 'fileLoc', 'Activity' : 'activity', 'Details' : 'details'}
-captureInfoFields = 'Date of Capture', 'Time of Capture'  # , 'Devices'
-# deviceFields = 'Model', 'Internal Name', 'Device Category', 'Communication Standards', 'Notes'
+captureInfoFields = 'Date of Capture', 'Time of Capture'
 deviceFields = 'Manufacturer', 'Model', 'MAC', 'Internal Name', 'Category', 'Notes', 'Capabilities'
-# deviceField2Var = {'Model' : 'model', 'Internal Name' : 'internalName',
-# 'Device Category' : 'deviceCategory', 'Communication Standards', 'Notes': 'notes'}
-# deviceOptions = 'WiFi', 'Bluetooth', 'Zigbee', 'ZWave', '4G', '5G', 'Other'
 deviceOptions = 'MUD', 'WiFi', 'Ethernet', 'Bluetooth', 'Zigbee', 'ZWave', '3G', '4G', '5G', 'Other'
-# deviceOptions2Var = {'WiFi' : 'wifi', 'Bluetooth' : 'bluetooth', 'Zigbee' : 'zigbee',
-# 'ZWave' : 'zwave', '4G' : '4G', '5G' : '5G', 'Other', 'other'}
 
 
 # GUI Class for the MUD Capture Analysis
@@ -75,7 +66,6 @@ class MudCaptureApplication(tk.Frame):
         self.parent.title("MUD-PD")
         self.api_key = self.read_api_config()
         if self.api_key != "":
-            #self.api_key = self.api_key['api_key']
             print("Fingerbank API Key: ", self.api_key)
         self.window_stack = []
         self.yield_focus(self.parent)
@@ -84,11 +74,8 @@ class MudCaptureApplication(tk.Frame):
 
         # Multiprocessing
         self.p_file = None
-        #self.p_list = list()
-        #nself.p_count = 0
         self.m = mp.Manager()
         self.q = self.m.Queue()
-        #self.event = self.Event()
         self.filename_prev = ""
 
         # ** Initialize class variables ** #
@@ -411,7 +398,6 @@ class MudCaptureApplication(tk.Frame):
         elif self.window_stack[-1] != window:
             # Previously top window yield status
             self.window_stack[-1].attributes('-topmost', False)
-            # self.window_stack[-1].focus_release()
             self.window_stack[-1].grab_release()
 
             # Push new window to the top of the stack
@@ -420,7 +406,6 @@ class MudCaptureApplication(tk.Frame):
 
             # Wait for window to close before yielding focus to next in stack
             self.window_stack[-2].wait_window(self.window_stack[-1])
-            # self.window_stack[-1].focus_release()
             self.window_stack[-1].grab_release()
             self.window_stack.pop()
             self.yield_focus()
@@ -428,14 +413,10 @@ class MudCaptureApplication(tk.Frame):
     def popup_connect2database(self):
         self.w_db = tk.Toplevel()
         self.w_db.wm_title("Connect to Database")
-
         self.make_form_database(dbFields)
-
-        #self.bind('<Return>', (lambda event, e=ents: self.connect_and_close(e)))
         self.bind('<Return>', (lambda event: self.connect_and_close))
 
         b_connect = tk.Button(self.w_db, text='Connect',
-                              #command=(lambda e=ents: self.connect_and_close(e)))
                               command=self.connect_and_close)
         b_cancel = tk.Button(self.w_db, text='Cancel', command=self.w_db.destroy)
 
@@ -450,14 +431,12 @@ class MudCaptureApplication(tk.Frame):
         checkvar = tk.IntVar()
         ckb_save = tk.Checkbutton(self.w_db, text="Save", width=7, justify=tk.LEFT, variable=checkvar)
         ckb_save.pack(side=tk.LEFT, anchor=tk.W, padx=5)
-        #ents.append(("Save", checkvar))
         self.db_cnx_entries.append(("Save", checkvar))
 
         self.yield_focus(self.w_db)
 
     def make_form_database(self, fields):
         db_handler_temp = DatabaseHandler()
-        # entries = list()
         self.db_cnx_entries = list()
 
         for field in fields:
@@ -472,23 +451,15 @@ class MudCaptureApplication(tk.Frame):
             row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
             lab.pack(side=tk.LEFT)
             ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
-            # entries.append((field, ent))
             self.db_cnx_entries.append((field, ent))
-
-        # return entries
 
     def popup_create_new_database(self):
         self.w_db_new = tk.Toplevel()
         self.w_db_new.wm_title("Create New Database")
-
-        #ents = self.make_form_new_database(dbNewFields)
         self.make_form_new_database(dbNewFields)
-
-        #self.bind('<Return>', (lambda event, e=ents, c=True: self.connect_and_close(e, create=c)))
         self.bind('<Return>', (lambda event, c=True: self.connect_and_close(create=c)))
 
         b_create = tk.Button(self.w_db_new, text='Create',
-                             #command=(lambda e=ents, c=True: self.connect_and_close(e, create=c)))
                              command=(lambda c=True: self.connect_and_close(create=c)))
         b_cancel = tk.Button(self.w_db_new, text='Cancel', command=self.w_db_new.destroy)
 
@@ -503,7 +474,6 @@ class MudCaptureApplication(tk.Frame):
         checkvar = tk.IntVar()
         ckb_save = tk.Checkbutton(self.w_db_new, text="Save", width=7, justify=tk.LEFT, variable=checkvar)
         ckb_save.pack(side=tk.LEFT, anchor=tk.W, padx=5)
-        #ents.append(("Save", checkvar))
         self.db_cnx_entries.append(("Save", checkvar))
 
         messagebox.showinfo("CREATING a New Database",
@@ -514,7 +484,6 @@ class MudCaptureApplication(tk.Frame):
 
     def make_form_new_database(self, fields):
         db_handler_temp = DatabaseHandler()
-        #entries = list()
         self.db_cnx_entries = list()
 
         for field in fields:
@@ -531,7 +500,6 @@ class MudCaptureApplication(tk.Frame):
             row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
             lab.pack(side=tk.LEFT)
             ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
-            #entries.append((field, ent))
             self.db_cnx_entries.append((field, ent))
 
             if skip_line:
@@ -540,21 +508,14 @@ class MudCaptureApplication(tk.Frame):
                 xtra_row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
                 xtra_lab.pack(side=tk.LEFT)
 
-        #return entries
-
-    #def connect_and_close(self, entries, create=False):
     def connect_and_close(self, create=False):
         db_handler_temp = DatabaseHandler()
-        #(save_name, save_var) = entries.pop()
         (save_name, save_var) = self.db_cnx_entries.pop()
         save_val = save_var.get()
-        # print(save_name, " = ", save_var, " = ", save_val)
 
         if create:
-            #(db_label, db_name) = entries.pop()
             (db_label, db_name) = self.db_cnx_entries.pop()
             db_name = db_name.get()
-            #db_handler_temp.db_connect(entries)
             db_handler_temp.db_connect(self.db_cnx_entries)
 
             if not db_handler_temp.connected:
@@ -597,26 +558,19 @@ class MudCaptureApplication(tk.Frame):
                     return
 
             db_handler_temp.db_config['database'] = db_name
-            # entries.append(('database', db_name))
         else:
-            #db_handler_temp.db_connect(entries)
             db_handler_temp.db_connect(self.db_cnx_entries)
-        # db_handler_temp.db_connect(entries)
 
         if db_handler_temp.connected:
             self.db_handler = db_handler_temp
-            # self.status_var.set("Connected to " + self.db_handler.config.get("database", "none"))
             self.status_var.set("Connected to " + self.db_handler.db_config.get("database", "none"))
             self.populate_capture_list()
             if save_val:
                 self.popup_confirm_save()
 
             if create:
-                # messagebox.showinfo("Success!",
-                #                     "Successfully created and connected to the new database '%s'" % db_name)
                 self.w_db_new.destroy()
             else:
-                # messagebox.showinfo("Success!","Successfully connected to the database")
                 self.w_db.destroy()
 
             # Enable main menu buttons
@@ -635,7 +589,6 @@ class MudCaptureApplication(tk.Frame):
 
         else:
             tk.messagebox.showerror("Error", "Problem connecting to database")
-            #entries.append((save_name, save_var))
             self.db_cnx_entries.append((save_name, save_var))
 
     def popup_update_labeled_device_info(self):
@@ -646,7 +599,6 @@ class MudCaptureApplication(tk.Frame):
             messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
 
     def make_form_api(self, fields):
-        #entries = list()
         self.api_key_entries = list()
         row = tk.Frame(self.w_db_new)
         lab = tk.Label(row, width=12, text=fields, anchor='w')
@@ -656,23 +608,17 @@ class MudCaptureApplication(tk.Frame):
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
         lab.pack(side=tk.LEFT)
         ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
-        #entries.append((fields, ent))
         self.api_key_entries.append((fields, ent))
-
-        #return entries
 
     def popup_update_api_key(self):
         self.w_db_new = tk.Toplevel()
         self.w_db_new.wm_title("Update Fingerbank API Key")
 
-        #ents = self.make_form_api(APIFields)
         self.make_form_api(APIFields)
 
-        #self.bind('<Return>', (lambda event, e=ents: self.save_api_config(e)))
         self.bind('<Return>', (lambda event: self.save_api_config))
 
         b_save = tk.Button(self.w_db_new, text='Save',
-                           #command=(lambda e=ents: self.save_api_config(e)))
                            command=self.save_api_config)
         b_cancel = tk.Button(self.w_db_new, text='Cancel', command=self.w_db_new.destroy)
 
@@ -685,16 +631,13 @@ class MudCaptureApplication(tk.Frame):
 
         self.yield_focus(self.w_db_new)
 
-    #def save_api_config(self, entries, filename='config.ini', section='API'):
     def save_api_config(self, filename='config.ini', section='API'):
         parser = ConfigParser()
         parser.read(filename)
         api_info = dict()
-        #for entry in entries:
         for entry in self.api_key_entries:
             field = entry[0]
             text = entry[1].get()
-            # print(field, " = ", text)
             api_info[field] = text
             parser[section] = api_info
         with open(filename, 'w') as configfile:
@@ -712,7 +655,6 @@ class MudCaptureApplication(tk.Frame):
             items = parser.items(section)
             for item in items:
                 api_info[item[0]] = item[1]
-            # print("Fingerbank API Key: %s" % api_info['api_key'])
         else:
             print("No Fingerbank API Key Present")
             return ""
@@ -726,7 +668,6 @@ class MudCaptureApplication(tk.Frame):
         save_pwd = tk.messagebox.askyesno("WARNING",
                                           "Password will be saved in plaintext.\n\nSave password anyway?",
                                           default='no')
-        # print(confirm)
         if confirm:
             self.db_handler.save_db_config(save_pwd=save_pwd)
         return
@@ -735,15 +676,11 @@ class MudCaptureApplication(tk.Frame):
         self.w_cap = tk.Toplevel()
         self.w_cap.wm_title("Import Packet Capture")
 
-        # self.ents = self.make_form_capture(captureFields)
-        #ents = self.make_form_capture(captureFields, lifecyclePhaseFields, captureEnvFields, captureTypeFields)
         self.make_form_capture(captureFields, lifecyclePhaseFields, captureEnvFields, captureTypeFields)
 
-        #self.bind('<Return>', (lambda event, e=ents: self.import_and_close(e)))
         self.bind('<Return>', (lambda event: self.import_and_close))
 
         self.b_import = tk.Button(self.w_cap, text='Import',
-                                  #command=(lambda e=ents: self.import_and_close(e)))
                                   command=self.import_and_close)
 
         self.b_cancel = tk.Button(self.w_cap, text='Cancel', command=self.w_cap.destroy)
@@ -757,11 +694,11 @@ class MudCaptureApplication(tk.Frame):
 
         self.yield_focus(self.w_cap)
 
-    #@staticmethod
     def open_file_callback(self, sv_entry):
-        tk.Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
+        tk.Tk().withdraw()
 
-        filename = askopenfilename()  # show an "Open" dialog box and return the path to the selected file
+        # show an "Open" dialog box and return the path to the selected file
+        filename = askopenfilename()
         sv_entry.set(filename)
 
         # TODO: Check if selected file is the previously selected one
@@ -773,7 +710,7 @@ class MudCaptureApplication(tk.Frame):
                 self.cap_envi_metadata = capMeta.extract_comment(filename)
 
                 if self.cap_envi_metadata is not None and len(self.cap_envi_metadata) > 0:
-                    for i, (x, y) in enumerate (self.capture_entries):
+                    for i, (x, y) in enumerate(self.capture_entries):
                         # Skip first entry
                         if i:
                             if i == 2:
@@ -811,7 +748,6 @@ class MudCaptureApplication(tk.Frame):
                                             y.set(str_val)
                                     else:
                                         print("Warning! Unexpected variable type")
-                                    #self.cap_envi_metadata[field2db[x.cget: y.get()]]
 
                                     print(x, field2db[x], y.get())
                                 except:
@@ -820,14 +756,12 @@ class MudCaptureApplication(tk.Frame):
                 self.cap_envi_metadata = dict()
 
             # TODO: Kill any/all existing worker threads if a new file was selected
-            #self.q.put("kill")
+            # self.q.put("kill")
 
             # TODO: Restart worker threads to process file
-            #self.p_file = mp.Process(target=self.import_and_close_proc, args=(self.q))
-
+            # self.p_file = mp.Process(target=self.import_and_close_proc, args=(self.q))
 
     def make_form_capture(self, fields_general, fields_phase, fields_env, fields_type):
-        #entries = list()
         self.capture_entries = list()
         for i, field in enumerate(fields_general):
             row = tk.Frame(self.w_cap)
@@ -838,7 +772,6 @@ class MudCaptureApplication(tk.Frame):
             if i == 0:
                 b_open = tk.Button(row, text='...',
                                    command=(lambda e=sv_ent: self.open_file_callback(e)))
-                                   #command=(lambda e=ent: self.open_file_callback(e)))
                 row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
                 lab.pack(side=tk.LEFT)
                 ent.pack(side=tk.LEFT, fill=tk.X)
@@ -848,8 +781,6 @@ class MudCaptureApplication(tk.Frame):
                 lab.pack(side=tk.LEFT)
                 ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
 
-            #entries.append((field, ent))
-            #self.capture_entries.append((field, ent))
             self.capture_entries.append((field, sv_ent))
 
         # Device Phase (Setup, Normal Operation, Removal)
@@ -866,7 +797,6 @@ class MudCaptureApplication(tk.Frame):
             b_phz = tk.Radiobutton(row, text=field, variable=v_phz, value=i)
             b_phz.pack(side=tk.LEFT, fill=tk.X, padx=5, pady=5, anchor=tk.W)
 
-        #entries.append((lab, v_phz))
         self.capture_entries.append((lab, v_phz))
 
         # Environment Variables (Internet, Human Interaction, Preferred DNS Enabled, Isolated
@@ -883,13 +813,10 @@ class MudCaptureApplication(tk.Frame):
             else:
                 v_env = tk.IntVar()
 
-            # v_env = tk.IntVar()
             b_env = tk.Checkbutton(row, text=field, variable=v_env)
             b_env.pack(side=tk.LEFT, padx=20, anchor=tk.W)
 
-            #entries.append((field, v_env))
             self.capture_entries.append((field, v_env))
-            # entries.append((b_env, v_env))
 
         # Capture Type (Duration-based, Duration, Action-based, Action)
         # captureTypeFields = 'Duration-based', 'Duration', 'Action-based', 'Action'
@@ -911,7 +838,6 @@ class MudCaptureApplication(tk.Frame):
         v_dur = tk.IntVar()
         b_dur = tk.Checkbutton(row, text=fields_type[i], variable=v_dur, command=activate_check_duration)
         b_dur.pack(side=tk.LEFT, fill=tk.X, padx=5, pady=5, anchor=tk.W)
-        #entries.append((fields_type[i], v_dur))
         self.capture_entries.append((fields_type[i], v_dur))
 
         # Duration
@@ -924,7 +850,6 @@ class MudCaptureApplication(tk.Frame):
         e_dur = tk.Entry(row, textvariable=sv_dur)
         e_dur.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
         e_dur.config(state='disabled')
-        #entries.append((fields_type[i], e_dur))
         self.capture_entries.append((fields_type[i], sv_dur))
 
         def activate_check_action():
@@ -940,7 +865,6 @@ class MudCaptureApplication(tk.Frame):
         v_act = tk.IntVar()
         b_act = tk.Checkbutton(row, text=fields_type[i], variable=v_act, command=activate_check_action)
         b_act.pack(side=tk.LEFT, fill=tk.X, padx=5, pady=5, anchor=tk.W)
-        #entries.append((fields_type[i], v_act))
         self.capture_entries.append((fields_type[i], v_act))
 
         # Action
@@ -953,12 +877,8 @@ class MudCaptureApplication(tk.Frame):
         e_act = tk.Entry(row, textvariable=sv_act)
         e_act.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
         e_act.config(state='disabled')
-        #entries.append((fields_type[i], e_act))
         self.capture_entries.append((fields_type[i], sv_act))
 
-        #return entries
-
-    #def import_and_close(self, entries):
     def import_and_close(self):
 
         # Check if capture is already in database (using sha256)
@@ -970,10 +890,10 @@ class MudCaptureApplication(tk.Frame):
             tk.Tk().withdraw()
             messagebox.showerror("Error", "Capture file already imported into database")
         else:
-            #self.cap = CaptureDigest(entries[0][1].get())
-            #self.cap = CaptureDigest(self.capture_entries[0][1].get())
             self.cap = CaptureDigest(file_path, api_key=self.api_key)
             print("finished importing")
+            # TODO: Determine how best to notify the user that processing is happening adn the tool is not
+            #  necessarily stalled
             # messagebox.showinfo("Importing", "Please wait for the capture file to be processed")
 
             data_capture = {
@@ -982,8 +902,8 @@ class MudCaptureApplication(tk.Frame):
                 "fileHash": self.cap.fileHash,
                 "capDate": epoch2datetime(float(self.cap.cap_timestamp)),  # epoch2datetime(float(self.cap.cap_date)),
                 "capDuration": self.cap.capDuration,
-                #"details": entries[1][1].get(),
-                #field2db[entries[2][0].cget('text')]: field2db[lifecyclePhaseFields[entries[2][1].get()]]
+                # "details": entries[1][1].get(),
+                # field2db[entries[2][0].cget('text')]: field2db[lifecyclePhaseFields[entries[2][1].get()]]
                 "details": self.capture_entries[1][1].get(),
                 field2db[self.capture_entries[2][0].cget('text')]:
                     field2db[lifecyclePhaseFields[self.capture_entries[2][1].get()]]
@@ -998,8 +918,6 @@ class MudCaptureApplication(tk.Frame):
             }
 
             for i in range(3, 11):
-                #data_capture[field2db[entries[i][0]]] = entries[i][1].get()
-                #print(i, entries[i][1].get())
                 data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
                 print(i, self.capture_entries[i][1].get())
 
@@ -1016,16 +934,16 @@ class MudCaptureApplication(tk.Frame):
                 if i:
                     if i == 2:
                         if y.get() == 0:
-                            self.cap_envi_metadata[ field2db[x.cget("text")] ] = "setup"
+                            self.cap_envi_metadata[field2db[x.cget("text")]] = "setup"
                         elif y.get() == 1:
-                            self.cap_envi_metadata[ field2db[x.cget("text")] ] = "normal operation"
+                            self.cap_envi_metadata[field2db[x.cget("text")]] = "normal operation"
                         elif y.get() == 2:
-                            self.cap_envi_metadata[ field2db[x.cget("text")] ] = "removal"
+                            self.cap_envi_metadata[field2db[x.cget("text")]] = "removal"
                     else:
                         if type(y) == tk.IntVar:
-                            self.cap_envi_metadata[ field2db[x] ] = str(bool(y.get()))
+                            self.cap_envi_metadata[field2db[x]] = str(bool(y.get()))
                         elif type(y) == tk.StringVar:
-                            self.cap_envi_metadata[ field2db[x] ] = y.get()
+                            self.cap_envi_metadata[field2db[x]] = y.get()
                         else:
                             print("Unexpected variable type {type(y)}, {y}, {x}")
 
@@ -1056,8 +974,8 @@ class MudCaptureApplication(tk.Frame):
             print("(F) destroying import capture window")
             self.w_cap.destroy()
 
-
-    def import_and_close_proc(self, q):
+    # TODO: Determine if this should be removed
+    def import_and_close_proc(self):  # , q):
 
         # Check if capture is already in database (using sha256)
         file_path = self.capture_entries[0][1].get()
@@ -1113,21 +1031,18 @@ class MudCaptureApplication(tk.Frame):
             print("(E) destroying import capture window")
             self.w_cap.destroy()
 
-
     def pre_popup_import_capture_devices(self):
-        # sel_cap_path = self.cap_list.get_selected_row()[5] + "/" + self.cap_list.get_selected_row()[2]
         sel_cap_path = self.cap_list.get_selected_row()[6] + "/" + self.cap_list.get_selected_row()[2]
 
         start = datetime.now()
 
         if self.cap is None or (self.cap.fdir + "/" + self.cap.fname) != sel_cap_path:
-            # self.popup_import_capture_devices( CaptureDigest(sel_cap_path, gui=True) )
             # start = datetime.now()
             self.cap = CaptureDigest(sel_cap_path)
 
             self.cap.id = self.cap_list.get_selected_row()[0]
-            # populate as much data from the database as possible
 
+            # populate as much data from the database as possible
             self.cap.import_pkts()
 
             stop = datetime.now()
@@ -1153,7 +1068,6 @@ class MudCaptureApplication(tk.Frame):
         self.topDevFrame = tk.Frame(self.w_cap_dev, width=600, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
 
         # TODO: add compatibility to change or store user defined capture date and time, or change how it's displayed
-        #ents = self.make_form_capture_devices(captureInfoFields, self.cap.cap_date, self.cap.cap_time)
         self.make_form_capture_devices(captureInfoFields, self.cap.cap_date, self.cap.cap_time)
 
         self.botDevFrame = tk.Frame(self.w_cap_dev, width=600, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
@@ -1211,8 +1125,6 @@ class MudCaptureApplication(tk.Frame):
                                           command=self.popup_import_device)
 
         self.b_cap_dev_modify = tk.Button(self.labeledDevFrame, text='Modify State', state='disabled',
-                                          #command=(lambda d=self.labeled_dev_list.get_selected_row():
-                                          #         self.prep_popup_update_device_state(d)))
                                           command=self.prep_popup_update_device_state)
 
         self.b_cap_dev_close.pack(side=tk.LEFT, padx=5, pady=5)
@@ -1238,15 +1150,11 @@ class MudCaptureApplication(tk.Frame):
         self.labeled_dev_list_sel = self.labeled_dev_list.get(self.labeled_dev_list.selection())
         print("self.labeled_dev_list_sel = ", self.labeled_dev_list_sel)
 
-    #def prep_popup_update_device_state(self, d):
     def prep_popup_update_device_state(self):
-        # Need to update d in call to "prep_popup_update_device_state"
-        # d = self.identified_dev_list_sel
         d = self.labeled_dev_list_sel
         print("d = ", d)
         mac = d[5]
         device_id = d[0]
-        # self.db_handler.db.select_most_recent_fw_ver({'mac_addr' : mac,
         fw_ver = self.db_handler.db.select_most_recent_fw_ver({'deviceID': device_id,
                                                                'capDate': self.cap.cap_date + " " + self.cap.cap_time})
 
@@ -1264,24 +1172,11 @@ class MudCaptureApplication(tk.Frame):
 
         self.popup_update_device_state(device_state_data)
 
-    # def close_w_cap_dev(self, capName):
     def close_w_cap_dev(self, cap_id):
-
-        # Check if any of the devices seen have been added to the device_state table already and add if not
-        # for dev in self.identified
-
-        # self.populate_device_list(capture = capName)
         self.populate_device_list(capture_ids=[cap_id])
-        # self.populate_device_list(capture = capName)
         self.w_cap_dev.destroy()
 
-    # def refresh_unidentified_identified_lists(self):
     def refresh_unlabeled_labeled_lists(self):
-        # Clear lists
-        # self.unlabeled_dev_list.clear()
-        # self.labeled_dev_list.clear()
-
-        # Sort devices from Capture into either labeled or unlabeled device lists
         macs_in_dev_tbl = self.db_handler.db.select_device_macs()
 
         print("num uniqueMacs:", len(self.cap.uniqueMAC))
@@ -1289,9 +1184,6 @@ class MudCaptureApplication(tk.Frame):
         # Sort devices found in the capture file into two lists: labeled, and unlabeled
         # Check if the devices in the capture file have been sorted yet
         if self.cap.newDevicesImported is not True:
-            # self.unlabeled_dev_list.clear()
-            # self.labeled_dev_list.clear()
-
             imported_devices = list()
 
             # Loop through the uniqueMAC addresses found in the capture file
@@ -1305,13 +1197,9 @@ class MudCaptureApplication(tk.Frame):
 
                     # Check if an entry for the prefix exists in the mac_to_mfr table
                     mac2mfr = self.db_handler.db.select_mac_to_mfr()
-                    # mac_prefix = mac.upper()[0:8]
                     mac_prefix = mac[0:8]
-                    # Need to address this statement
-                    # mfr_match = [(mac2mfrID, x, mfr) for mac2mfrID, x, mfr in mac2mfr if mac_prefix==x]
                     mfr_match = [mfr for _, x, mfr in mac2mfr if mac_prefix == x]
                     if mfr_match:
-                        # if mac_prefix in [x for (id, x, mfr) in mac2mfr]:
                         mfr = mfr_match[0]
                         if mfr == "**company not found**" or mfr == "None" or mfr is None:
                             mfr = lookup_mac(mac)
@@ -1320,10 +1208,8 @@ class MudCaptureApplication(tk.Frame):
                     if mfr != "**company not found**" and mfr != "None" and mfr is not None:
                         self.db_handler.db.insert_mac_to_mfr({'mac_prefix': mac_prefix, 'mfr': mfr})
 
-                    # device_data = {'mac_addr' : mac.upper(), 'mfr': mfr}
                     device_data = {'mac_addr': mac, 'mfr': mfr}
 
-                    # self.db_handler.db.insert_device_unidentified(device_data)
                     self.db_handler.db.insert_device_unlabeled(device_data)
 
                     temp_device_id = self.db_handler.db.select_last_insert_id()
@@ -1338,7 +1224,7 @@ class MudCaptureApplication(tk.Frame):
 
                     # Insert device_state info into device_state table
                     self.db_handler.db.insert_device_state_unlabeled(
-                        {"fileID": self.cap.id,  # temporary, needs to be updated later
+                        {"fileID": self.cap.id,
                          "deviceID": device_id,
                          "ipv4_addr": ip,
                          "ipv6_addr": ipv6})
@@ -1372,9 +1258,10 @@ class MudCaptureApplication(tk.Frame):
                         ipv6 = list(ipv6_set)[0]
 
                         # May want to modify this not to take the previous fw_version
-                        fw_ver = self.db_handler.db.select_most_recent_fw_ver({'deviceID': device_id, 'capDate':
-                            self.cap.cap_date + " " +
-                            self.cap.cap_time})
+                        fw_ver = self.db_handler.db.select_most_recent_fw_ver(
+                            {'deviceID': device_id,
+                             'capDate': self.cap.cap_date + " " + self.cap.cap_time})
+
                         self.db_handler.db.insert_device_state({"fileID": self.cap.id,
                                                                 "deviceID": device_id,
                                                                 "fw_ver": fw_ver,
@@ -1487,31 +1374,24 @@ class MudCaptureApplication(tk.Frame):
             self.b_cap_dev_modify.config(state="disabled")
 
     def make_form_capture_devices(self, fields, cap_date, cap_time):
-        #entries = []
         self.capture_devices_entries = list()
 
         for i, field in enumerate(fields):
-            row = tk.Frame(self.topDevFrame)  # w_cap_dev)
-            # row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+            row = tk.Frame(self.topDevFrame)
             row.pack(side=tk.TOP, fill=tk.X)
 
             lab = tk.Label(row, width=15, text=field, anchor='w')
-            lab.pack(side=tk.LEFT, fill="both")  # previously just tk.LEFT
+            lab.pack(side=tk.LEFT, fill="both")
             ent = tk.Entry(row, width=15)
-            # ent.pack(side=tk.TOP, expand=tk.YES, fill=tk.X)#previously tk.X
-            ent.pack(side=tk.LEFT)  # , fill=tk.X)#previously tk.X
+            ent.pack(side=tk.LEFT)
 
             if not i:
                 ent.insert(10, cap_date)
             else:
                 ent.insert(10, cap_time)
 
-            #entries.append((field, ent))
             self.capture_devices_entries.append((field, ent))
 
-        #return entries
-
-    # def popup_import_device(self, fname):
     def popup_import_device(self):
         self.w_dev = tk.Toplevel()
         self.w_dev.wm_title("Import Devices")
@@ -1522,19 +1402,13 @@ class MudCaptureApplication(tk.Frame):
         ipv4 = self.unlabeled_dev_list_sel[3]
         ipv6 = self.unlabeled_dev_list_sel[4]
 
-        #ents = self.make_form_device(deviceFields, deviceOptions, mfr, mac)
         self.make_form_device(deviceFields, deviceOptions, mfr, mac)
 
-        #dev_in_cap_data = {'mac_addr': mac,
         self.dev_in_cap_data = {'mac_addr': mac,
                                 'fileID': self.cap.id,
                                 'deviceID': device_id}
 
-        # dev_in_cap_data['imported'] = True
-
         b_import = tk.Button(self.w_dev, text='Import',
-                             #command=(lambda e=ents, d=dev_in_cap_data, i=(ipv4, ipv6):
-                             # self.import_dev_and_close(e, d, i)))
                              command=(lambda i=(ipv4, ipv6): self.import_dev_and_close(i)))
 
         b_cancel = tk.Button(self.w_dev, text='Cancel', command=self.w_dev.destroy)
@@ -1576,7 +1450,6 @@ class MudCaptureApplication(tk.Frame):
                 if field == 'MAC':
                     lab = tk.Label(row, width=15, text=mac_addr, anchor='w', fg='gray')
                     lab.pack(side=tk.LEFT)
-                    #entries.append((field, mac_addr))
                     self.device_entries.append((field, mac_addr))
                     continue
                 else:
@@ -1592,7 +1465,6 @@ class MudCaptureApplication(tk.Frame):
                 if ent is not None:
                     ent.insert(30, mfr)
 
-            #entries.append((field, ent))
             self.device_entries.append((field, ent))
 
         for i, option in enumerate(options):
@@ -1602,13 +1474,11 @@ class MudCaptureApplication(tk.Frame):
                 ent = tk.Entry(row)
 
                 row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-                # lab.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
                 lab.pack(side=tk.LEFT)
                 ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
 
                 if cache_data:
                     ent.insert(30, cache_data[0][i + 1])
-                #entries.append((option, ent))
                 self.device_entries.append((option, ent))
             else:
                 if i % 5 == 0:
@@ -1624,23 +1494,14 @@ class MudCaptureApplication(tk.Frame):
                     if cache_data[0][i + 1] == 1:
                         checkvar.set(True)
 
-                #if option == "wifi" or option == "WiFi":
-                #    checkvar.set(True)
-
-                #entries.append((option, checkvar))
                 self.device_entries.append((option, checkvar))
 
-        #return entries
-
-    #def import_dev_and_close(self, entries, dev_in_cap_data, ips):
     def import_dev_and_close(self, ips):
         device_data = {"unlabeled": False}
-        #for entry in entries:
         for entry in self.device_entries:
             field = entry[0]
 
             if field == 'MAC':
-                #value = dev_in_cap_data['mac_addr']
                 value = self.dev_in_cap_data['mac_addr']
             else:
                 value = entry[1].get()
@@ -1655,16 +1516,14 @@ class MudCaptureApplication(tk.Frame):
                 print('field: %s value %s -> database field: %s' % (field, value, dbfield))
 
         self.db_handler.db.insert_device(device_data)
-        #self.db_handler.db.insert_device_in_capture(dev_in_cap_data)
         self.db_handler.db.insert_device_in_capture(self.dev_in_cap_data)
 
-        #mac = dev_in_cap_data['mac_addr']
-        #device_id = dev_in_cap_data['device_id']
         mac = self.dev_in_cap_data['mac_addr']
         device_id = self.dev_in_cap_data['deviceID']
 
+        # TODO: Determine if this block can/should be removed
         '''
-        # Check if MAC to Mfr entry exists ;lkj
+        # Check if MAC to Mfr entry exists
         self.db_handler.db.select_mac_to_mfr()
         mac2mfr = self.db_handler.db.cursor.fetchall()
         #mac_prefix = dev_in_cap_data['mac_addr'].upper()[0:8]
@@ -1681,7 +1540,6 @@ class MudCaptureApplication(tk.Frame):
         fw_ver = self.db_handler.db.select_most_recent_fw_ver({'deviceID': device_id,
                                                                'capDate': self.cap.cap_date + " " + self.cap.cap_time})
 
-        #device_state_data = {'fileID': dev_in_cap_data['fileID'],
         device_state_data = {'fileID': self.dev_in_cap_data['fileID'],
                              'mac_addr': mac,
                              'deviceID': device_id,
@@ -1702,14 +1560,11 @@ class MudCaptureApplication(tk.Frame):
         self.w_dev_state = tk.Toplevel()
         self.w_dev_state.wm_title(device_state_data['internalName'])
 
-        #ents = self.make_form_device_state(device_state_data)
         self.make_form_device_state(device_state_data)
 
-        #self.w_dev_state.bind('<Return>', (lambda event, d=device_state_data, e=ents:
         self.w_dev_state.bind('<Return>', (lambda event, d=device_state_data: self.import_dev_state_and_close(d)))
 
         b_update = tk.Button(self.w_dev_state, text='Update',
-                             #command=(lambda d=device_state_data, e=ents: self.import_dev_state_and_close(d, e)))
                              command=(lambda d=device_state_data: self.import_dev_state_and_close(d)))
 
         b_close = tk.Button(self.w_dev_state, text='Close', command=self.w_dev_state.destroy)
@@ -1725,10 +1580,8 @@ class MudCaptureApplication(tk.Frame):
 
     def make_form_device_state(self, device_state_data):
         self.device_state_entries = dict()
-        #entries = {}
 
         for i, (label, value) in enumerate(device_state_data.items()):
-            # if not i:
             if label == 'fileID' or label == 'deviceID' or label == 'device_id':
                 continue
             if value is None:
@@ -1745,25 +1598,16 @@ class MudCaptureApplication(tk.Frame):
                 ent = tk.Entry(row, textvariable=v)
                 ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
                 ent.insert(25, value)
-
-                #entries[label] = v
                 self.device_state_entries[label] = v
             else:
                 lab = tk.Label(row, width=25, text=value, anchor='w', fg='gray')
                 lab.pack(side=tk.LEFT)
-                #entries[label] = value
                 self.device_state_entries[label] = value
 
-        #return entries
-
-    #def import_dev_state_and_close(self, device_state_data, entries):
     def import_dev_state_and_close(self, device_state_data):
         print("device_state_data: ", device_state_data)
-        #print("entries: ", entries)
         print("entries: ", self.device_state_entries)
 
-        #print(entries['fw_ver'].get())
-        #device_state_data['fw_ver'] = str(entries['fw_ver'].get())
         print(self.device_state_entries['fw_ver'].get())
         device_state_data['fw_ver'] = str(self.device_state_entries['fw_ver'].get())
 
@@ -1810,22 +1654,19 @@ class MudCaptureApplication(tk.Frame):
 
         for cap in self.cap_list.selection():
             cap_details = self.cap_list.get(cap)
-            # cap_date = cap_details[0]
             cap_date = cap_details[1]
 
             if cap_date == "All...":
                 self.populate_device_list()
                 self.b_main_inspect.config(state="disabled")
-                # break
                 return
             else:
                 cap_ids.append(cap_details[0])
 
-                # self.b_main_inspect.config(state="normal")
         self.populate_device_list(capture_ids=cap_ids)
         self.b_main_inspect.config(state="normal")
 
-    def populate_device_list(self, capture_ids=None):  # , append=False):
+    def populate_device_list(self, capture_ids=None):
         # clear previous list
         self.dev_list.clear()
         self.dev_list.append((0, "All..."))
@@ -1838,7 +1679,7 @@ class MudCaptureApplication(tk.Frame):
 
         for (dev_id, mfr, model, mac_addr, internalName, deviceCategory, mudCapable, wifi, ethernet, bluetooth,
              G3, G4, G5, zigbee, zwave, otherProtocols, notes, unlabeled) in devices:
-            self.dev_list.append((dev_id, mfr, model, internalName, mac_addr, deviceCategory))  # for early stages
+            self.dev_list.append((dev_id, mfr, model, internalName, mac_addr, deviceCategory))
 
         self.dev_list.focus(0)
         self.dev_list.selection_set(0)
@@ -1858,7 +1699,6 @@ class MudCaptureApplication(tk.Frame):
             p.update(h)
             batch.append(p)
 
-            # if i < 1023:
             if i < 511:
                 i += 1
             else:
@@ -1918,7 +1758,6 @@ class MudCaptureApplication(tk.Frame):
             print("dev =", dev_name)
 
             if dev_name == "All...":
-                # print("No device restrictions")
                 for dev_data in self.dev_list.get_list()[1:]:
                     self.db_handler.db.device_id_list.append(dev_data[0])
                 break
@@ -2189,8 +2028,6 @@ class MudCaptureApplication(tk.Frame):
         # clear previous list
         self.report_pcap_list.clear()
 
-        # self.report_device = self.report_dev_list.get(self.report_dev_list.selection())
-        # self.report_device = self.report_dev_list.get_selection_set()
         self.report_device = self.report_dev_list.get_selection_set().pop()
         if self.report_device is not None and len(self.report_device) >= 5:
             self.dev_mac = self.report_device[4]
@@ -2289,7 +2126,6 @@ class MudCaptureApplication(tk.Frame):
                                         'details': details,
                                         'other_devices': list()}
 
-                        #capture_info['other_devices'] = []
                         devs_except = self.db_handler.db.select_devices_in_caps_except({"captureID": capture_id,
                                                                                         "deviceID": device_id})
                         for (dev_e_id, dev_e_internalName, dev_e_mac) in devs_except:
@@ -2332,7 +2168,6 @@ class MudCaptureApplication(tk.Frame):
                                     'details': details,
                                     'other_devices': list()}
 
-                    #capture_info['other_devices'] = []
                     devs_except = self.db_handler.db.select_devices_in_caps_except({"captureID": capture_id,
                                                                                     "deviceID": dev[0]})
                     for (dev_e_id, internalName, dev_e_mac) in devs_except:
@@ -2421,7 +2256,8 @@ class MUDWizard(tk.Toplevel):
 
         self.help_info_shown = False
         self.help_info_host = "HOST:\n" \
-                              "For proper functionality and alignment with the MUD specification, these should NOT be IP addresses."
+                              "For proper functionality and alignment with the MUD specification, "\
+                              "these should NOT be IP addresses."
         self.help_info_protocol = "PROTOCOL:\n" \
                                   "'ANY' - ports and direction initiated will be IGNORED.\n" \
                                   "'TCP' - ports and direction initiated will be USED.\n" \
@@ -2436,57 +2272,55 @@ class MUDWizard(tk.Toplevel):
         self.help_info_view_msg = "Select the '?' box at the bottom to view this message again."
 
         self.help_info_internet = self.help_info_host + "\n\n" + \
-                                  "Internet Hosts: Should be DOMAIN names.\n\n" + \
-                                  self.help_info_protocol + "\n\n" + \
-                                  self.help_info_port_any + "\n\n" + \
-                                  self.help_info_direction + "\n\n" + \
-                                  self.help_info_view_msg
+            "Internet Hosts: Should be DOMAIN names.\n\n" + \
+            self.help_info_protocol + "\n\n" + \
+            self.help_info_port_any + "\n\n" + \
+            self.help_info_direction + "\n\n" + \
+            self.help_info_view_msg
         self.help_info_local = self.help_info_host + "\n\n" + \
-                               "Local Hosts: Entries are for reference/context during this wizard only and " \
-                               "will neither be saved, nor used in the MUD file. ANY local device can follow the " \
-                               "rules defined.\n\n" + \
-                               self.help_info_protocol + "\n\n" + \
-                               self.help_info_port_any + "\n\n" + \
-                               self.help_info_direction + "\n\n" + \
-                               self.help_info_view_msg
+            "Local Hosts: Entries are for reference/context during this wizard only and will neither be saved, " \
+            "nor used in the MUD file. ANY local device can follow the rules defined.\n\n" + \
+            self.help_info_protocol + "\n\n" + \
+            self.help_info_port_any + "\n\n" + \
+            self.help_info_direction + "\n\n" + \
+            self.help_info_view_msg
         self.help_info_same_man = self.help_info_host + "\n\n" + \
-                                  "Same Manufacturer Hosts: Will be autofilled. Any other values will be " \
-                                  "ignored.\n\n" + \
-                                  self.help_info_protocol + "\n\n" + \
-                                  self.help_info_port_any + "\n\n" + \
-                                  self.help_info_direction + "\n\n" + \
-                                  self.help_info_view_msg
+            "Same Manufacturer Hosts: Will be autofilled. Any other values will be ignored.\n\n" + \
+            self.help_info_protocol + "\n\n" + \
+            self.help_info_port_any + "\n\n" + \
+            self.help_info_direction + "\n\n" + \
+            self.help_info_view_msg
         self.help_info_named_man = self.help_info_host + "\n\n" + \
-                                   "Named Manufacturer Hosts: Should be DOMAIN names.\n\n" + \
-                                   self.help_info_protocol + "\n\n" + \
-                                   self.help_info_port_any + "\n\n" + \
-                                   self.help_info_direction + "\n\n" + \
-                                   self.help_info_view_msg
+            "Named Manufacturer Hosts: Should be DOMAIN names.\n\n" + \
+            self.help_info_protocol + "\n\n" + \
+            self.help_info_port_any + "\n\n" + \
+            self.help_info_direction + "\n\n" + \
+            self.help_info_view_msg
         self.help_info_controller_my = self.help_info_host + "\n\n" + \
-                                       "My-Controller Hosts: Will be filled in by the network administrator. " \
-                                       "Any other values will be ignored.\n\n" + \
-                                       self.help_info_protocol + "\n\n" + \
-                                       self.help_info_port_any + "\n\n" + \
-                                       self.help_info_direction + "\n\n" + \
-                                       self.help_info_view_msg
+            "My-Controller Hosts: Will be filled in by the network administrator. Any other values will be " \
+            "ignored.\n\n" + \
+            self.help_info_protocol + "\n\n" + \
+            self.help_info_port_any + "\n\n" + \
+            self.help_info_direction + "\n\n" + \
+            self.help_info_view_msg
         self.help_info_controller = self.help_info_host + "\n\n" + \
-                                    "Controller Hosts: Should be class URIs.\n\n" + \
-                                    self.help_info_protocol + "\n\n" + \
-                                    self.help_info_port_any + "\n\n" + \
-                                    self.help_info_direction + "\n\n" + \
-                                    self.help_info_view_msg
+            "Controller Hosts: Should be class URIs.\n\n" + \
+            self.help_info_protocol + "\n\n" + \
+            self.help_info_port_any + "\n\n" + \
+            self.help_info_direction + "\n\n" + \
+            self.help_info_view_msg
 
         print("self.parent.test", self.parent.test)
 
         container = tk.Frame(self)
 
-        container.pack(side="top", fil="both", expand = True)
+        container.pack(side="top", fil="both", expand=True)
 
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
-        self.frames = {}  # At a quick glance I can't tell if this is a set or dict
-        self.frame_list = list()  # []
+        self.frames = {}
+        self.frame_list = list()
 
         # TODO: See if this can be removed
         try:
@@ -2534,14 +2368,13 @@ class MUDWizard(tk.Toplevel):
 
         frame.tkraise()
 
-    def next_page(self):#, current_page): #TODO: Fix this
-
+    def next_page(self):
         if self.current_page == 0:
             self.current_page += 1
             self.show_frame(self.frame_list[self.current_page])
         else:
             for i, v in enumerate(self.cb_v_list):
-                if i and v.get() and i>=self.current_page:
+                if i and v.get() and i >= self.current_page:
                     self.current_page = i+1
                     self.show_frame(self.frame_list[self.current_page])
                     return
@@ -2555,10 +2388,10 @@ class MUDWizard(tk.Toplevel):
             self.sv_summary.set(json.dumps(self.mud.mud_file, indent=4))
             self.frames[MUDPage8Summary].fill_summary()
 
-    def prev_page(self): # TODO: Fix this
+    def prev_page(self):
         if self.current_page > 1:
             for i, v in reversed(list(enumerate(self.cb_v_list))):
-                if i and v.get() and i<(self.current_page-1):
+                if i and v.get() and i < (self.current_page-1):
                     self.current_page = i+1
                     self.show_frame(self.frame_list[self.current_page])
                     return
@@ -2582,7 +2415,7 @@ class MUDWizard(tk.Toplevel):
                         self.dns_name = socket.gethostbyaddr(i[2])
                         print(self.dns_name[0])
                     except socket.herror as he:
-                        print("DNS Name not found for", i[2])
+                        print(he, "DNS Name not found for", i[2])
                         self.hosts_internet.append((i[1], i[2], i[4], i[5], i[3]))
                         continue
                     self.hosts_internet.append((i[1], self.dns_name[0], i[4], i[5], i[3]))
@@ -2601,8 +2434,7 @@ class MUDWizard(tk.Toplevel):
                     self.hosts_local.append((i[1], i[2], i[4], i[5], i[3]))
         return self.hosts_local
 
-
-    def add_rule(self, frame, first_entry=False):  # Ignore the "first_entry" for now
+    def add_rule(self, frame, first_entry=False):
         frame.max_row += 1
         v_host = tk.StringVar()
         v_protocol = tk.StringVar()
@@ -2626,9 +2458,8 @@ class MUDWizard(tk.Toplevel):
         self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
         c_protocol = self.create_combobox(frame)
         c_protocol.grid(row=frame.max_row, column=8, sticky='w')
-        c_protocol.bind("<<ComboboxSelected>>", lambda f=frame.contentFrame.scrollable_frame, r=frame.max_row:
-        self.protocol_updated(
-            f, r))
+        c_protocol.bind("<<ComboboxSelected>>",
+                        lambda f=frame.contentFrame.scrollable_frame, r=frame.max_row: self.protocol_updated(f, r))
         self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
 
         # TODO: Remove unnecessary code for the plus button
@@ -2643,9 +2474,8 @@ class MUDWizard(tk.Toplevel):
             modify_command = self.remove_rule
             modify_args = frame.max_row
 
-        b_modify = tk.Button(frame.contentFrame.scrollable_frame, textvariable=v_modify, command= lambda f=frame,
-                                                                                        a=modify_args:
-        modify_command(f, a))
+        b_modify = tk.Button(frame.contentFrame.scrollable_frame, textvariable=v_modify, command=lambda f=frame,
+                             a=modify_args: modify_command(f, a))
         b_modify.grid(row=frame.max_row, column=9, sticky='w')
         self.rules[frame.communication][frame.max_row]['remove_button'] = (b_modify,)
 
@@ -2681,11 +2511,11 @@ class MUDWizard(tk.Toplevel):
                                                                                   c_initiation_direction)
 
         # TODO: See if there is a way to scroll to the bottom
-        #self.rules[frame.communication][frame.max_row]["initiation_direction"][1].see("end")
-        #frame.contentFrame.scrollable_frame.see("end")
+        # self.rules[frame.communication][frame.max_row]["initiation_direction"][1].see("end")
+        # frame.contentFrame.scrollable_frame.see("end")
 
     def remove_rule(self, frame, row=None):
-        if row == None:
+        if row is None:
             row = frame.max_row
 
         print("Remove_rule button row:", row)
@@ -2695,9 +2525,10 @@ class MUDWizard(tk.Toplevel):
             fields = self.rules[frame.communication][r]
             for key in fields:
                 self.forget_fields(fields[key])
-            self.rules[frame.communication].pop(r)#, None)
+            self.rules[frame.communication].pop(r)
 
-    def forget_fields(self, tk_fields):
+    @staticmethod
+    def forget_fields(tk_fields):
         for f in tk_fields:
             if type(f) is tk.StringVar:
                 pass
@@ -2706,17 +2537,14 @@ class MUDWizard(tk.Toplevel):
             else:
                 print("Unexpected datatype %s, skipping" % type(f))
 
-    def create_combobox(self, frame, opt_type="protocol", row=None):  # , options=[]):#, text_var=None):
-        #if opt_type == "custom":
-        #    combo_options = options
-        #else:
+    def create_combobox(self, frame, opt_type="protocol", row=None):
         if opt_type == "protocol":
             values = self.protocol_options
         elif opt_type == "initiation_direction":
             values = self.init_direction_options
-        #elif opt_type == "host":
-        #    # TODO: Pull Hosts?
-        #    values = ('Host A', 'Host B', 'Host B')
+        # TODO: Pull Hosts?
+        # elif opt_type == "host":
+        #     values = ('Host A', 'Host B', 'Host B')
         else:
             print('Error: invalid rule_type')
             return
@@ -2735,34 +2563,35 @@ class MUDWizard(tk.Toplevel):
         return combobox
 
     # TODO: Complete this portion to enable/disable other comboboxes
-    #def protocol_updated(self, event, frame, row):
+    # def protocol_updated(self, event, frame, row):
     def protocol_updated(self, frame, row):
-        event = None
-
-        print(frame, row)
-
         pass
-
-        if event != "Any":
-            # add local
-            pass
-
-            # add remote
-            pass
-
-            # add or remove direction
-            if event == "TCP" and frame.communication != "controller":
-                # add direction
-                pass
-            else:
-                # hide the grid object
-                pass
-        else:
-            # hide local, remote, and direction
-            pass
+        # event = None
+        #
+        # print(frame, row)
+        #
+        # pass
+        #
+        # if event != "Any":
+        #     # add local
+        #     pass
+        #
+        #     # add remote
+        #     pass
+        #
+        #     # add or remove direction
+        #     if event == "TCP" and frame.communication != "controller":
+        #         # add direction
+        #         pass
+        #     else:
+        #         # hide the grid object
+        #         pass
+        # else:
+        #     # hide local, remote, and direction
+        #     pass
 
     def create_port_entries(self, frame, row=None):
-        if row == None:
+        if row is None:
             e_port_local = tk.Entry(frame, width=6,
                                     textvariable=self.rules[frame.communication][frame.max_row]['port_local'])
             e_port_remote = tk.Entry(frame, width=6,
@@ -2774,7 +2603,7 @@ class MUDWizard(tk.Toplevel):
         e_port_local.insert(0, 'any')
         e_port_remote.insert(0, 'any')
 
-        return (e_port_local, e_port_remote)
+        return e_port_local, e_port_remote
 
     def format_mud_info(self):
 
@@ -2785,17 +2614,17 @@ class MUDWizard(tk.Toplevel):
 
             # Set communication type
             if comm == "local":
-                type = MatchType.IS_LOCAL
+                match_type = MatchType.IS_LOCAL
             elif comm == "internet":
-                type = MatchType.IS_CLOUD
+                match_type = MatchType.IS_CLOUD
             elif comm == "mfr_same":
-                type = MatchType.IS_MYMFG
+                match_type = MatchType.IS_MYMFG
             elif comm == "mfr_named":
-                type = MatchType.IS_MFG
+                match_type = MatchType.IS_MFG
             elif comm == "controller_my":
-                type = MatchType.IS_MY_CONTROLLER
+                match_type = MatchType.IS_MY_CONTROLLER
             elif comm == "controller":
-                type = MatchType.IS_CONTROLLER
+                match_type = MatchType.IS_CONTROLLER
             else:
                 print("Communication type error! Skipping")
                 continue
@@ -2826,7 +2655,7 @@ class MUDWizard(tk.Toplevel):
                 # Get direction initiated
                 direction_initiated = self.rules[comm][row_b]['initiation_direction'][0].get()
                 if direction_initiated == "Either":
-                    direction_initiated = None  # direction_initiated
+                    direction_initiated = None
                 elif direction_initiated == "Thing":
                     direction_initiated = Direction.FROM_DEVICE
                 elif direction_initiated == "Remote":
@@ -2837,12 +2666,12 @@ class MUDWizard(tk.Toplevel):
                 # Check values and set appropriate fields
                 if protocol == self.protocol_options[0]:
                     prot = Protocol.ANY
-                    if port_local is not None and port_local.upper() != "ANY":
+                    if port_local is not None:
                         print("Warning: local port specified when not allowed - ignoring value")
-                    port_local = None  # []
-                    if port_remote is not None and port_remote.upper() != "ANY":
+                    port_local = None
+                    if port_remote is not None:
                         print("Warning: remote port specified when not allowed - ignoring value")
-                    port_remote = None  # []
+                    port_remote = None
                 elif protocol == self.protocol_options[1]:
                     prot = Protocol.TCP
                 elif protocol == self.protocol_options[2]:
@@ -2852,9 +2681,9 @@ class MUDWizard(tk.Toplevel):
                     continue
 
                 # Append rule to acl
-                self.mud.add_rule(target_url=host, protocol=prot, match_type=type,
-                                       direction_initiated=direction_initiated,
-                                       local_port=port_local, remote_port=port_remote)
+                self.mud.add_rule(target_url=host, protocol=prot, match_type=match_type,
+                                  direction_initiated=direction_initiated,
+                                  local_port=port_local, remote_port=port_remote)
 
         self.mud.make_mud()
 
@@ -2958,7 +2787,7 @@ class MUDPage0Select(tk.Frame):
             for (dev_id, mfr, model, mac, internalName, category) in devices:
                 self.mud_dev_list.append((dev_id, internalName, mfr, model, mac, category))
         except AttributeError as ae:
-            print("Database not connected, please connect to a database")
+            print("ERROR:", ae, "Database not connected, please connect to a database")
 
     def retrieve_device_info(self, _):  # , ignored_dev = None):
         print("Retrieving Device Info")
@@ -3011,14 +2840,13 @@ class MUDPage0Select(tk.Frame):
             for (protocol, host, port_remote, port_local, ip_version) in self.hosts_internet:
                 self.controller.add_rule(self.controller.frames[MUDPage2Internet])
                 self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
-                    self.controller.frames[MUDPage2Internet].max_row-1]['host'][0].set(host)  #set(host[1])
+                    self.controller.frames[MUDPage2Internet].max_row-1]['host'][0].set(host)
                 self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
-                    self.controller.frames[MUDPage2Internet].max_row-1]['protocol'][0].set(protocol.upper()) #host[
-                # 0].upper())
+                    self.controller.frames[MUDPage2Internet].max_row-1]['protocol'][0].set(protocol.upper())
                 self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
-                    self.controller.frames[MUDPage2Internet].max_row]['port_remote'][0].set(port_remote)#host[2])
+                    self.controller.frames[MUDPage2Internet].max_row]['port_remote'][0].set(port_remote)
                 self.controller.rules[self.controller.frames[MUDPage2Internet].communication][
-                    self.controller.frames[MUDPage2Internet].max_row]['port_local'][0].set(port_local)#host[3])
+                    self.controller.frames[MUDPage2Internet].max_row]['port_local'][0].set(port_local)
                 if ip_version:
                     ipv6 = True
                 else:
@@ -3033,17 +2861,16 @@ class MUDPage0Select(tk.Frame):
             for (protocol, host, port_remote, port_local, ip_version) in self.hosts_local:
                 self.controller.add_rule(self.controller.frames[MUDPage3Local])
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
-                    self.controller.frames[MUDPage3Local].max_row-1]['host'][0].set(host)#[1])
-                #Disable hostname modification since it will be unused
+                    self.controller.frames[MUDPage3Local].max_row-1]['host'][0].set(host)
+                # Disable hostname modification since it will be unused
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
                     self.controller.frames[MUDPage3Local].max_row-1]['host'][2].config(state="disabled")
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
-                    self.controller.frames[MUDPage3Local].max_row-1]['protocol'][0].set(protocol.upper())#host[
-                # 0].upper())
+                    self.controller.frames[MUDPage3Local].max_row-1]['protocol'][0].set(protocol.upper())
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
-                    self.controller.frames[MUDPage3Local].max_row]['port_remote'][0].set(port_remote)#host[2])
+                    self.controller.frames[MUDPage3Local].max_row]['port_remote'][0].set(port_remote)
                 self.controller.rules[self.controller.frames[MUDPage3Local].communication][
-                    self.controller.frames[MUDPage3Local].max_row]['port_local'][0].set(port_local)#host[3])
+                    self.controller.frames[MUDPage3Local].max_row]['port_local'][0].set(port_local)
                 if ip_version:
                     ipv6 = True
                 else:
@@ -3072,7 +2899,7 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         self.controller = controller
 
         self.headerFrame = tk.Frame(self, bg="#eeeeee")
-        self.contentFrame = tk.Frame(self)#, width=300, bd=1, bg="#eeeeee")  # , bg="#dfdfdf")
+        self.contentFrame = tk.Frame(self)
         self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
         # Device Details Header
@@ -3088,13 +2915,13 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         # Support URL
         l_support_url = tk.Label(self.contentFrame, text="Support URL:")
         self.sv_support_url = tk.StringVar()
-        e_support_url = tk.Entry(self.contentFrame, textvariable=self.sv_support_url)#, expand="y", fill="x")
+        e_support_url = tk.Entry(self.contentFrame, textvariable=self.sv_support_url)
         l_support_url.grid(row=1, column=0, columnspan=2, sticky="w")
         e_support_url.grid(row=1, column=2, columnspan=4, sticky="ew")
 
         # Manufacturer
         l_mfr = tk.Label(self.contentFrame, text="Manufacturer:")
-        e_mfr = tk.Entry(self.contentFrame, textvariable=self.controller.sv_mfr)  # , expand="y", fill="x")
+        e_mfr = tk.Entry(self.contentFrame, textvariable=self.controller.sv_mfr)
         l_mfr.grid(row=2, column=0, columnspan=2, sticky="w")
         e_mfr.grid(row=2, column=2, columnspan=4, sticky="ew")
 
@@ -3104,13 +2931,13 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         # Documentation URL
         l_doc_url = tk.Label(self.contentFrame, text="Documentation URL:")
         self.sv_doc_url = tk.StringVar()
-        e_doc_url = tk.Entry(self.contentFrame, textvariable=self.sv_doc_url)#, expand="y", fill="x")
+        e_doc_url = tk.Entry(self.contentFrame, textvariable=self.sv_doc_url)
         l_doc_url.grid(row=3, column=0, columnspan=3, sticky="w")
         e_doc_url.grid(row=3, column=3, columnspan=3, sticky="ew")
 
         # Device Description
         l_desc = tk.Label(self.contentFrame, text="Device Description:")
-        e_desc = tk.Entry(self.contentFrame, textvariable=self.controller.sv_desc)  # , expand="y", fill="x")
+        e_desc = tk.Entry(self.contentFrame, textvariable=self.controller.sv_desc)
         l_desc.grid(row=4, column=0, sticky="w")
         e_desc.grid(row=5, column=0, columnspan=6, sticky="nesw")
 
@@ -3153,7 +2980,8 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         # My-Controller class of devices
         v_controller_my = tk.BooleanVar()
         self.controller.cb_v_list.append(v_controller_my)
-        cb_controller_my = tk.Checkbutton(self.contentFrame, text="Network-Defined Controller", variable=v_controller_my)
+        cb_controller_my = tk.Checkbutton(self.contentFrame, text="Network-Defined Controller",
+                                          variable=v_controller_my)
         cb_controller_my.grid(row=11, columnspan=6, sticky="w")
 
         # Controllers
@@ -3195,9 +3023,9 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         # Best guess: more open (use mostly "any")
         # Best guess: more closed (use mostly specific protocols and ports)
 
-    def cb_toggle(self):#, event):
+    def cb_toggle(self):
         toggle = False
-        for i, cb in enumerate(self.controller.cb_v_list):#self.cb_v_list):
+        for i, cb in enumerate(self.controller.cb_v_list):
             if not i:
                 toggle = cb.get()
                 if toggle:
@@ -3207,7 +3035,8 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
             else:
                 cb.set(toggle)
 
-    def comm_help(self):
+    @staticmethod
+    def comm_help():
         tk.messagebox.showinfo("Defining Communication",
                                "Internet: Select this type to enter domain names of services that you want this "
                                "device to access.\n\n"
@@ -3222,10 +3051,6 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
                                "Use this when you want different types of devices to access the same controller.")
 
     def next_page(self):
-        # TODO: Remove support info part after mud_file has been tested
-        #self.controller.support_info = make_support_info(1, self.sv_support_url.get(), 48, True,
-        #                                                  self.controller.mud_device[1],
-        #                                                  self.sv_doc_url.get(), mfg_name=self.controller.sv_mfr.get())
         self.controller.mud = MUD(mud_version=1, mud_url=self.sv_support_url.get(), cache_validity=48,
                                   is_supported=True, system_info=self.controller.mud_device[1],
                                   documentation=self.sv_doc_url.get(), mfg_name=self.controller.sv_mfr.get(),
@@ -3242,7 +3067,7 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
 class MUDPage2Internet(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
-        #MUDPage0Select.__init__(self, parent, controller)
+        # MUDPage0Select.__init__(self, parent, controller)
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
@@ -3251,7 +3076,7 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         self.max_row = 0
 
         self.headerFrame = tk.Frame(self, bg="#eeeeee")
-        self.contentFrame = ScrollableFrame(self)#, width=500)  # , bg="#ffffff")
+        self.contentFrame = ScrollableFrame(self)
         self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
         # Header
@@ -3259,7 +3084,7 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         title.grid(row=0, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
-        b_add_entry = tk.Button(self.headerFrame, text = " + ", command=lambda: self.add_internet())
+        b_add_entry = tk.Button(self.headerFrame, text=" + ", command=lambda: self.add_internet())
         b_add_entry.grid(row=self.max_row, column=8, sticky="ne")
 
         # Navigation Buttons
@@ -3352,7 +3177,7 @@ class MUDPage3Local(MUDPage0Select, tk.Frame):
 
     # In case anything else should occur beyond the add_rule method
     def add_local(self):
-       self.controller.add_rule(self)
+        self.controller.add_rule(self)
 
     def next_page(self):
         self.controller.next_page()
@@ -3640,7 +3465,7 @@ class MUDPage8Summary(MUDPage0Select, tk.Frame):
         title.grid(row=0, columnspan=6, sticky='new')
 
         self.st_summary = scrolledtext.ScrolledText(self.contentFrame, wrap=tk.WORD,
-                                               width=40, height=10, font=("Times New Roman", 15))
+                                                    width=40, height=10, font=("Times New Roman", 15))
         self.st_summary.grid(row=1, sticky="nsew")
 
         # Navigation Buttons
@@ -3671,7 +3496,7 @@ class MUDPage8Summary(MUDPage0Select, tk.Frame):
         self.grid_columnconfigure(0, weight=1)
 
         # TODO: considered not making this disabled, or provide an "ADVANCED" toggle to allow manual editing of the file
-        #self.st_summary.configure(state="disabled")
+        # self.st_summary.configure(state="disabled")
 
     def fill_summary(self):
         self.st_summary.insert(tk.INSERT, self.controller.sv_summary.get())
@@ -3687,7 +3512,7 @@ class DatabaseHandler:
     def __init__(self, filename='config.ini', section='mysql'):
         try:
             self.config = self.read_db_config(filename, section)
-        except KeyError:  # ConfigParser.Error:
+        except KeyError:
             self.config = {"host": "", "database": "", "user": "", "passwd": ""}
         self.connected = False
         self.db = None
@@ -3704,7 +3529,6 @@ class DatabaseHandler:
             for item in items:
                 db[item[0]] = item[1]
         else:
-            # raise Exception('{0} not found in the {1} file'.format(section, filename))
             raise KeyError('{0} not found in the {1} file'.format(section, filename))
 
         return db
@@ -3745,59 +3569,20 @@ class DatabaseHandler:
         self.db.__exit__()
 
 
-'''
-def fetch(entries):
-    for entry in entries:
-        field = entry[0]
-        text  = entry[1].get()
-        print('%s: "%s"' % (field, text)) 
-
-
-def makeform(root, fields):
-    entries = []
-    for field in fields:
-        row = Frame(root)
-        lab = Label(row, width=15, text=field, anchor='w')
-        ent = Entry(row)
-        row.pack(side=TOP, fill=X, padx=5, pady=5)
-        lab.pack(side=LEFT)
-        ent.pack(side=RIGHT, expand=YES, fill=X)
-        entries.append((field, ent))
-
-    return entries
-
-
-def importFileWindow(entry):
-    #Tk().withdraw() # we don't want a full GUI, so keep the root window from appearing
-    importFile = Tk().withdraw() # we don't want a full GUI, so keep the root window from appearing
-
-    f_details = makeImportForm(importFile, captureFields)
-    importFile.bind('<Return>', (lambda event, e=ents: fetch(e)))
-
-    b_submit = Button(importFile, text="Submit",
-                      command=(lambda e=ents: fetch(e)))
-    b_submit.pack(side=LEFT, padx=5, pady=5)
-
-    b_submit = Button(importFile, text="Quit", command=root.quit)
-    b_submit.pack(side=LEFT, padx=5, pady=5)
-
-    importFile.mainloop()
-'''
-
 if __name__ == '__main__':
     root = tk.Tk()
     gui = MudCaptureApplication(root)
 
     # Gets the requested values of the height and width.
-    #windowWidth = 800#root.winfo_reqwidth()
-    #windowHeight = 500#root.winfo_reqheight()
-    #print("Width", windowWidth, "Height", windowHeight)
+    # windowWidth = 800#root.winfo_reqwidth()
+    # windowHeight = 500#root.winfo_reqheight()
+    # print("Width", windowWidth, "Height", windowHeight)
 
     # Gets both half the screen width/height and window width/height
-    #positionRight = int(root.winfo_screenwidth() / 2 - windowWidth / 2)
-    #positionDown = int(root.winfo_screenheight() / 2 - windowHeight / 2)
+    # positionRight = int(root.winfo_screenwidth() / 2 - windowWidth / 2)
+    # positionDown = int(root.winfo_screenheight() / 2 - windowHeight / 2)
 
     # Positions the window in the center of the page.
-    #root.geometry("+{}+{}".format(positionRight, positionDown))
+    # root.geometry("+{}+{}".format(positionRight, positionDown))
 
     root.mainloop()

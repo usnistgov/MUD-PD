@@ -394,6 +394,12 @@ class CaptureDatabase:
 
     query_imported_capture = "SELECT * FROM capture;"
 
+    query_capture_info = (
+        "SELECT id, fileName, fileLoc, fileHash, capDate, capDuration "
+        "FROM capture "
+        "WHERE id=%(captureID)s"
+    )
+
     query_imported_capture_with_device = (
         "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, "
         "    cap.lifecyclePhase, cap.internet, cap.humanInteraction, cap.preferredDNS, cap.isolated, "
@@ -675,6 +681,10 @@ class CaptureDatabase:
         self.cursor.execute(self.query_imported_capture)
         return self.cursor.fetchall()
 
+    def select_capture_info(self, capture_id):
+        self.cursor.execute(self.query_capture_info, {"captureID": capture_id})
+        return self.cursor.fetchall()
+
     def select_imported_captures_with_device(self, device_id):
         self.cursor.execute(self.query_imported_capture_with_device, device_id)
         return self.cursor.fetchall()
@@ -872,24 +882,34 @@ class CaptureDigest:
 
     IPS_2_IGNORE = ['RESERVED', 'UNSPECIFIED', 'LOOPBACK', 'UNASSIGNED', 'DOCUMENTATION']  # 'LINKLOCAL'
 
-    def __init__(self, fpath, api_key="", mp=True):
+    def __init__(self, fpath=None, api_key=None, mp=True, db_handler=None, file_id=None):
         self.api_key = api_key
-        if self.api_key != "":
+        if self.api_key is not None:
             print("Fingerbank API Key: ", self.api_key)
-        self.fpath = fpath
-        self.fdir, self.fname = os.path.split(fpath)
-        self.fsize = os.path.getsize(fpath)
-        print("file size: ", self.fsize)
-        self.progress = 24  # capture header
-        # self.fileHash = hashlib.md5(open(fpath,'rb').read()).hexdigest()
-        self.fileHash = hashlib.sha256(open(fpath, 'rb').read()).hexdigest()
-        self.id = None
+        if fpath is not None:
+            self.fpath = fpath
+            self.fdir, self.fname = os.path.split(self.fpath)
+            self.fsize = os.path.getsize(self.fpath)
+            print("file size: ", self.fsize)
+            self.progress = 24  # capture header
+            self.fileHash = hashlib.sha256(open(self.fpath, 'rb').read()).hexdigest()
+        self.id = file_id
 
         self.pkt = []
         self.pkt_info = []  # needs to be a list of dictionary
 
+        self.cap_date = None
+        self.cap_time = None
+
+        self.newDevicesImported = False
+        self.labeledDev = []
+        self.unlabeledDev = []
+
+        # Check if data should be loaded from database
+        if db_handler is not None:
+            self.load_from_db(db_handler, file_id)
         # Multiprocessing
-        if mp:
+        elif mp:
             self.ip2mac = Mac2IP()
 
             start = datetime.now()
@@ -914,7 +934,7 @@ class CaptureDigest:
                         os.makedirs(self.tempSplitCapDir)
 
                 # Check filetype
-                if capMeta.is_pcapng(fpath):
+                if capMeta.is_pcapng(self.fpath):
                     # Convert the pcapng file to pcap
                     capfile = self.tempDir + "full_cap/temp_cap.pcap"
                     subprocess.call('tshark -F pcap -r ' + self.fpath + ' -w ' + capfile, stderr=subprocess.PIPE,
@@ -941,7 +961,7 @@ class CaptureDigest:
                 for i, file in enumerate(self.files):
                     self.files[i] = self.tempSplitCapDir + file
 
-                # Check the number of split files and processors and send warnings/make adjustements as necessary
+                # Check the number of split files and processors and send warnings/make adjustments as necessary
                 if len(self.files) == 0:
                     print("WARNING! Multiprocessing Error: No split capture files found. Running in single-process "
                           "mode with one processor and the original file")
@@ -990,7 +1010,7 @@ class CaptureDigest:
             # ns_filter = ['(', ns_ip_filter, ') and (', ns_ipv6_filter, ')']
 
             self.ew_index = []
-            cap_ew = pyshark.FileCapture(fpath, display_filter=ew_filter, keep_packets=False)
+            cap_ew = pyshark.FileCapture(self.fpath, display_filter=ew_filter, keep_packets=False)
             for p in cap_ew:
                 self.ew_index += p.number
 
@@ -998,7 +1018,7 @@ class CaptureDigest:
             print("time to filter ew: ", ew_filter_stop - ew_filter_start)
 
             # start = datetime.now()
-            self.cap = pyshark.FileCapture(fpath, keep_packets=False)
+            self.cap = pyshark.FileCapture(self.fpath, keep_packets=False)
 
             self.cap_timestamp = self.cap[0].sniff_timestamp
 
@@ -1016,17 +1036,18 @@ class CaptureDigest:
             self.uniqueIP_dst = []
             self.uniqueIPv6_dst = []
 
-        self.dhcp_pkts = pyshark.FileCapture(fpath, display_filter='dhcp')
+        self.dhcp_pkts = pyshark.FileCapture(self.fpath, display_filter='dhcp')
         self.modellookup = {}
-        if self.api_key != "":
+        if self.api_key is not None:
             self.extract_fingerprint()
             print("Identified devices for this capture: ", self.modellookup)
 
         # TODO: VERIFY REMOVAL
         # self.cap_timestamp = self.cap[0].sniff_timestamp
 
-        (self.cap_date, self.cap_time) = datetime.utcfromtimestamp(
-            float(self.cap_timestamp)).strftime('%Y-%m-%d %H:%M:%S').split()
+        if self.cap_date is None or self.cap_time is None:
+            (self.cap_date, self.cap_time) = datetime.utcfromtimestamp(
+                float(self.cap_timestamp)).strftime('%Y-%m-%d %H:%M:%S').split()
 
         # TODO CHANGE capDuration format from seconds to days, hours, minutes, seconds
         # self.capDuration = 0 # timedelta(0)
@@ -1037,9 +1058,6 @@ class CaptureDigest:
         print(self.cap_date)
         print(self.cap_time)
 
-        self.newDevicesImported = False
-        self.labeledDev = []
-        self.unlabeledDev = []
 
     def import_pkts_pp(self):
         print("In import_pkts_pp")
@@ -1362,37 +1380,53 @@ class CaptureDigest:
                 self.uniqueIP_dst.append(pIP_dst)
 
     # TODO: Update this to pull necessary information from the Database rather than opening the file again
-    def load_from_db(self, fpath):
-        self.fpath = fpath
-        self.fdir, self.fname = os.path.split(fpath)
-        self.fileHash = hashlib.sha256(open(fpath, 'rb').read()).hexdigest()
+    def load_from_db(self, db_handler: CaptureDatabase, file_id: int):
+        self.id = file_id
 
-        self.cap = pyshark.FileCapture(fpath)
+        # Query Database for desired info
+        (_, self.fname, self.fdir, self.fileHash, cap_datetime, self.capDuration) = \
+            db_handler.db.select_capture_info(self.id)[0]
+        self.fpath = self.fdir + '/' + self.fname
+        self.fsize = os.path.getsize(self.fpath)
+        print("file size: ", self.fsize)
+        self.cap_date = cap_datetime.date().strftime('%Y-%m-%d')
+        self.cap_time = cap_datetime.time().strftime('%H:%M:%S')
 
-        self.cap_timestamp = self.cap[0].sniff_timestamp
-        (self.cap_date, self.cap_time) = datetime.utcfromtimestamp(float(self.cap_timestamp)).strftime(
-            '%Y-%m-%d %H:%M:%S').split()
+        self.cap = pyshark.FileCapture(self.fpath)
+        # Determine if this line should be uncommented or removed
+        self.pkt = []
 
-        print(self.cap_date)
-        print(self.cap_time)
+        # Determine if necessary to get packet info
+        self.pkt_info = []  # needs to be a list of dictionary
 
+        # TODO: Determine if this information needs to be autopopulated
+        self.ip2mac = Mac2IP()
+        self.uniqueMAC = []
         self.uniqueIP = []
         self.uniqueIPv6 = []
-        self.uniqueMAC = []
 
-        self.ip2mac = {}
-
-        self.uniqueIP_dst = []
-        self.uniqueIPv6_dst = []
-
-        # self.protocol = []
-
-        # self.num_pkts = 0
-        self.pkt = []
+        # TODO: Get device info
+        self.labeledDev = []
+        self.unlabeledDev = []
+        device_info = db_handler.db.select_devices_from_caplist([file_id])
+        for (device_id, _, _, mac, _, _,_, _, _, _, _, _, _, _, _, _, _, unlabeled) in device_info:
+            (_, _, _, _, ip, ipv6) = db_handler.db.select_device_state(file_id, device_id)[0]
+            self.uniqueMAC.append(mac)
+            if ip != "Not found":
+                self.uniqueIP.append(ip)
+                self.ip2mac.add(mac, ip)
+            if ipv6 != "Not found":
+                self.uniqueIPv6.append(ipv6)
+                self.ip2mac.add(mac, ipv6)
+            if unlabeled:
+                self.unlabeledDev.append(device_id)
+            else:
+                self.labeledDev.append(device_id)
+        self.newDevicesImported = True
 
     def extract_fingerprint(self):
         print("Starting Fingerprint Extraction")
-        if self.api_key != "":
+        if self.api_key is not None and self.api_key != "":
             for p in self.dhcp_pkts:
                 dhcp_fingerprint = ""
                 hostname = ""

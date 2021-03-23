@@ -1004,13 +1004,18 @@ class MudCaptureApplication(tk.Frame):
         start = datetime.now()
 
         if self.cap is None or (self.cap.fdir + "/" + self.cap.fname) != sel_cap_path:
-            # start = datetime.now()
-            self.cap = CaptureDigest(sel_cap_path)
+            # TODO: Complete the rest of this block
+            start = datetime.now()
+            #self.cap = CaptureDigest(sel_cap_path)
 
-            self.cap.id = self.cap_list.get_selected_row()[0]
+            #self.cap.id = self.cap_list.get_selected_row()[0]
 
-            # populate as much data from the database as possible
-            self.cap.import_pkts()
+            # TODO: populate as much data from the database as possible
+            # TODO: Finish this rewrite
+            file_id = self.cap_list.get_selected_row()[0]
+            self.cap = CaptureDigest(api_key=self.api_key, db_handler=self.db_handler, file_id=file_id)
+
+            #self.cap.import_pkts()
 
             stop = datetime.now()
             print("time to import = ", (stop - start).total_seconds())

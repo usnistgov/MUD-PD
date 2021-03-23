@@ -1182,6 +1182,7 @@ class MudCaptureApplication(tk.Frame):
 
                     device_data = {'mac_addr': mac, 'mfr': mfr}
 
+                    print(device_data)
                     self.db_handler.db.insert_device_unlabeled(device_data)
 
                     temp_device_id = self.db_handler.db.select_last_insert_id()

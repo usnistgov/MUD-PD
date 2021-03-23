@@ -3,3 +3,4 @@ pyshark >= 0.4.3, == 0.4.*
 requests >= 2.25.1, == 2.25.*
 overload >= 1.1, == 1.*
 IPy ~= 1.0
+getversion ~= 1.0.2

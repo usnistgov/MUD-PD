@@ -3601,6 +3601,7 @@ if __name__ == '__main__':
     logger.info("System Information:")
     logger.info("\tSystem Platform: %s", sys.platform)
     logger.info("\tCPU Cores: %s", os.cpu_count())
+    logger.info("\tPython Version: %s", sys.version.split()[0])
 
     # Installed package info
     logger.info("Installed Python Packages:")

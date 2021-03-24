@@ -589,6 +589,10 @@ class CaptureDatabase:
 
         self.cursor = self.cnx.cursor(buffered=True)
 
+        # Report mysql version
+        self.cursor.execute("SELECT VERSION()")
+        self.logger.info("mysqldb version: %s", self.cursor.fetchone()[0])
+
         self.capture_id_list = []
         self.device_id_list = []
 

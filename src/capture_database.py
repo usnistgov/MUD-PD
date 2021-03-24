@@ -477,6 +477,8 @@ class CaptureDatabase:
 
     query_devices = "SELECT * FROM device;"
 
+    query_device_internal_names = "SELECT internalName FROM device WHERE NOT ISNULL(internalName);"
+
     query_devices_imported = (
         "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
         "FROM device "
@@ -754,6 +756,10 @@ class CaptureDatabase:
 
     def select_devices(self):
         self.cursor.execute(self.query_devices)
+        return self.cursor.fetchall()
+
+    def select_device_internal_names(self):
+        self.cursor.execute(self.query_device_internal_names)
         return self.cursor.fetchall()
 
     def select_cache_device(self, model):

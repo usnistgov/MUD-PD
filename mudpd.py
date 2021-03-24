@@ -96,7 +96,7 @@ class MudCaptureApplication(tk.Frame):
 
         # Buttons for future windows
         self.b_cap_dev_close = None
-        self.b_cap_dev_import = None
+        self.b_cap_dev_label = None
         self.b_cap_dev_modify = None
         self.b_import = None
         self.b_cancel = None
@@ -1101,14 +1101,14 @@ class MudCaptureApplication(tk.Frame):
         self.b_cap_dev_close = tk.Button(self.unlabeledDevFrame, text='Close',
                                          command=(lambda c=self.cap.id: self.close_w_cap_dev(c)))
 
-        self.b_cap_dev_import = tk.Button(self.unlabeledDevFrame, text='Import Device', state='disabled',
+        self.b_cap_dev_label = tk.Button(self.unlabeledDevFrame, text='Label Device', state='disabled',
                                           command=self.popup_import_device)
 
         self.b_cap_dev_modify = tk.Button(self.labeledDevFrame, text='Modify State', state='disabled',
                                           command=self.prep_popup_update_device_state)
 
         self.b_cap_dev_close.pack(side=tk.LEFT, padx=5, pady=5)
-        self.b_cap_dev_import.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.b_cap_dev_label.pack(side=tk.RIGHT, padx=5, pady=5)
         self.b_cap_dev_modify.pack(side=tk.RIGHT, padx=5, pady=5)
 
         # Update unlabeled, labeled lists and try to select the first element
@@ -1350,9 +1350,9 @@ class MudCaptureApplication(tk.Frame):
 
         # Enable / Disable buttons as deemed necessary
         if self.unlabeled_dev_list.num_nodes > 0:
-            self.b_cap_dev_import.config(state="normal")
+            self.b_cap_dev_label.config(state="normal")
         else:
-            self.b_cap_dev_import.config(state="disabled")
+            self.b_cap_dev_label.config(state="disabled")
 
         if self.labeled_dev_list.num_nodes > 0:
             self.b_cap_dev_modify.config(state="normal")
@@ -1484,6 +1484,7 @@ class MudCaptureApplication(tk.Frame):
 
     def import_dev_and_close(self, ips):
         device_data = {"unlabeled": False}
+        network_interfaces = 0
         for entry in self.device_entries:
             field = entry[0]
 
@@ -1499,7 +1500,33 @@ class MudCaptureApplication(tk.Frame):
                 pass
             else:
                 device_data[dbfield] = value
+                if value in [None, 0, ""]:
+                    if field in ["Model", "Manufacturer", "Internal Name"]:
+                        messagebox.showerror("Required field missing",
+                                             "The model, manufacturer, and internal name are required. \n\n"
+                                             "Missing the field '%s'" % format(field))
+                        self.logger.error('Required field missing: %s', field)
+                        return
+                elif field == "Internal Name":
+                    name_check = self.db_handler.db.select_device_internal_names()
+                    for (name,) in name_check:
+                        if value == name:
+                            messagebox.showerror("Internal name not unique",
+                                                 "The internal name must be unique, '%s' is already in use, "
+                                                 "please assign the device a different name" % format(value))
+                            self.logger.error("Internal name %s already used", value)
+                            return
+                elif field in ["Wifi", "Ethernet", "Bluetooth", "Zigbee", "ZWave", "3G", "4G", "5G", "Other"]:
+                    network_interfaces += 1
+
                 self.logger.debug('field: %s value %s -> database field: %s', field, value, dbfield)
+
+        if not network_interfaces:
+            messagebox.showerror("Missing network interface",
+                                 "At least one network interface is required. If none of the explicitly named "
+                                 "interfaces is not applicable, fill in the 'Other' field")
+            self.logger.error("At least one network interface is required")
+            return
 
         self.db_handler.db.insert_device(device_data)
         self.db_handler.db.insert_device_in_capture(self.dev_in_cap_data)

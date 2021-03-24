@@ -1133,6 +1133,13 @@ class MudCaptureApplication(tk.Frame):
     def prep_popup_update_device_state(self):
         d = self.labeled_dev_list_sel
         self.logger.debug("labeled_dev_list = %s", d)
+
+        if d is None:
+            messagebox.showerror("No labeled device selected", "Please select the labeled device whose state "
+                                                               "you wish to update.")
+            self.logger.error("Cannot modify the device state: No labeled device selected")
+            return
+
         mac = d[5]
         device_id = d[0]
         fw_ver = self.db_handler.db.select_most_recent_fw_ver({'deviceID': device_id,
@@ -1335,6 +1342,11 @@ class MudCaptureApplication(tk.Frame):
                         return
                     self.labeled_dev_list.append_unique((device_id, mfr, model, internalName,
                                                          category, mac_addr, ip, ipv6))
+
+        self.unlabeled_dev_list.focus(0)
+        self.unlabeled_dev_list.selection_set(0)
+        self.labeled_dev_list.focus(0)
+        self.labeled_dev_list.selection_set(0)
 
         # Enable / Disable buttons as deemed necessary
         if self.unlabeled_dev_list.num_nodes > 0:

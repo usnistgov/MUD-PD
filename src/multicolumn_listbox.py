@@ -6,10 +6,12 @@ try:
     import Tkinter as tk
     import tkFont
     import ttk
+    import logging
 except ImportError:  # Python 3
     import tkinter as tk
     import tkinter.font as tkFont
     import tkinter.ttk as ttk
+    import logging
 
 PAD_X = 5
 
@@ -18,6 +20,7 @@ class MultiColumnListbox(object):
     # use a ttk.TreeView as a multicolumn ListBox
     def __init__(self, parent, header, input_list, select_mode="extended", keep_first=False, exclusion_list=list(),
                  row=None, column=None, sticky=None):
+        self.logger = logging.getLogger(__name__)
         self.parent = parent
         self.header = header
         self.exclusion_list = exclusion_list
@@ -104,7 +107,8 @@ class MultiColumnListbox(object):
         self.tree.bind(*args, **kwargs)
 
     def selection(self):  # , *args, **kwargs):
-        print("self.tree.selection() = ", self.tree.selection())
+        # print("self.tree.selection() = ", self.tree.selection())
+        self.logger.debug("self.tree.selection() = %s", self.tree.selection())
         return self.tree.selection()
 
     '''

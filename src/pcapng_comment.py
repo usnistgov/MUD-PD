@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import struct
@@ -6,13 +7,16 @@ import subprocess
 
 
 def parse_comment(comment):
+    logger = logging.getLogger(__name__)
     if comment is None:
-        print('No JSON formatted comment exists')
+        # print("No JSON formatted comment exists")
+        logger.info("No JSON formatted comment exists")
         return None
     try:
         envi_dict = json.loads(comment)
     except json.decoder.JSONDecodeError:
-        raise TypeError('Comment field is not in dictionary format compatible with environment variable format')
+        logger.error("Comment field is not in dictionary format compatible with environment variable format")
+        raise TypeError("Comment field is not in dictionary format compatible with environment variable format")
 
     # TODO: Check for appropriate fields
 
@@ -21,10 +25,12 @@ def parse_comment(comment):
 
 # Borrowed from: https://stackoverflow.com/questions/5508509/how-do-i-check-if-a-string-is-valid-json-in-python
 def is_json(string):
+    logger = logging.getLogger(__name__)
     try:
         json.loads(string)  # Formerly set equal to "json_object"
     except ValueError as e:
-        print("Error:", e)
+        # print("Error:", e)
+        logger.error("%s", e)
         return False
     return True
 

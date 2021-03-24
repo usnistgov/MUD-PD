@@ -45,11 +45,13 @@
 #                           }
 
 from datetime import datetime, timedelta
+import logging
 
 
 class ReportGenerator:
 
     def __init__(self, device_info):
+        self.logger = logging.getLogger(__name__)
         self.header = 'This document serves to indicate the devices and operations captured ' \
                       'in addition to any specific procedures or environmental details of the captures ' \
                       'that differs from the general procedure found in the main README.txt'
@@ -94,7 +96,8 @@ class ReportGenerator:
             f.write('Other Devices:\n')
 
             for dev in capture_info['other_devices']:
-                print("dev:", dev)
+                # print("dev:", dev)
+                self.logger.info("dev: %s", dev)
                 f.write('    Name:  %s\n' % str(dev['name']))
                 f.write('     MAC:  %s\n' % dev['mac'])
 

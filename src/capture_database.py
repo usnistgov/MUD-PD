@@ -1254,7 +1254,7 @@ class CaptureDigest:
                 pkt_dict["tlp_dstport"] = l.dstport
             elif l.layer_name != p.layers[-1].layer_name:
                 # print("INFO: Only TCP and UDP are supported. Layer", l.layer_name, " identified")
-                self.logger.info("INFO: Only TCP and UDP are supported. Layer %s identified", l.layer_name)
+                self.logger.info("Only TCP and UDP are supported. Layer is %s", l.layer_name)
 
         pkt_info.append(pkt_dict.copy())
         addr_mac_src.add(mac_src)

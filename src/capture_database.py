@@ -273,29 +273,35 @@ class CaptureDatabase:
         "CREATE TEMPORARY TABLE cap_toi "
         "SELECT DISTINCT(id) "
         "FROM capture "
-        "WHERE fileID=%(cap_id)s;")
+        # "WHERE fileID=%(cap_id)s;")
+        "WHERE id=%(cap_id)s;")
 
     update_capture_toi = (
         "INSERT INTO cap_toi "
         "SELECT DISTINCT(id) "
         "FROM capture "
-        "WHERE fileID=%(cap_id)s;")
+        # "WHERE fileID=%(cap_id)s;")
+        "WHERE id=%(cap_id)s;")
 
     drop_device_toi = (
         "DROP TEMPORARY TABLE IF EXISTS dev_toi;")
 
-    create_device_toi_all = (
-        "CREATE TEMPORARY TABLE dev_toi "
-        "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
-        "FROM device_state d "
-        "    INNER JOIN cap_toi c ON d.fileID = c.id;")
+    drop_device_toi_copy = (
+        "DROP TEMPORARY TABLE IF EXISTS dev_toi_copy;"
+    )
 
-    create_device_toi = (
-        "CREATE TEMPORARY TABLE dev_toi "
-        "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
-        "FROM device_state d "
-        "    INNER JOIN cap_toi c ON d.fileID = c.id "
-        "WHERE d.deviceID=%(deviceID)s;")
+    # create_device_toi_all = (
+    #     "CREATE TEMPORARY TABLE dev_toi "
+    #     "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
+    #     "FROM device_state d "
+    #     "    INNER JOIN cap_toi c ON d.fileID = c.id;")
+
+    # create_device_toi = (
+    #     "CREATE TEMPORARY TABLE dev_toi "
+    #     "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
+    #     "FROM device_state d "
+    #     "    INNER JOIN cap_toi c ON d.fileID = c.id "
+    #     "WHERE d.deviceID=%(deviceID)s;")
 
     create_device_toi_from_capture_id_list = (
         "CREATE TEMPORARY TABLE dev_toi "
@@ -303,6 +309,11 @@ class CaptureDatabase:
         "FROM device_state ds "
         "    INNER JOIN device d ON d.id=ds.deviceID "
         "WHERE ds.fileID IN (%s);")
+
+    duplicate_dev_toi = (
+        "CREATE TEMPORARY TABLE dev_toi_copy "
+        "SELECT * FROM dev_toi;"
+    )
 
     update_device_toi = (
         "INSERT INTO dev_toi "
@@ -323,6 +334,32 @@ class CaptureDatabase:
         "        p.ip_dst   = d.ipv4_addr OR \n"
         "        p.ip_dst   = d.ipv6_addr) \n"
         "WHERE p.ew IN (%(ew)s) LIMIT %(num_pkts)s;")
+
+    query_packet_toi_between = (
+        "SELECT p.* "
+        "FROM pkt_toi p "
+        "INNER JOIN ( "
+        "    SELECT * FROM dev_toi "
+        "    WHERE deviceID = (%(deviceID0)s)) AS d0 "
+        "ON (p.mac_addr = d0.mac_addr OR "
+        "    p.ip_src   = d0.ipv4_addr OR "
+        "    p.ip_src   = d0.ipv6_addr OR "
+        "    p.ip_dst   = d0.ipv4_addr OR "
+        "    p.ip_dst   = d0.ipv6_addr) "
+        "INNER JOIN ( "
+        "    SELECT * FROM dev_toi_copy "
+        "    WHERE deviceID = (%(deviceID1)s)) AS d1 "
+        "ON (p.mac_addr = d1.mac_addr OR "
+        "    p.ip_src   = d1.ipv4_addr OR "
+        "    p.ip_src   = d1.ipv6_addr OR "
+        "    p.ip_dst   = d1.ipv4_addr OR "
+        "    p.ip_dst   = d1.ipv6_addr) "
+        "WHERE "
+	    "    (p.ip_src=d0.ipv4_addr AND p.ip_dst=d1.ipv4_addr) OR "
+        "    (p.ip_src=d1.ipv4_addr AND p.ip_dst=d0.ipv4_addr) OR "
+	    "    (p.ip_src=d0.ipv6_addr AND p.ip_dst=d1.ipv6_addr) OR "
+        "    (p.ip_src=d1.ipv6_addr AND p.ip_dst=d0.ipv6_addr) "
+        "LIMIT %(num_pkts)s;")
 
     drop_packet_toi = (
         "DROP TEMPORARY TABLE IF EXISTS pkt_toi;")
@@ -781,12 +818,12 @@ class CaptureDatabase:
         self.cnx.commit()
 
     # TODO: Determine if can be removed
-    def create_dev_toi(self, device_id=None):
-        if device_id is None:
-            self.cursor.execute(self.create_device_toi_all)
-        else:
-            self.cursor.execute(self.create_device_toi, device_id)
-        self.cnx.commit()
+    # def create_dev_toi(self, device_id=None):
+    #     if device_id is None:
+    #         self.cursor.execute(self.create_device_toi_all)
+    #     else:
+    #         self.cursor.execute(self.create_device_toi, device_id)
+    #     self.cnx.commit()
 
     def create_dev_toi_from_file_id_list(self):
         format_strings = ",".join(['%s'] * len(self.capture_id_list))
@@ -805,6 +842,21 @@ class CaptureDatabase:
         self.cursor.execute(
             self.query_packet_toi % {"deviceIDs": format_dev, "ew": format_ew, "num_pkts": num_pkts} % tuple(
                 self.device_id_list + ew))
+        self.cnx.commit()
+        return self.cursor.fetchall()
+
+    def select_pkt_toi_between(self, num_pkts):
+        # drop old dev_toi_copy if it exists
+        self.cursor.execute(self.drop_device_toi_copy)
+        self.cnx.commit()
+        # duplicate dev_toi
+        self.cursor.execute(self.duplicate_dev_toi)
+        self.cnx.commit()
+        # get data
+        self.cursor.execute(
+            self.query_packet_toi_between % {"deviceID0": self.device_id_list[0], "deviceID1": self.device_id_list[1],
+                                             "num_pkts": num_pkts})
+        self.cnx.commit()
         return self.cursor.fetchall()
 
     def drop_pkt_toi(self):

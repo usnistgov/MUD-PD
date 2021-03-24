@@ -96,7 +96,6 @@ class ReportGenerator:
             f.write('Other Devices:\n')
 
             for dev in capture_info['other_devices']:
-                # print("dev:", dev)
                 self.logger.info("dev: %s", dev)
                 f.write('    Name:  %s\n' % str(dev['name']))
                 f.write('     MAC:  %s\n' % dev['mac'])

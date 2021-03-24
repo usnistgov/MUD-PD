@@ -107,7 +107,6 @@ class MultiColumnListbox(object):
         self.tree.bind(*args, **kwargs)
 
     def selection(self):  # , *args, **kwargs):
-        # print("self.tree.selection() = ", self.tree.selection())
         self.logger.debug("self.tree.selection() = %s", self.tree.selection())
         return self.tree.selection()
 

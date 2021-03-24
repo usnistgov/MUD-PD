@@ -71,7 +71,6 @@ class MudCaptureApplication(tk.Frame):
         self.parent.title("MUD-PD")
         self.api_key = self.read_api_config()
         if self.api_key is not None:
-            # print("Fingerbank API Key: ", self.api_key)
             self.logger.info("Fingerbank API Key: %s", self.api_key)
         self.window_stack = []
         self.yield_focus(self.parent)
@@ -356,7 +355,6 @@ class MudCaptureApplication(tk.Frame):
     def yield_focus(self, window=None):
         if len(self.window_stack) == 0:
             if window is None:
-                #print("Error with yielding focus")
                 self.logger.error("Problem with window management (yield_focus)")
             else:
                 self.window_stack.append(window)
@@ -505,7 +503,6 @@ class MudCaptureApplication(tk.Frame):
                 db_handler_temp.db.init_new_database(db_name)
             except mysql.connector.Error as err:
                 if err.errno == mysql.connector.errorcode.ER_DB_CREATE_EXISTS:  # 1007
-                    # print("Database already exists")
                     self.logger.error("Database already exists")
 
                     reinit = tk.messagebox.askyesno("Database Creation Error",
@@ -633,7 +630,6 @@ class MudCaptureApplication(tk.Frame):
             for item in items:
                 api_info[item[0]] = item[1]
         else:
-            #print("No Fingerbank API Key Present")
             self.logger.info("No Fingerbank API Key Present")
             return None
         return api_info['api_key']
@@ -703,14 +699,10 @@ class MudCaptureApplication(tk.Frame):
                                         elif phase == "removal":
                                             y.set(2)
                                         else:
-                                            # print("Warning unexpected phase provided")
                                             self.logger.warning("Writing pcapng environmental variables: "
                                                                 "unexpected phase provided")
-
-                                        # print("Phase", phase, y.get())
-                                        # self.logger.debug("Phase %s %s", phase, y.get())
+                                        self.logger.debug("Phase %s %s", phase, y.get())
                                 except:
-                                    #print("Warning: Likely field missing in file comment")
                                     self.logger.warning("Writing pcapng environmental variables: "
                                                         "Likely field missing in file comment")
                             else:
@@ -724,7 +716,6 @@ class MudCaptureApplication(tk.Frame):
                                             elif bool_val == "false":
                                                 y.set(0)
                                             else:
-                                                # print("Warning! non true/false value provided")
                                                 self.logger.warning("Writing pcapng environmental variables: "
                                                                     "non boolean value provided")
                                     elif type(y) == tk.StringVar:
@@ -732,12 +723,10 @@ class MudCaptureApplication(tk.Frame):
                                         if str_val is not None:
                                             y.set(str_val)
                                     else:
-                                        # print("Warning! Unexpected variable type")
                                         self.logger.warning("Writing pcapng environmental variables: "
                                                             "unexpected variable type")
-                                    print(x, field2db[x], y.get())
+                                    self.logger.debug("x: %s, field2db[x]: %s, y.get(): %s",x, field2db[x], y.get())
                                 except:
-                                    # print("Warning! Likely environmental variable missing")
                                     self.logger.warning("Writing pcapng environmental variables: "
                                                         "Likely environmental variable missing")
             else:
@@ -878,7 +867,6 @@ class MudCaptureApplication(tk.Frame):
             messagebox.showerror("Error", "Capture file already imported into database")
         else:
             self.cap = CaptureDigest(file_path, api_key=self.api_key)
-            # print("finished importing")
             self.logger.info("Finished importing capture file")
             # TODO: Determine how best to notify the user that processing is happening adn the tool is not
             #  necessarily stalled
@@ -907,13 +895,10 @@ class MudCaptureApplication(tk.Frame):
 
             for i in range(3, 11):
                 data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
-                # print(i, self.capture_entries[i][1].get())
                 self.logger.debug("%s %s", i, self.capture_entries[i][1].get())
 
-            # print('data_capture:', data_capture)
             self.logger.debug("data_capture: %s", data_capture)
 
-            # print("(A) inserting capture file into database")
             self.logger.info("(A) inserting capture file into database")
             self.db_handler.db.insert_capture(data_capture)
             temp_file_id = self.db_handler.db.select_last_insert_id()
@@ -936,7 +921,6 @@ class MudCaptureApplication(tk.Frame):
                         elif type(y) == tk.StringVar:
                             self.cap_envi_metadata[field2db[x]] = y.get()
                         else:
-                            # print("Unexpected variable type {type(y)}, {y}, {x}")
                             self.logger.warning("import_and_close: unexpected variable type %s, %s, %s",
                                                 type(y), y, x)
 
@@ -946,20 +930,15 @@ class MudCaptureApplication(tk.Frame):
 
             # Popup window
             # self.yield_focus(self.w_cap)
-            # print("(A) popup_import_capture_devices")
-            # print("(B) popup_import_capture_devices")
             self.logger.info("(B) popup_import_capture_devices")
             self.popup_import_capture_devices(self.cap)
 
-            # print("(C) populate_capture_list")
             self.logger.info("(C) populate_capture_list")
             self.populate_capture_list()
 
-            # print("(D) import_packets")
             self.logger.info("(D) import_packets")
             self.import_packets(self.cap)
 
-            # print("(E) insert_protocol_device\n\tUpdating Device Protocol Table")
             self.logger.info("(E) insert_protocol_device: Updating Device Protocol Table")
             try:
                 self.db_handler.db.insert_protocol_device()
@@ -967,7 +946,6 @@ class MudCaptureApplication(tk.Frame):
             except AttributeError:
                 messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
 
-            # print("(F) destroying import capture window")
             self.logger.info("(F) destroying import capture window")
             self.w_cap.destroy()
 
@@ -984,7 +962,6 @@ class MudCaptureApplication(tk.Frame):
             messagebox.showerror("Error", "Capture file already imported into database")
         else:
             self.cap = CaptureDigest(file_path, api_key=self.api_key, mp=True)  # , q=q)
-            # print("finished importing")
             self.logger.info("Finished importing packets from packet capture")
 
             data_capture = {
@@ -1000,13 +977,10 @@ class MudCaptureApplication(tk.Frame):
 
             for i in range(3, 11):
                 data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
-                # print(i, self.capture_entries[i][1].get())
                 self.logger.debug("%s, %s", i, self.capture_entries[i][1].get())
 
-            # print('data_capture:', data_capture)
             self.logger.debug('data_capture: %s', data_capture)
 
-            # print("(A) inserting capture file into database")
             self.logger.info("(A) inserting capture file into database")
             self.db_handler.db.insert_capture(data_capture)
             temp_file_id = self.db_handler.db.select_last_insert_id()
@@ -1019,20 +993,15 @@ class MudCaptureApplication(tk.Frame):
 
             # Popup window
             # self.yield_focus(self.w_cap)
-            # print("(A) popup_import_capture_devices")
-            # print("(B) popup_import_capture_devices")
             self.logger.info("(B) popup_import_capture_devices")
             self.popup_import_capture_devices(self.cap)
 
-            # print("(C) populate_capture_list")
             self.logger.info("(C) populate_capture_list")
             self.populate_capture_list()
 
-            # print("(D) import_packets")
             self.logger.info("(D) import_packets")
             self.import_packets(self.cap)
 
-            # print("(E) destroying import capture window")
             self.logger.info("(E) destroying import capture window")
             self.w_cap.destroy()
 
@@ -1056,14 +1025,12 @@ class MudCaptureApplication(tk.Frame):
             #self.cap.import_pkts()
 
             stop = datetime.now()
-            # print("time to import = ", (stop - start).total_seconds())
             self.logger.info("time to import = %s", (stop - start).total_seconds())
             self.popup_import_capture_devices()
         else:
             self.popup_import_capture_devices()
 
             stop = datetime.now()
-            # print("time to import = ", (stop - start).total_seconds())
             self.logger.info("time to import = %s", (stop - start).total_seconds())
 
     def popup_import_capture_devices(self, cap=None):
@@ -1071,7 +1038,6 @@ class MudCaptureApplication(tk.Frame):
 
         if cap is None:
             if self.cap is None:
-                # print("Error: If no previous capture imported, a capture file must be provided.")
                 self.logger.error("popup_import_capture_devices: "
                                   "If no previous capture imported, a capture file must be provided.")
         elif self.cap is None:
@@ -1158,17 +1124,14 @@ class MudCaptureApplication(tk.Frame):
 
     def update_unlabeled_list_selection(self, _):
         self.unlabeled_dev_list_sel = self.unlabeled_dev_list.get(self.unlabeled_dev_list.selection())
-        # print("self.unlabeled_dev_list_sel = ", self.unlabeled_dev_list_sel)
         self.logger.debug("self.unlabeled_dev_list_sel = %s", self.unlabeled_dev_list_sel)
 
     def update_identified_list_selection(self, _):
         self.labeled_dev_list_sel = self.labeled_dev_list.get(self.labeled_dev_list.selection())
-        # print("self.labeled_dev_list_sel = ", self.labeled_dev_list_sel)
         self.logger.debug("self.labeled_dev_list_sel = %s", self.labeled_dev_list_sel)
 
     def prep_popup_update_device_state(self):
         d = self.labeled_dev_list_sel
-        # print("d = ", d)
         self.logger.debug("labeled_dev_list = %s", d)
         mac = d[5]
         device_id = d[0]
@@ -1184,8 +1147,6 @@ class MudCaptureApplication(tk.Frame):
                              'ipv4_addr': d[6],
                              'ipv6_addr': d[7]}
 
-        # print("ipv4:", device_state_data['ipv4_addr'])
-        # print("ipv6:", device_state_data['ipv6_addr'])
         self.logger.debug("ipv4: %s", device_state_data['ipv4_addr'])
         self.logger.debug("ipv6: %s", device_state_data['ipv6_addr'])
 
@@ -1198,7 +1159,6 @@ class MudCaptureApplication(tk.Frame):
     def refresh_unlabeled_labeled_lists(self):
         macs_in_dev_tbl = self.db_handler.db.select_device_macs()
 
-        # print("num uniqueMacs:", len(self.cap.uniqueMAC))
         self.logger.debug("refresh_unlabeled_labeled_lists: num uniqueMacs: %s", len(self.cap.uniqueMAC))
 
         # Sort devices found in the capture file into two lists: labeled, and unlabeled
@@ -1208,7 +1168,6 @@ class MudCaptureApplication(tk.Frame):
 
             # Loop through the uniqueMAC addresses found in the capture file
             for mac in self.cap.uniqueMAC:
-                # print("mac", mac)
                 self.logger.debug("mac %s", mac)
 
                 # Check for a matching MAC address in the "Device" table
@@ -1231,7 +1190,6 @@ class MudCaptureApplication(tk.Frame):
 
                     device_data = {'mac_addr': mac, 'mfr': mfr}
 
-                    # print(device_data)
                     self.logger.debug("device_data: %s", device_data)
                     self.logger.debug("device_data types: %s %s", type(device_data['mac_addr']),
                                       type(device_data['mfr']))
@@ -1243,7 +1201,6 @@ class MudCaptureApplication(tk.Frame):
                     # TODO COMPLETE THE REPLACEMENT OF THE OLD findIP and findIPs functions
                     (ip_set, ipv6_set, hasMultiple) = self.cap.find_ips(mac)
                     if hasMultiple:
-                        # print("Warning: multiple IPv4 or IPv6 addresses found, providing the first one only")
                         self.logger.warning("Multiple IPv4 or IPv6 addresses found, providing the first one only")
                     ip = list(ip_set)[0]
                     ipv6 = list(ipv6_set)[0]
@@ -1262,7 +1219,6 @@ class MudCaptureApplication(tk.Frame):
                     device_id = match[0][0]
                     self.cap.labeledDev.append(device_id)
                     imported_devices += match
-                    # print(device_id, type(device_id))
                     self.logger.debug("device_id=%s, type(device_id)=%s", device_id, type(device_id))
                     device = self.db_handler.db.select_device(device_id)
 
@@ -1277,7 +1233,6 @@ class MudCaptureApplication(tk.Frame):
                         # TODO COMPLETE THE REPLACEMENT OF THE OLD findIP and findIPs functions
                         (ip_set, ipv6_set, hasMultiple) = self.cap.find_ips(mac)
                         if hasMultiple:
-                            # print("Warning: multiple IPv4 or IPv6 addresses found, providing the first one only")
                             self.logger.warning("Multiple IPv4 or IPv6 addresses found, providing the first one only")
                         ip = list(ip_set)[0]
                         ipv6 = list(ipv6_set)[0]
@@ -1293,7 +1248,6 @@ class MudCaptureApplication(tk.Frame):
                                                                 "ipv4_addr": ip,
                                                                 "ipv6_addr": ipv6})
                     else:
-                        # print("ERROR, something went horribly wrong with the database")
                         self.logger.error("Something went horribly wrong with the database")
                         ip = None
                         ipv6 = None
@@ -1337,18 +1291,13 @@ class MudCaptureApplication(tk.Frame):
 
                     # Collect necessary information about device and place it into unlabeled_dev_list listbox
                     device = self.db_handler.db.select_device(device_id)
-                    # print("deviceID", device_id)
                     self.logger.debug("deviceID=%s", device_id)
-                    # (_, mfr, model, mac_addr, internalName, category, mudCapable, wifi, ethernet, bluetooth, G3,
-                    # G4, G5, zigbee, zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
                     (_, mfr, _, mac_addr, _, _, _, _, _, _, _, _, _, _, _, _, _, unlabeled) = device[0]
 
                     device_state = self.db_handler.db.select_device_state(self.cap.id, device_id)
-                    # (deviceStateID, _, _, fw_ver, ip, ipv6) = self.db_handler.db.cursor.fetchone()
                     (deviceStateID, _, _, _, ip, ipv6) = device_state[0]
 
                     if not unlabeled:
-                        # print("ERROR with populating unlabeled device list (device is labeled)")
                         self.logger.error("Problem populating unlabeled device list (device is labeled)")
                         return
                     self.unlabeled_dev_list.append_unique((device_id, mfr, mac_addr, ip, ipv6))
@@ -1356,7 +1305,6 @@ class MudCaptureApplication(tk.Frame):
             # check if labeled_dev_list is empty and populate if it is
             if self.labeled_dev_list.num_nodes > 0:
                 labeled_device_ids = list()
-                # labeled_device_ids = self.labeled_dev_list.get_list()
                 for labeled_dev in self.labeled_dev_list.get_list():
                     labeled_device_ids.append(labeled_dev[0])
                 for device_id in self.cap.labeledDev:
@@ -1376,8 +1324,6 @@ class MudCaptureApplication(tk.Frame):
 
                     # Collect necessary information about device and place it into labeled_dev_list listbox
                     device = self.db_handler.db.select_device(device_id)
-                    # (_, mfr, model, mac_addr, internalName, category, mudCapable, wifi, ethernet, bluetooth,
-                    # G3, G4, G5, zigbee, zwave, other, notes, unlabeled) = self.db_handler.db.cursor.fetchone()
                     (_, mfr, model, mac_addr, internalName, category, _, _, _, _, _, _, _, _, _, _, _, unlabeled) = \
                         device[0]
 
@@ -1385,7 +1331,6 @@ class MudCaptureApplication(tk.Frame):
                     (deviceStateID, _, _, fw_ver, ip, ipv6) = device_state[0]
 
                     if unlabeled:
-                        # print("ERROR with populating labeled device list (device is unlabeled)")
                         self.logger.error("Problem populating labeled device list (device is unlabeled)")
                         return
                     self.labeled_dev_list.append_unique((device_id, mfr, model, internalName,
@@ -1460,14 +1405,10 @@ class MudCaptureApplication(tk.Frame):
         try:
             dev_name = self.cap.modellookup[mac_addr]
         except KeyError as ke:
-            # print("Model not found for: ", str(ke))
             self.logger.error("Model not found for %s", str(ke))
-        # print("Device Name: ", dev_name)
         self.logger.debug("Device Name: %s", dev_name)
         cache_data = self.db_handler.db.select_cache_device({'model': dev_name})
-        # print("Cache Data: ", cache_data)
         self.logger.debug("Cache Data: %s", cache_data)
-        # print("Options: ", options)
         self.logger.debug("Options: %s", options)
 
         ent = None
@@ -1492,7 +1433,6 @@ class MudCaptureApplication(tk.Frame):
                         try:
                             ent.insert(30, dev_name)
                         except KeyError as ke:
-                            # print("Model not found for: ", str(ke))
                             self.logger.error("Model not found for %s", str(ke))
 
             if not i:
@@ -1543,12 +1483,10 @@ class MudCaptureApplication(tk.Frame):
             try:
                 dbfield = field2db[field]
             except KeyError as ke:
-                # print('Error:', ke)
                 self.logger.error("import_Dev_and_close: %s", str(ke))
                 pass
             else:
                 device_data[dbfield] = value
-                # print('field: %s value %s -> database field: %s' % (field, value, dbfield))
                 self.logger.debug('field: %s value %s -> database field: %s', field, value, dbfield)
 
         self.db_handler.db.insert_device(device_data)
@@ -1641,12 +1579,9 @@ class MudCaptureApplication(tk.Frame):
                 self.device_state_entries[label] = value
 
     def import_dev_state_and_close(self, device_state_data):
-        # print("device_state_data: ", device_state_data)
         self.logger.debug("device_state_data: %s", device_state_data)
-        # print("entries: ", self.device_state_entries)
         self.logger.debug("entries: %s", self.device_state_entries)
 
-        # print(self.device_state_entries['fw_ver'].get())
         self.logger.debug("fw_ver: %s", self.device_state_entries['fw_ver'].get())
         device_state_data['fw_ver'] = str(self.device_state_entries['fw_ver'].get())
 
@@ -1654,7 +1589,6 @@ class MudCaptureApplication(tk.Frame):
         device_state = self.db_handler.db.select_device_state(device_state_data["fileID"],
                                                               device_state_data["deviceID"])
         temp = device_state[0]
-        #print(temp)
         self.logger.debug("temp device_state: %s", temp)
         if temp is None:
             self.db_handler.db.insert_device_state(device_state_data)
@@ -1668,7 +1602,6 @@ class MudCaptureApplication(tk.Frame):
         for entry in entries:
             field = entry[0]
             text = entry[1].get()
-            # print('%s: "%s"' % (field, text))
             self.logger.debug('%s: "%s"', field, text)
 
     # Uses Treeview
@@ -1728,7 +1661,6 @@ class MudCaptureApplication(tk.Frame):
         self.populate_comm_list()
 
     def import_packets(self, cap):
-        # print("In import_packets")
         self.logger.info("In import_packets")
         h = {"fileID": cap.id}
         batch = []
@@ -1751,11 +1683,11 @@ class MudCaptureApplication(tk.Frame):
         self.db_handler.db.insert_packet_batch(batch)
 
         stop = datetime.now()
-        # print("time to import = ", (stop - start).total_seconds())
         self.logger.info("time to import = %s", (stop - start).total_seconds())
 
         self.populate_comm_list()
 
+    # TODO: Do something with self.comm_dev_restriction or remove the buttons
     def populate_comm_list(self, append=False):
         # Clear previous list
         if not append:
@@ -1764,7 +1696,6 @@ class MudCaptureApplication(tk.Frame):
             self.db_handler.db.drop_dev_toi()
             self.db_handler.db.drop_pkt_toi()
 
-        # print("\nPopulate Comm List")
         self.logger.info("Populate Comm List")
 
         # Selecting based on cap list
@@ -1772,13 +1703,11 @@ class MudCaptureApplication(tk.Frame):
         for cap in self.cap_list.selection():
             cap_details = self.cap_list.get(cap)
 
-            # print("cap_details", cap_details)
             self.logger.debug("cap_details: %s", cap_details)
 
             cap_date = cap_details[1]
 
             if cap_date == "All...":
-                # print("All Captures")
                 self.logger.info("All Captures")
 
                 for cap_data in self.cap_list.get_list()[1:]:
@@ -1787,7 +1716,6 @@ class MudCaptureApplication(tk.Frame):
             else:
                 self.db_handler.db.capture_id_list.append(cap_details[0])
 
-        # print("capture_id_list", self.db_handler.db.capture_id_list)
         self.logger.debug("capture_id_list: %s", self.db_handler.db.capture_id_list)
         # Check if the list is empty and return if it is
         if not self.db_handler.db.capture_id_list:
@@ -1798,11 +1726,9 @@ class MudCaptureApplication(tk.Frame):
         for dev in self.dev_list.selection():
             dev_details = self.dev_list.get(dev)
 
-            # print("dev_details", dev_details)
             self.logger.debug("dev_details: %s", dev_details)
 
             dev_name = dev_details[1]
-            # print("dev =", dev_name)
             self.logger.debug("dev = %s", dev_name)
 
             if dev_name == "All...":
@@ -1812,7 +1738,6 @@ class MudCaptureApplication(tk.Frame):
             else:
                 self.db_handler.db.device_id_list.append(dev_details[0])
 
-        # print("device_id_list", self.db_handler.db.device_id_list)
         self.logger.debug("device_id_list: %s", self.db_handler.db.device_id_list)
         self.db_handler.db.create_dev_toi_from_file_id_list()
 
@@ -1851,7 +1776,6 @@ class MudCaptureApplication(tk.Frame):
         self.comm_list.selection_set(0)
 
     def modify_comm_state(self, button):
-        # print("button:", button)
         self.logger.debug("modify_comm_state: button %s", button)
         # Check current filter
         if self.comm_state == "any":
@@ -1860,7 +1784,6 @@ class MudCaptureApplication(tk.Frame):
             elif button == "ew":
                 self.comm_state = "ew"
             else:
-                # print("Something went wrong with modifying the communication state")
                 self.logger.error("Something went wrong with modifying the communication state")
         elif self.comm_state == "ns":
             if button == "ns":
@@ -1868,7 +1791,6 @@ class MudCaptureApplication(tk.Frame):
             elif button == "ew":
                 self.comm_state = "ew"
             else:
-                # print("Something went wrong with modifying the communication state")
                 self.logger.error("Something went wrong with modifying the communication state")
         elif self.comm_state == "ew":
             if button == "ns":
@@ -1876,10 +1798,8 @@ class MudCaptureApplication(tk.Frame):
             elif button == "ew":
                 self.comm_state = "any"
             else:
-                # print("Something went wrong with modifying the communication state")
                 self.logger.error("Something went wrong with modifying the communication state")
         else:
-            # print("Something went wrong with modifying the communication state")
             self.logger.error("Something went wrong with modifying the communication state")
 
         # Update the filter
@@ -1896,15 +1816,12 @@ class MudCaptureApplication(tk.Frame):
             self.b_ew.config(fg="green")
             # update communication table view
         else:
-            # print("Something went wrong with modifying the communication state")
             self.logger.error("Something went wrong with modifying the communication state")
 
-        # print("comm_state:", self.comm_state)
         self.logger.info("comm_state: %s", self.comm_state)
         self.populate_comm_list()
 
     def modify_comm_num_pkts(self, num_pkts):
-        # print("number of packets:", num_pkts)
         self.logger.info("number of packets: %s", num_pkts)
         self.comm_list_num_pkts = num_pkts
 
@@ -1930,15 +1847,12 @@ class MudCaptureApplication(tk.Frame):
             self.b_pkt1000.config(state='normal')
             self.b_pkt10000.config(state='disabled')
         else:
-            # print("unidentified value for modify_comm_num_pkts")
             self.logger.error("Unidentified value for modify_comm_num_pkts")
 
         self.populate_comm_list()
 
     def modify_comm_dev_restriction(self, r_button):
-        # print("comm_dev_restriction: ", self.comm_dev_restriction)
         self.logger.info("comm_dev_restriction: %s", self.comm_dev_restriction)
-        # print("communication device restriction:", r_button)
         self.logger.info("communication device restriction: %s", r_button)
 
         if self.comm_dev_restriction == "none":
@@ -1947,7 +1861,6 @@ class MudCaptureApplication(tk.Frame):
             elif r_button == "either":
                 self.comm_dev_restriction = "either"
             else:
-                # print("Something went wrong with modifying the communication device restriction")
                 self.logger.error("Something went wrong with modifying the communication device restriction")
         elif self.comm_dev_restriction == "between":
             if r_button == "between":
@@ -1955,7 +1868,6 @@ class MudCaptureApplication(tk.Frame):
             elif r_button == "either":
                 self.comm_dev_restriction = "either"
             else:
-                # print("Something went wrong with modifying the communication device restriction")
                 self.logger.error("Something went wrong with modifying the communication device restriction")
         elif self.comm_dev_restriction == "either":
             if r_button == "between":
@@ -1963,10 +1875,8 @@ class MudCaptureApplication(tk.Frame):
             elif r_button == "either":
                 self.comm_dev_restriction = "none"
             else:
-                # print("Something went wrong with modifying the communication device restriction")
                 self.logger.error("Something went wrong with modifying the communication device restriction")
         else:
-            # print("Something went wrong with modifying the communication device restriction")
             self.logger.error("Something went wrong with modifying the communication device restriction")
 
         # Update the filter
@@ -1983,10 +1893,8 @@ class MudCaptureApplication(tk.Frame):
             self.b_either.config(fg="green")
             # update communication table view
         else:
-            # print("Something went wrong with modifying the communication device restriction")
             self.logger.error("Something went wrong with modifying the communication device restriction")
 
-        # print("comm_dev_restriction:", self.comm_dev_restriction)
         self.logger.info("comm_dev_restriction: %s", self.comm_dev_restriction)
         self.populate_comm_list()
 
@@ -2004,7 +1912,6 @@ class MudCaptureApplication(tk.Frame):
             self.string_list.insert(tk.END, [protocol, src_port, dst_ip_addr, ipv6, dst_url, dst_port, notes])
 
     def update_string_list(self):
-        # print("update_comm_list will do something eventually")
         self.logger.info("update_comm_list will do something eventually")
 
     '''
@@ -2083,7 +1990,6 @@ class MudCaptureApplication(tk.Frame):
         self.report_dev_list.clear()
         self.report_dev_list.append((0, "All..."))
 
-        # print("Populating Report Device List")
         self.logger.info("Populating Report Device List")
 
         devices = self.db_handler.db.select_devices_imported()
@@ -2091,7 +1997,6 @@ class MudCaptureApplication(tk.Frame):
             self.report_dev_list.append((dev_id, internalName, mfr, model, mac, category))
 
     def populate_report_pcap_list(self, _):  # unknown if need "event"
-        # print("Populating Report PCAP list")
         self.logger.info("Populating Report PCAP list")
 
         # clear previous list
@@ -2105,16 +2010,13 @@ class MudCaptureApplication(tk.Frame):
             self.dev_mac = None
             self.device_id = None
 
-        # print("device:", self.dev_mac)
         self.logger.debug("device: %s", self.dev_mac)
-        # print("device_id:", self.device_id)
         self.logger.debug("device_id: %s", self.device_id)
 
         self.report_pcap_list.append((0, "All...",))
 
         # Get and insert all captures currently added to database
         if self.report_device[1] == "All...":
-            # print("all devices selected")
             self.logger.info("all devices selected")
             caps_imported = self.db_handler.db.select_imported_captures()
         else:
@@ -2132,18 +2034,15 @@ class MudCaptureApplication(tk.Frame):
         self.report_pcap_list.selection_set(0)
 
     def select_report_pcaps(self, _):  # Originally _ was "event"
-        # print("Select Report pcaps")
         self.logger.info("Select Report pcaps")
         self.report_pcap_where = ' '
 
-        # print("report_pcap_list.selection():", self.report_pcap_list.selection())
         self.logger.debug("report_pcap_list.selection(): %s", self.report_pcap_list.selection())
 
         first = True
 
         for pcap_item in self.report_pcap_list.selection():
             pcap = self.report_pcap_list.get(pcap_item)
-            # print("pcap:", pcap)
             self.logger.debug("pcap: %s", pcap)
 
             if pcap[1] != "All...":
@@ -2155,20 +2054,17 @@ class MudCaptureApplication(tk.Frame):
 
         self.report_pcap_where += ';'
 
-        # print("self.report_pcap_where:", self.report_pcap_where)
         self.logger.debug("self.report_pcap_where: %s", self.report_pcap_where)
 
         self.b_report_generate.config(state='normal')
 
     def generate_report(self):
-        # print("Preparing to generate report file")
         self.logger.info("Preparing to generate report file")
 
         for dev_item in self.report_dev_list.selection():
             dev = self.report_dev_list.get(dev_item)
 
             if dev[1] == "All...":
-                # print("All selected")
                 self.logger.info("All selected")
                 devs_imported = self.db_handler.db.select_devices_imported()
                 for (device_id, mfr, model, mac, internalName, category) in devs_imported:
@@ -2179,7 +2075,6 @@ class MudCaptureApplication(tk.Frame):
 
                     pcap_info = self.db_handler.db.select_caps_with_device_where({"deviceID": device_id},
                                                                                  conditions=self.report_pcap_where)
-                    # print("len(pcap_info)", len(pcap_info))
                     self.logger.debug("len(pcap_info): %s", len(pcap_info))
 
                     # Need to add end_time and duration information to database
@@ -2215,7 +2110,6 @@ class MudCaptureApplication(tk.Frame):
                 break
 
             else:
-                # print("Generating report for one device:\t%s" % dev[1])
                 self.logger.info("Generating report for one device:\t%s", dev[1])
                 self.report_gen_obj = ReportGenerator({'name': dev[1], 'mac': dev[4]})
 
@@ -2292,7 +2186,6 @@ class MudCaptureApplication(tk.Frame):
 
     def __exit__(self):
         self.db_handler.__exit__()
-        # print("Cleaned up on exit")
         self.logger.info("Cleaned up on exit")
         self.parent.quit()
 
@@ -2407,7 +2300,6 @@ class MUDWizard(tk.Toplevel):
         # TODO: See if this can be removed
         try:
             self.db_handler.db.insert_protocol_device()
-            # print("Success!", "Labeled Device Info Updated")
             self.logger.info("Success! Labeled Device Info Updated")
 
         except AttributeError:
@@ -2496,10 +2388,8 @@ class MUDWizard(tk.Toplevel):
                 if iptest.iptype() == 'PUBLIC':
                     try:
                         self.dns_name = socket.gethostbyaddr(i[2])
-                        # print(self.dns_name[0])
                         self.logger.debug("dns_name: %s", self.dns_name[0])
                     except socket.herror as he:
-                        # print(he, "DNS Name not found for", i[2])
                         self.logger.error("%s: DNS Name not found for %s", he, i[2])
                         self.hosts_internet.append((i[1], i[2], i[4], i[5], i[3]))
                         continue
@@ -2603,7 +2493,6 @@ class MUDWizard(tk.Toplevel):
         if row is None:
             row = frame.max_row
 
-        # print("Remove_rule button row:", row)
         self.logger.info("Remove_rule button row: %s", row)
 
         # Go through row pairs of rules, pull out tkinter objects (as fields), forget them, and pop from rules dict
@@ -2620,7 +2509,6 @@ class MUDWizard(tk.Toplevel):
             elif type(f) in [tk.Label, tk.Entry, tk.Button, tk.Checkbutton, ttk.Combobox]:
                 f.grid_forget()
             else:
-                # print("Unexpected datatype %s, skipping" % type(f))
                 self.logger.warning("Unexpected datatype %s, skipping", type(f))
 
     def create_combobox(self, frame, opt_type="protocol", row=None):
@@ -2632,7 +2520,6 @@ class MUDWizard(tk.Toplevel):
         # elif opt_type == "host":
         #     values = ('Host A', 'Host B', 'Host B')
         else:
-            #print('Error: invalid rule_type')
             self.logger.error("invalid rule_type")
             return
 
@@ -2713,7 +2600,6 @@ class MUDWizard(tk.Toplevel):
             elif comm == "controller":
                 match_type = MatchType.IS_CONTROLLER
             else:
-                # print("Communication type error! Skipping")
                 self.logger.error("Communication type error! Skipping")
                 continue
 
@@ -2749,18 +2635,15 @@ class MUDWizard(tk.Toplevel):
                 elif direction_initiated == "Remote":
                     direction_initiated = Direction.TO_DEVICE
                 else:
-                    # print("Error: Unexpected initiation direction value - skipping rule.")
                     self.logger.error("Unexpected initiation direction value - skipping rule.")
 
                 # Check values and set appropriate fields
                 if protocol == self.protocol_options[0]:
                     prot = Protocol.ANY
                     if port_local is not None:
-                        # print("Warning: local port specified when not allowed - ignoring value")
                         self.logger.warning("Local port specified when not allowed - ignoring value")
                     port_local = None
                     if port_remote is not None:
-                        # print("Warning: remote port specified when not allowed - ignoring value")
                         self.logger.warning("Remote port specified when not allowed - ignoring value")
                     port_remote = None
                 elif protocol == self.protocol_options[1]:
@@ -2768,7 +2651,6 @@ class MUDWizard(tk.Toplevel):
                 elif protocol == self.protocol_options[2]:
                     prot = Protocol.UDP
                 else:
-                    #print("Protocol type error! Skipping")
                     self.logger.error("Protocol type error! Skipping")
                     continue
 
@@ -2873,22 +2755,18 @@ class MUDPage0Select(tk.Frame):
     def populate_mud_dev_list(self):
         # Get and insert all captures currently added to database
         self.mud_dev_list.clear()
-        # print("Populating MUD Device List")
         self.controller.logger.info("Populating MUD Device List")
         try:
             devices = self.controller.db_handler.db.select_devices_imported()
             for (dev_id, mfr, model, mac, internalName, category) in devices:
                 self.mud_dev_list.append((dev_id, internalName, mfr, model, mac, category))
         except AttributeError as ae:
-            # print("ERROR:", ae, "Database not connected, please connect to a database")
             self.controller.logger.error("%s: Database not connected, please connect to a database", ae)
 
     def retrieve_device_info(self, _):  # , ignored_dev = None):
-        # print("Retrieving Device Info")
         self.controller.logger.info("Retrieving Device Info")
 
         self.controller.mud_device = self.mud_dev_list.get(self.mud_dev_list.selection())
-        # print("device:", self.controller.mud_device)
         self.controller.logger.debug("device: %s", self.controller.mud_device)
 
         # Populates Device String Variable for the next page
@@ -2901,27 +2779,18 @@ class MUDPage0Select(tk.Frame):
         self.device_id = self.controller.mud_device[0]
         self.dev_mac = self.controller.mud_device[4]
         self.dev_mfr = self.controller.mud_device[2]
-        # print("self.dev_mac:")
-        # print("\t", self.dev_mac)
         self.controller.logger.debug("self.dev_mac: %s", self.dev_mac)
-        # print("self.device_id:")
-        # print("\t", self.device_id)
         self.controller.logger.debug("self.device_id: %s", self.device_id)
-        # print("self.device_mfr:")
-        # print("\t", self.dev_mfr)
         self.controller.logger.debug("self.device_mfr: %s", self.dev_mfr)
 
     def next_page(self):
-        # print("Populating device communication list")
         self.controller.logger.info("Populating device communication list")
         try:
             comm_info = self.controller.db_handler.db.select_device_communication_info({'new_deviceID': self.device_id})
-            # print(comm_info)
             # self.controller.logger.debug("comm_info: %s", comm_info)
             self.hosts_internet = self.controller.retrieve_hosts_internet(comm_info)
             self.hosts_local = self.controller.retrieve_hosts_local(comm_info)
         except AttributeError as ae:
-            #print("Error: ", ae)
             self.controller.logger.error("Error: %s", ae)
             # Skipping rest of method if fails.
             self.controller.next_page()
@@ -2932,9 +2801,7 @@ class MUDPage0Select(tk.Frame):
         # Autofill Device Details
         self.controller.sv_mfr.set(self.dev_mfr)
 
-        # print("Internet hosts:", len(self.hosts_internet), self.hosts_internet)
         self.controller.logger.debug("Internet hosts: %s %s", len(self.hosts_internet), self.hosts_internet)
-        # print("Local hosts:", len(self.hosts_local), self.hosts_local)
         self.controller.logger.debug("Local hosts: %s %s", len(self.hosts_local), self.hosts_local)
 
         # Internet
@@ -2989,7 +2856,6 @@ class MUDPage0Select(tk.Frame):
         elif ipv6:
             self.controller.ipversion = IPVersion.IPV6
         else:
-            # print("Warning: Impossible ip version combination found")
             self.controller.logger.warning("Impossible ip version combination found")
 
         self.controller.next_page()
@@ -3649,7 +3515,6 @@ class DatabaseHandler:
                 info[field] = text
             else:
                 info[field] = ""
-            # print(field, " = ", text)
             parser[section] = info
         with open(filename, 'w') as configfile:
             parser.write(configfile)
@@ -3660,7 +3525,6 @@ class DatabaseHandler:
         for entry in entries:
             field = entry[0]
             text = entry[1].get()
-            # print(field, " = ", text)
             self.db_config[field] = text
 
         try:

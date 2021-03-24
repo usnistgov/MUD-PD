@@ -9,7 +9,6 @@ import subprocess
 def parse_comment(comment):
     logger = logging.getLogger(__name__)
     if comment is None:
-        # print("No JSON formatted comment exists")
         logger.info("No JSON formatted comment exists")
         return None
     try:

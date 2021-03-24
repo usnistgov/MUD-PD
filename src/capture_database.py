@@ -827,7 +827,6 @@ class CaptureDatabase:
     def __exit__(self):
         self.cursor.close()
         self.cnx.close()
-        # print("Connection closed.")
         self.logger.info("Connection closed.")
 
 
@@ -892,13 +891,11 @@ class CaptureDigest:
         self.logger = logging.getLogger(__name__)
         self.api_key = api_key
         if self.api_key is not None:
-            print("Fingerbank API Key: ", self.api_key)
             self.logger.debug("Fingerbank API Key: %s", self.api_key)
         if fpath is not None:
             self.fpath = fpath
             self.fdir, self.fname = os.path.split(self.fpath)
             self.fsize = os.path.getsize(self.fpath)
-            # print("file size: ", self.fsize)
             self.logger.debug("file size: %s", self.fsize)
             self.progress = 24  # capture header
             self.fileHash = hashlib.sha256(open(self.fpath, 'rb').read()).hexdigest()
@@ -924,7 +921,6 @@ class CaptureDigest:
             start = datetime.now()
 
             self.numProcesses = os.cpu_count() - 2  # One thread for GUI / One thread to handle I/O Queueing
-            # print("Attempted numProcesses: ", self.numProcesses)
             self.logger.debug("Attempted numProcesses: %s", self.numProcesses)
             if self.numProcesses > 1:
 
@@ -958,9 +954,7 @@ class CaptureDigest:
                 self.splitSize = math.ceil(fsize / self.numProcesses / math.pow(10, 6))
                 self.numProcesses = math.ceil(fsize / (self.splitSize * math.pow(10, 6)))
 
-                # print("Split size: ", self.splitSize)
                 self.logger.debug("Split size: %s", self.splitSize)
-                # print("Adjusted numProcesses: ", self.numProcesses)
                 self.logger.debug("Adjusted numProcesses: ", self.numProcesses)
 
                 subprocess.call('tcpdump -r ' + re.escape(capfile) + ' -w ' + self.tempSplitCapDir + 'temp_cap -C ' +
@@ -968,7 +962,6 @@ class CaptureDigest:
                 self.files = subprocess.check_output('ls ' + self.tempSplitCapDir, stderr=subprocess.STDOUT,
                                                      shell=True).decode('ascii').split()
 
-                # print("split files: ", self.files)
                 self.logger.debug("split files: %s", self.files)
                 # provide the full path to avoid conflicts when the file cannot be split or there is one process
                 for i, file in enumerate(self.files):
@@ -976,27 +969,17 @@ class CaptureDigest:
 
                 # Check the number of split files and processors and send warnings/make adjustments as necessary
                 if len(self.files) == 0:
-                    # print("WARNING! Multiprocessing Error: No split capture files found. Running in single-process "
-                    #       "mode with one processor and the original file")
                     self.logger.warning("Multiprocessing Error: No split capture files found. Running in "
                                         "single-process mode with one processor and the original file")
                     self.files = [capfile]
                     self.numProcesses = 1
                 elif len(self.files) > self.numProcesses:
-                    # print(f"WARNING! Multiprocessing Error: The capture file has been split into more pieces "
-                    #       f"({len(self.files)}) than processors ({self.numProcesses}). Capture file processing will "
-                    #       f"continue with {self.numProcesses}, but may take longer to process than what may be "
-                    #       f"optimal.")
                     self.logger.warning("Multiprocessing Error: The capture file has been split into more pieces (%s) "
                                         "than processors (%s). Capture file processing will continue with %s, but may "
                                         "take longer to process than what may be optimal.",
                                         len(self.files), self.numProcesses, self.numProcesses)
                     self.numProcesses = len(self.files)
                 elif len(self.files) < self.numProcesses:
-                    # print(f"WARNING! Multiprocessing Error: The file has been split into fewer pieces "
-                    #       f"({len(self.files)}) than available processors ({self.numProcesses}). Capture file "
-                    #       f"processing will continue with {len(self.files)} processes, so it may not be optimal in its "
-                    #       f"efficiency.")
                     self.logger.warning("Multiprocessing Error: The file has been split into fewer pieces (%s) than "
                                         "available processors (%s). Capture file processing will continue with %s "
                                         "processes, so it may not be optimal in its efficiency.",
@@ -1005,11 +988,9 @@ class CaptureDigest:
 
                 stop = datetime.now()
 
-                # print("Time to split file:", stop - start)
                 self.logger.info("Time to split file:", stop - start)
 
             else:
-                # print("cpu_count is only %i. Need 4+ for multiprocessing the pcap files" % os.cpu_count())
                 self.logger.info("cpu_count is only %i. Need 4+ for multiprocessing the pcap files", os.cpu_count())
                 self.numProcesses = 1
                 self.files = [self.fpath]
@@ -1017,9 +998,7 @@ class CaptureDigest:
             start1 = datetime.now()
             self.import_pkts_pp()
             stop1 = datetime.now()
-            # print("Time to process file:", stop1 - start1)
             self.logger.info("Time to process file: %s", stop1 - start1)
-            # print("Time for full process:", stop1 - start)
             self.logger.info("Time for full process: %s", stop1 - start)
         else:
             ew_filter_start = datetime.now()
@@ -1042,7 +1021,6 @@ class CaptureDigest:
                 self.ew_index += p.number
 
             ew_filter_stop = datetime.now()
-            # print("time to filter ew: ", ew_filter_stop - ew_filter_start)
             self.logger.info("time to filter ew: %s", ew_filter_stop - ew_filter_start)
 
             # start = datetime.now()
@@ -1068,7 +1046,6 @@ class CaptureDigest:
         self.modellookup = {}
         if self.api_key is not None:
             self.extract_fingerprint()
-            # print("Identified devices for this capture: ", self.modellookup)
             self.logger.debug("Identified devices for this capture: %s", self.modellookup)
 
         # TODO: VERIFY REMOVAL
@@ -1084,14 +1061,11 @@ class CaptureDigest:
         #                    datetime.fromtimestamp(int(math.trunc(float(self.cap_timestamp))))  # 0#timedelta(0)
         # self.capDuration = int(math.trunc(float(self.pkt_info[-1]['pkt_timestamp']) - float(self.cap_timestamp)))
 
-        # print(self.cap_date)
         self.logger.info("%s", self.cap_date)
-        # print(self.cap_time)
         self.logger.info("%s", self.cap_time)
 
 
     def import_pkts_pp(self):
-        # print("In import_pkts_pp")
         self.logger.info("In import_pkts_pp")
         start = datetime.now()
 
@@ -1141,7 +1115,6 @@ class CaptureDigest:
             self.capDuration = round(float(self.pkt_info[-1]['pkt_timestamp']) - float(self.cap_timestamp))
 
         stop = datetime.now()
-        # print("Time for full multi-process:", stop - start)
         self.logger.info("Time for full multi-process: %s", stop - start)
 
     def process_pkts_mp(self, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
@@ -1253,7 +1226,6 @@ class CaptureDigest:
                 pkt_dict["tlp_srcport"] = l.srcport
                 pkt_dict["tlp_dstport"] = l.dstport
             elif l.layer_name != p.layers[-1].layer_name:
-                # print("INFO: Only TCP and UDP are supported. Layer", l.layer_name, " identified")
                 self.logger.info("Only TCP and UDP are supported. Layer is %s", l.layer_name)
 
         pkt_info.append(pkt_dict.copy())
@@ -1271,7 +1243,6 @@ class CaptureDigest:
             ip2mac.add(mac_dst, ip_dst)
 
     def import_pkts(self):
-        # print("In import_pkts")
         self.logger.info("In import_pkts")
         start = datetime.now()
         self.cap.apply_on_packets(self.append_pkt)
@@ -1281,11 +1252,8 @@ class CaptureDigest:
         stop_xtrct = datetime.now()
         self.id_unique_addrs()
         stop = datetime.now()
-        # print("Time to append:", stop_append-start)
         self.logger.info("Time to append: %s", stop_append-start)
-        # print("Time to extract:", stop_xtrct-stop_append)
         self.logger.info("Time to extract: %s", stop_xtrct-stop_append)
-        # print("Time for full process:", stop-start)
         self.logger.info("Time for full process: %s", stop - start)
 
         self.capDuration = round(float(self.pkt[-1].sniff_timestamp) - float(self.cap_timestamp))
@@ -1363,7 +1331,6 @@ class CaptureDigest:
                     self.pkt_info[-1]["tlp_srcport"] = l.srcport
                     self.pkt_info[-1]["tlp_dstport"] = l.dstport
                 elif l.layer_name != p.layers[-1].layer_name:
-                    # print("Warning: Unknown/Unsupported layer seen here:", l.layer_name)
                     self.logger.warning("Unknown/Unsupported layer seen here: %s", l.layer_name)
                 # could add some sort of check for the direction here, potentially. Maybe add post
                 # self.pkt_info[-1]["direction"] = #n/s or e/w
@@ -1402,7 +1369,6 @@ class CaptureDigest:
             if (pMAC, "ipv4") not in self.ip2mac:
                 self.ip2mac[(pMAC, "ipv4")] = pIP
             if pIP not in self.uniqueIP:
-                # print(pIP)
                 self.uniqueIP.append(pIP)
 
         # Try to get destination IP address
@@ -1431,7 +1397,6 @@ class CaptureDigest:
             db_handler.db.select_capture_info(self.id)[0]
         self.fpath = self.fdir + '/' + self.fname
         self.fsize = os.path.getsize(self.fpath)
-        # print("file size: ", self.fsize)
         self.logger.debug("file size: %s", self.fsize)
         self.cap_date = cap_datetime.date().strftime('%Y-%m-%d')
         self.cap_time = cap_datetime.time().strftime('%H:%M:%S')
@@ -1469,7 +1434,6 @@ class CaptureDigest:
         self.newDevicesImported = True
 
     def extract_fingerprint(self):
-        # print("Starting Fingerprint Extraction")
         self.logger.info("Starting Fingerprint Extraction")
         if self.api_key is not None and self.api_key != "":
             for p in self.dhcp_pkts:
@@ -1483,7 +1447,6 @@ class CaptureDigest:
                     mac = mac.upper()
                 except AttributeError:
                     mac = ""
-                    #print("AttributeError: Can't find MAC Address")
                     self.logger.error("AttributeError: Can't find MAC Address")
                 try:
                     if self.modellookup[mac] == "":
@@ -1491,12 +1454,10 @@ class CaptureDigest:
                     else:
                         yes = False
                 except KeyError as ke:
-                    # print("Device not yet fingerprinted: ", ke)
                     self.logger.error("Device not yet fingerprinted: %s", ke)
                 try:
                     hostname = p['DHCP'].option_hostname
                 except AttributeError:
-                    # print("AttributeError: Can't find hostname")
                     self.logger.error("AttributeError: Can't find hostname")
                 try:
                     for f in p['DHCP'].option_request_list_item.all_fields:
@@ -1505,26 +1466,20 @@ class CaptureDigest:
                         first = False
                         dhcp_fingerprint += f.show
                 except AttributeError:
-                    # print("AttributeError: Unable to find DHCP options")
                     self.logger.error("AttributeError: Unable to find DHCP options")
                     yes = False
                 except KeyError:
-                    # print("KeyError: Layer does not exist in packet")
                     self.logger.error("KeyError: Layer does not exist in packet")
                 if dhcp_fingerprint == "":
                     yes = False
-                    # print("No fingerprint found")
                     self.logger.info("No fingerprint found")
                 if yes:
                     output = lookup_fingerbank(dhcp_fingerprint, hostname, mac, self.api_key)
                     if output.get("name") is not None:
-                        # print("Fingerprint Result:", output.get("name"))
                         self.logger.debug("Fingerprint Result: %s", output.get("name"))
                         self.modellookup.update({mac: output.get("name")})
             else:
-                # print("No Fingerbank API Key Present")
                 self.logger.info("No Fingerbank API Key Present")
-        # print("End Fingerprint Extraction")
         self.logger.info("End Fingerprint Extraction")
 
     # Write the metadata to the pcapng

@@ -23,7 +23,6 @@ from IPy import IP
 import json
 import logging
 import logging.config
-from logging.handlers import TimedRotatingFileHandler
 import multiprocessing as mp
 import mysql.connector
 from mysql.connector import errorcode
@@ -71,7 +70,7 @@ class MudCaptureApplication(tk.Frame):
         self.parent = parent
         self.parent.title("MUD-PD")
         self.api_key = self.read_api_config()
-        if self.api_key != "":
+        if self.api_key is not None:
             # print("Fingerbank API Key: ", self.api_key)
             self.logger.info("Fingerbank API Key: %s", self.api_key)
         self.window_stack = []
@@ -636,7 +635,7 @@ class MudCaptureApplication(tk.Frame):
         else:
             #print("No Fingerbank API Key Present")
             self.logger.info("No Fingerbank API Key Present")
-            return ""
+            return None
         return api_info['api_key']
 
     def popup_confirm_save(self):
@@ -869,7 +868,6 @@ class MudCaptureApplication(tk.Frame):
         self.capture_entries.append((fields_type[i], sv_act))
 
     def import_and_close(self):
-
         # Check if capture is already in database (using sha256)
         file_path = self.capture_entries[0][1].get()
         filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
@@ -1224,17 +1222,19 @@ class MudCaptureApplication(tk.Frame):
                     mfr_match = [mfr for _, x, mfr in mac2mfr if mac_prefix == x]
                     if mfr_match:
                         mfr = mfr_match[0]
-                        if mfr == "**company not found**" or mfr == "None" or mfr is None:
+                        if mfr is None or mfr == "None" or mfr == "**company not found**":
                             mfr = lookup_mac(mac)
                     else:
                         mfr = lookup_mac(mac)
-                    if mfr != "**company not found**" and mfr != "None" and mfr is not None:
+                    if mfr is not None and mfr != "None" and mfr != "**company not found**":
                         self.db_handler.db.insert_mac_to_mfr({'mac_prefix': mac_prefix, 'mfr': mfr})
 
                     device_data = {'mac_addr': mac, 'mfr': mfr}
 
                     # print(device_data)
-                    self.logger.debug("device_data %s", device_data)
+                    self.logger.debug("device_data: %s", device_data)
+                    self.logger.debug("device_data types: %s %s", type(device_data['mac_addr']),
+                                      type(device_data['mfr']))
                     self.db_handler.db.insert_device_unlabeled(device_data)
 
                     temp_device_id = self.db_handler.db.select_last_insert_id()
@@ -1249,11 +1249,8 @@ class MudCaptureApplication(tk.Frame):
                     ipv6 = list(ipv6_set)[0]
 
                     # Insert device_state info into device_state table
-                    self.db_handler.db.insert_device_state_unlabeled(
-                        {"fileID": self.cap.id,
-                         "deviceID": device_id,
-                         "ipv4_addr": ip,
-                         "ipv6_addr": ipv6})
+                    self.db_handler.db.insert_device_state_unlabeled({"fileID": self.cap.id, "deviceID": device_id,
+                                                                      "ipv4_addr": ip, "ipv6_addr": ipv6})
 
                     self.cap.unlabeledDev.append(device_id)
                     imported_devices.append((device_id, mac))
@@ -3677,6 +3674,20 @@ class DatabaseHandler:
         self.db.__exit__()
 
 
+class StreamToLogger(object):
+   """
+   Fake file-like stream object that redirects writes to a logger instance.
+   """
+   def __init__(self, logger, log_level=logging.INFO):
+      self.logger = logger
+      self.log_level = log_level
+      self.linebuf = ''
+
+   def write(self, buf):
+      for line in buf.rstrip().splitlines():
+         self.logger.log(self.log_level, line.rstrip())
+
+
 if __name__ == '__main__':
     # Setup Logger
     logging.config.fileConfig('logging.conf')
@@ -3716,6 +3727,10 @@ if __name__ == '__main__':
     logger.info("\ttime:\t%s", getversion.get_module_version(time)[0])
     logger.info("\ttkinter:\t%s", getversion.get_module_version(tk)[0])
 
+    errLogger = logging.getLogger('stderr')
+    sl = StreamToLogger(errLogger, logging.CRITICAL)
+    stderr_old = sys.stderr
+    sys.stderr = sl
     # Startup TK
     root = tk.Tk()
     gui = MudCaptureApplication(root)
@@ -3733,3 +3748,5 @@ if __name__ == '__main__':
     # root.geometry("+{}+{}".format(positionRight, positionDown))
 
     root.mainloop()
+
+    sys.stderr = stderr_old

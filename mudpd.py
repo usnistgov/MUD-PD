@@ -1202,8 +1202,8 @@ class MudCaptureApplication(tk.Frame):
                     (ip_set, ipv6_set, hasMultiple) = self.cap.find_ips(mac)
                     if hasMultiple:
                         self.logger.warning("Multiple IPv4 or IPv6 addresses found, providing the first one only")
-                    ip = list(ip_set)[0]
-                    ipv6 = list(ipv6_set)[0]
+                    ip = str(list(ip_set)[0])
+                    ipv6 = str(list(ipv6_set)[0])
 
                     # Insert device_state info into device_state table
                     self.db_handler.db.insert_device_state_unlabeled({"fileID": self.cap.id, "deviceID": device_id,
@@ -1234,8 +1234,8 @@ class MudCaptureApplication(tk.Frame):
                         (ip_set, ipv6_set, hasMultiple) = self.cap.find_ips(mac)
                         if hasMultiple:
                             self.logger.warning("Multiple IPv4 or IPv6 addresses found, providing the first one only")
-                        ip = list(ip_set)[0]
-                        ipv6 = list(ipv6_set)[0]
+                        ip = str(list(ip_set)[0])
+                        ipv6 = str(list(ipv6_set)[0])
 
                         # May want to modify this not to take the previous fw_version
                         fw_ver = self.db_handler.db.select_most_recent_fw_ver(

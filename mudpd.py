@@ -1188,7 +1188,7 @@ class MudCaptureApplication(tk.Frame):
                     if mfr is not None and mfr != "None" and mfr != "**company not found**":
                         self.db_handler.db.insert_mac_to_mfr({'mac_prefix': mac_prefix, 'mfr': mfr})
 
-                    device_data = {'mac_addr': mac, 'mfr': mfr}
+                    device_data = {'mac_addr': str(mac), 'mfr': mfr}
 
                     self.logger.debug("device_data: %s", device_data)
                     self.logger.debug("device_data types: %s %s", type(device_data['mac_addr']),

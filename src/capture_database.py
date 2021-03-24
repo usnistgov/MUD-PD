@@ -920,7 +920,9 @@ class CaptureDigest:
 
             start = datetime.now()
 
-            self.numProcesses = os.cpu_count() - 2  # One thread for GUI / One thread to handle I/O Queueing
+            # Get available CPU cores. Don't use all of them to avoid potential slowdowns to entire system
+            # Originally: os.cpu_count() - 2 to allow One thread for the GUI and One thread to handle the I/O Queueing
+            self.numProcesses = os.cpu_count() - 1
             self.logger.debug("Attempted numProcesses: %s", self.numProcesses)
             if self.numProcesses > 1:
 
@@ -955,7 +957,7 @@ class CaptureDigest:
                 self.numProcesses = math.ceil(fsize / (self.splitSize * math.pow(10, 6)))
 
                 self.logger.debug("Split size: %s", self.splitSize)
-                self.logger.debug("Adjusted numProcesses: ", self.numProcesses)
+                self.logger.debug("Adjusted numProcesses: %s", self.numProcesses)
 
                 subprocess.call('tcpdump -r ' + re.escape(capfile) + ' -w ' + self.tempSplitCapDir + 'temp_cap -C ' +
                                 str(self.splitSize), stderr=subprocess.PIPE, shell=True)
@@ -988,7 +990,7 @@ class CaptureDigest:
 
                 stop = datetime.now()
 
-                self.logger.info("Time to split file:", stop - start)
+                self.logger.info("Time to split file: %s", stop - start)
 
             else:
                 self.logger.info("cpu_count is only %i. Need 4+ for multiprocessing the pcap files", os.cpu_count())
@@ -1061,8 +1063,8 @@ class CaptureDigest:
         #                    datetime.fromtimestamp(int(math.trunc(float(self.cap_timestamp))))  # 0#timedelta(0)
         # self.capDuration = int(math.trunc(float(self.pkt_info[-1]['pkt_timestamp']) - float(self.cap_timestamp)))
 
-        self.logger.info("%s", self.cap_date)
-        self.logger.info("%s", self.cap_time)
+        self.logger.info("cap_date: %s", self.cap_date)
+        self.logger.info("cap_time: %s", self.cap_time)
 
 
     def import_pkts_pp(self):
@@ -1267,10 +1269,10 @@ class CaptureDigest:
         print(self.fdir)
         print(self.fileHash)
         print(self.cap_date)
-        self.logger.info("%s",self.fname)
-        self.logger.info("%s",self.fdir)
-        self.logger.info("%s",self.fileHash)
-        self.logger.info("%s", self.cap_date)
+        self.logger.info("fname: %s",self.fname)
+        self.logger.info("fdir: %s",self.fdir)
+        self.logger.info("fileHash: %s",self.fileHash)
+        self.logger.info("cap_date: %s", self.cap_date)
 
     # TODO: Verify this new version is acceptable, or remove if not needed
     def find_ip(self, mac, v6=False):

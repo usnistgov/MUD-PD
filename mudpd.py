@@ -485,8 +485,7 @@ class MudCaptureApplication(tk.Frame):
         (save_name, save_var) = self.db_cnx_entries.pop()
         save_val = save_var.get()
 
-        #logger = logging.getLogger('mudpd')
-        self.logger.info("Testing connect_and_close")
+        self.logger.info("Connecting to database")
 
         if create:
             (db_label, db_name) = self.db_cnx_entries.pop()
@@ -725,7 +724,7 @@ class MudCaptureApplication(tk.Frame):
                                     else:
                                         self.logger.warning("Writing pcapng environmental variables: "
                                                             "unexpected variable type")
-                                    self.logger.debug("x: %s, field2db[x]: %s, y.get(): %s",x, field2db[x], y.get())
+                                    self.logger.debug("x: %s, field2db[x]: %s, y.get(): %s", x, field2db[x], y.get())
                                 except:
                                     self.logger.warning("Writing pcapng environmental variables: "
                                                         "Likely environmental variable missing")
@@ -895,7 +894,8 @@ class MudCaptureApplication(tk.Frame):
 
             for i in range(3, 11):
                 data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
-                self.logger.debug("%s %s", i, self.capture_entries[i][1].get())
+                self.logger.debug("%s %s %s",
+                                  field2db[self.capture_entries[i][0]], i, self.capture_entries[i][1].get())
 
             self.logger.debug("data_capture: %s", data_capture)
 
@@ -921,8 +921,7 @@ class MudCaptureApplication(tk.Frame):
                         elif type(y) == tk.StringVar:
                             self.cap_envi_metadata[field2db[x]] = y.get()
                         else:
-                            self.logger.warning("import_and_close: unexpected variable type %s, %s, %s",
-                                                type(y), y, x)
+                            self.logger.warning("import_and_close: unexpected variable type %s, %s, %s", type(y), y, x)
 
             self.cap.embed_meta(self.cap_envi_metadata)
 
@@ -977,7 +976,8 @@ class MudCaptureApplication(tk.Frame):
 
             for i in range(3, 11):
                 data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
-                self.logger.debug("%s, %s", i, self.capture_entries[i][1].get())
+                self.logger.debug("%s, %s, %s", field2db[self.capture_entries[i][0]],
+                                  i, self.capture_entries[i][1].get())
 
             self.logger.debug('data_capture: %s', data_capture)
 
@@ -1025,13 +1025,13 @@ class MudCaptureApplication(tk.Frame):
             #self.cap.import_pkts()
 
             stop = datetime.now()
-            self.logger.info("time to import = %s", (stop - start).total_seconds())
+            self.logger.info("time to import capture devices: %s", (stop - start).total_seconds())
             self.popup_import_capture_devices()
         else:
             self.popup_import_capture_devices()
 
             stop = datetime.now()
-            self.logger.info("time to import = %s", (stop - start).total_seconds())
+            self.logger.info("time to import capture devices: %s", (stop - start).total_seconds())
 
     def popup_import_capture_devices(self, cap=None):
         self.w_cap_dev = tk.Toplevel()
@@ -1291,7 +1291,7 @@ class MudCaptureApplication(tk.Frame):
 
                     # Collect necessary information about device and place it into unlabeled_dev_list listbox
                     device = self.db_handler.db.select_device(device_id)
-                    self.logger.debug("deviceID=%s", device_id)
+                    self.logger.debug("deviceID = %s", device_id)
                     (_, mfr, _, mac_addr, _, _, _, _, _, _, _, _, _, _, _, _, _, unlabeled) = device[0]
 
                     device_state = self.db_handler.db.select_device_state(self.cap.id, device_id)
@@ -1683,7 +1683,7 @@ class MudCaptureApplication(tk.Frame):
         self.db_handler.db.insert_packet_batch(batch)
 
         stop = datetime.now()
-        self.logger.info("time to import = %s", (stop - start).total_seconds())
+        self.logger.info("time to import packets: %s", (stop - start).total_seconds())
 
         self.populate_comm_list()
 

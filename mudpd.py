@@ -1687,7 +1687,6 @@ class MudCaptureApplication(tk.Frame):
 
         self.populate_comm_list()
 
-    # TODO: Do something with self.comm_dev_restriction or remove the buttons
     def populate_comm_list(self, append=False):
         # Clear previous list
         if not append:
@@ -1751,8 +1750,36 @@ class MudCaptureApplication(tk.Frame):
         else:
             ew = list()
 
-        # Get files from tables of interest
-        self.comm_list_all_pkts = self.db_handler.db.select_pkt_toi(ew, self.comm_list_num_pkts)
+        if self.comm_dev_restriction != "between" or \
+                (self.comm_dev_restriction == "between" and len(self.dev_list.selection()) != 2):
+            # Get files from tables of interest
+            self.logger.info("Display of communication not restricted between 2 devices: restriction %s, numDevices: "
+                             "%s", self.comm_dev_restriction, len(self.dev_list.selection()))
+            self.comm_list_all_pkts = self.db_handler.db.select_pkt_toi(ew, self.comm_list_num_pkts)
+            if self.comm_dev_restriction not in ["none", "either", "between"]:
+                self.logger.error("Invalid comm_dev_restriction attempted to be applied %s", self.comm_dev_restriction)
+            if self.comm_dev_restriction == "between":
+                if len(self.dev_list.selection()) > 2:
+                    messagebox.showwarning("Too many devices selected",
+                                         "Too many devices selected to show packets between devices.\n"
+                                         "Please only select 2 devices")
+                    self.logger.warning("Too many devices selected for showing packets between devices: %s",
+                                      len(self.dev_list.selection()))
+                elif len(self.dev_list.selection()) < 2:
+                    messagebox.showwarning("Too few devices selected",
+                                         "Too few devices selected to show packets between devices.\n"
+                                         "Please select exactly 2 devices")
+                    self.logger.warning("Too few devices selected for showing packets between devices: %s",
+                                      len(self.dev_list.selection()))
+        else:
+            if self.comm_dev_restriction == 'between':
+                self.logger.info("Displayed communication restricted between 2 devices")
+                self.comm_list_all_pkts = self.db_handler.db.select_pkt_toi_between(self.comm_list_num_pkts)
+                if self.comm_state == 'ns':
+                    messagebox.showwarning("Invalid communication state",
+                                         "Only 'any' or 'ew' allowed. Any other option will be ignored")
+                    self.logger.warning("Invalid communication state (ns): Only 'any' or 'ew' allowed. Any other "
+                                      "selection is ignored")
 
         # Get and insert all captures currently added to database
         #   might be interesting to include destination URL and NOTES

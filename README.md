@@ -148,7 +148,7 @@ shell> python3 mudpd.py
 
 ## First Steps
 
-   ![MUD-PD GUI at Start-up](/data/images/mudpd_main_labeled2.png)
+   ![MUD-PD GUI at Start-up](./data/images/mudpd_main_labeled2.png)
 
    <ol type="A">
     <li>Connect to existing database</li>
@@ -161,20 +161,21 @@ shell> python3 mudpd.py
     <li>Box containing list of communication within selected capture files</li>
     <li>Inspect selected imported capture file</li>
     <li>Toggle communication view to north/south (external), east/west (internal), or unfiltered traffic</li>
-    <li>Future feature not yet enabled. Eventually to filter communication to only that "between" selected devices or any packets to/from "either" device but not necessarily between both</li>
+    <li>Filter communication to only that "between" selected devices or any packets to/from "either" device but not 
+necessarily between both</li>
     <li>Limit list of packets in communication box to the selected number</li>
   </ol>
 
 1. Create your first database:
-   ![Create Database Button](/data/images/mudpd_main_create.png)
-   ![Create Database](/data/images/mudpd_DB_create.png)
+   ![Create Database Button](./data/images/mudpd_main_create.png)
+   ![Create Database](./data/images/mudpd_DB_create.png)
 
    * Connect to existing database:
-     ![Connect to Database Button](/data/images/mudpd_main_connect.png)
-     ![Connect to Database](/data/images/mudpd_DB_connect.png)
+     ![Connect to Database Button](./data/images/mudpd_main_connect.png)
+     ![Connect to Database](./data/images/mudpd_DB_connect.png)
 
 2. Import PCAP files:
-   ![Import PCAP files](/data/images/mudpd_main_import.png)
+   ![Import PCAP files](./data/images/mudpd_main_import.png)
 
 ## Contact Us
 These programs were developed by Paul Watrobski and Joshua Klosterman. Questions and bug reports may be directed to

@@ -193,6 +193,8 @@ class MudCaptureApplication(tk.Frame):
         try:
             icon_db_connect = tk.PhotoImage(file="data/icons/database_connect40px.png")
         except tk.TclError:
+            self.logger.warning("tk.PhotoImage failed: Using Pillow (PIL) ImageTK and Image. The interface may not "
+                                "look as intended. Please refer to README.md for updating tkinter")
             icon_db_connect = ImageTk.PhotoImage(Image.open("data/icons/database_connect40px.png"))
         self.b_main_db_connect = tk.Button(self.menuFrame, compound="top", image=icon_db_connect, width="40",
                                            height="40", command=self.popup_connect2database, highlightthickness=0,
@@ -203,6 +205,8 @@ class MudCaptureApplication(tk.Frame):
         try:
             icon_db_new = tk.PhotoImage(file="data/icons/database_new40px.png")
         except tk.TclError:
+            self.logger.warning("tk.PhotoImage failed: Using Pillow (PIL) ImageTK and Image. The interface may not "
+                                "look as intended. Please refer to README.md for updating tkinter")
             icon_db_new = ImageTk.PhotoImage(Image.open("data/icons/database_new40px.png"))
         self.b_main_db_new = tk.Button(self.menuFrame, compound="top", image=icon_db_new, width="40", height="40",
                                        command=self.popup_create_new_database, highlightthickness=0,
@@ -213,6 +217,8 @@ class MudCaptureApplication(tk.Frame):
         try:
             icon_import = tk.PhotoImage(file="data/icons/import40px.png")
         except tk.TclError:
+            self.logger.warning("tk.PhotoImage failed: Using Pillow (PIL) ImageTK and Image. The interface may not "
+                                "look as intended. Please refer to README.md for updating tkinter")
             icon_import = ImageTk.PhotoImage(Image.open("data/icons/import40px.png"))
         self.b_main_import = tk.Button(self.menuFrame, compound="top", state='disabled', image=icon_import, width="40",
                                        height="40", command=self.popup_import_capture, highlightthickness=0,

@@ -373,9 +373,11 @@ class MudCaptureApplication(tk.Frame):
         # Check for Fingerbank API key
         self.api_info = self.read_api_config()
         if self.api_info is not None:
-            self.api_key = self.api_info['api_key']
+            self.api_key = self.api_info.get('api_key')
             self.logger.info("Fingerbank API Key: %s", self.api_key)
-            if (self.api_key is None or self.api_key == "") and self.api_info['prompt'] == 'True':
+            if (self.api_key is None or self.api_key == "") and \
+                    (self.api_info.get('prompt') is None or self.api_info['prompt'] == 'True'):
+                self.api_info['prompt'] = 'True'
                 self.logger.info("Prompting for Fingerbank API Key.")
                 self.popup_update_api_key()
             else:

@@ -375,8 +375,7 @@ class MudCaptureApplication(tk.Frame):
         if self.api_info is not None:
             self.api_key = self.api_info.get('api_key')
             self.logger.info("Fingerbank API Key: %s", self.api_key)
-            if (self.api_key is None or self.api_key == "") and \
-                    (self.api_info.get('prompt') is None or self.api_info['prompt'] == 'True'):
+            if (self.api_key is None or self.api_key == "") and self.api_info.get('prompt') in [None, 'True']:
                 self.api_info['prompt'] = 'True'
                 self.logger.info("Prompting for Fingerbank API Key.")
                 self.popup_update_api_key()
@@ -631,7 +630,7 @@ class MudCaptureApplication(tk.Frame):
         self.bind('<Return>', (lambda event: self.save_api_config))
 
         if self.api_key is None or self.api_key == "":
-            if self.api_info['prompt'] is not None and self.api_info['prompt'] == 'True':
+            if self.api_info.get('prompt') is not None and self.api_info['prompt'] == 'True':
                 v_no_prompt = tk.BooleanVar()
                 cb = tk.Checkbutton(self.w_db_new, text=APIFields[1], variable=v_no_prompt, anchor='w')
                 cb.pack(side=tk.LEFT)

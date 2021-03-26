@@ -52,11 +52,31 @@ class CaptureDatabase:
         "    humanInteraction BOOL DEFAULT TRUE, "
         "    preferredDNS BOOL DEFAULT TRUE, "
         "    isolated BOOL DEFAULT TRUE, "
+        "    controllerHub BOOL DEFAULT FALSE, "
+        "    mfrSame BOOL DEFAULT FALSE, "
+        "    fullNetwork BOOL DEFAULT FALSE, "
+        "    physicalChanges BOOL DEFAULT FALSE, "
         "    durationBased BOOL DEFAULT FALSE, "
         "    duration TEXT DEFAULT NULL, "
         "    actionBased BOOL DEFAULT TRUE, "
         "    deviceAction TEXT DEFAULT NULL, "
         "    details TEXT DEFAULT NULL);")
+
+    new_capture_check = (
+        "SELECT IF(count(*) = 1, 'Exist', 'Not Exist') AS result "
+        "FROM information_schema.columns "
+        "WHERE table_name = 'capture' "
+        "      AND column_name = 'controllerHub' "
+        "      AND table_schema = '"
+    )
+
+    migrate_capture = (
+        "ALTER TABLE capture "
+        "ADD COLUMN physicalChanges BOOL DEFAULT FALSE AFTER isolated,"
+        "ADD COLUMN fullNetwork BOOL DEFAULT FALSE AFTER isolated, "
+        "ADD COLUMN mfrSame BOOL DEFAULT FALSE AFTER isolated, "
+        "ADD COLUMN controllerHub BOOL DEFAULT FALSE AFTER isolated;"
+    )
 
     create_device_in_capture = (
         "CREATE TABLE device_in_capture ( "
@@ -157,25 +177,16 @@ class CaptureDatabase:
         "    dst_port INT, "
         "    notes TEXT);")
 
-    '''
     add_capture = (
-        "INSERT INTO capture "
-        # TEXT      TEXT     BINARY(32)  DATETIME  TEXT      TEXT
-        #"(fileName, fileLoc, fileHash,   cap_date, activity, details) "
-        # TEXT      TEXT     BINARY(32)  DATETIME TEXT      INT       TEXT
-        "(fileName, fileLoc, fileHash,   capDate, capDuration, activity, details) "
-        #"VALUES (%s, %s, %s, %s, %s, %s);")
-        #"VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(activity)s, %(details)s);")
-        "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(capDuration)s, %(activity)s, %(details)s);")
-    '''
-    add_capture = (
-
         "INSERT INTO capture "
         "(fileName, fileLoc, fileHash,   capDate, capDuration, lifecyclePhase, internet, "
-        "humanInteraction, preferredDNS, isolated, durationBased, duration, actionBased, deviceAction, details) "
+        "    humanInteraction, preferredDNS, isolated, "
+        "    controllerHub, mfrSame, fullNetwork, physicalChanges, "
+        "    durationBased, duration, actionBased, deviceAction, details) "
         "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(capDuration)s, %(lifecyclePhase)s, "
-        "%(internet)s, %(humanInteraction)s, %(preferredDNS)s, %(isolated)s, %(durationBased)s, %(duration)s, "
-        "%(actionBased)s, %(deviceAction)s, %(details)s);")
+        "    %(internet)s, %(humanInteraction)s, %(preferredDNS)s, %(isolated)s, "
+        "    %(controllerHub)s, %(mfrSame)s, %(fullNetwork)s, %(physicalChanges)s, "
+        "    %(durationBased)s, %(duration)s, %(actionBased)s, %(deviceAction)s, %(details)s);")
 
     add_device_in_capture = (
         "INSERT INTO device_in_capture "
@@ -440,6 +451,7 @@ class CaptureDatabase:
     query_imported_capture_with_device = (
         "SELECT DISTINCT cap.id, cap.fileName, cap.fileLoc, cap.fileHash, cap.capDate, cap.capDuration, "
         "    cap.lifecyclePhase, cap.internet, cap.humanInteraction, cap.preferredDNS, cap.isolated, "
+        "    cap.controllerHub, cap.mfrSame, cap.fullNetwork, cap.physicalChanges, "
         "    cap.durationBased, cap.duration, cap.actionBased, cap.deviceAction, cap.details "
         "FROM capture as cap "
         "    INNER JOIN ( "
@@ -520,6 +532,7 @@ class CaptureDatabase:
         "SELECT DISTINCT "
         "    c.id, c.fileName, c.fileLoc, c.fileHash, c.capDate, c.capDuration, "
         "    c.lifecyclePhase, c.internet, c.humanInteraction, c.preferredDNS, c.isolated, "
+        "    c.controllerHub, c.mfrSame, c.fullNetwork, c.physicalChanges, "
         "    c.durationBased, c.duration, c.actionBased, c.deviceAction, c.details "
         "FROM capture AS c "
         "    INNER JOIN ( "
@@ -593,7 +606,16 @@ class CaptureDatabase:
 
         # Report mysql version
         self.cursor.execute("SELECT VERSION()")
+        self.cnx.commit()
         self.logger.info("mysqldb version: %s", self.cursor.fetchone()[0])
+
+        # Check if need to migrate capture table
+        self.cursor.execute(self.new_capture_check + db_config['database'] + "';")
+        self.cnx.commit()
+        if self.cursor.fetchone()[0] == 'Not Exist':
+            self.logger.info("Migrating capture table to updated version")
+            self.cursor.execute(self.migrate_capture)
+            self.cnx.commit()
 
         self.capture_id_list = []
         self.device_id_list = []

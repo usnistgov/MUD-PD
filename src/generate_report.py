@@ -78,6 +78,10 @@ class ReportGenerator:
             f.write('    Human Interaction      %s\n' % bool(capture_info['humanInteraction']))
             f.write('    Preferred DNS Enabled  %s\n' % bool(capture_info['preferredDNS']))
             f.write('    Device Isolated        %s\n' % bool(capture_info['isolated']))
+            f.write('    Controller/Hub         %s\n' % bool(capture_info['controllerHub']))
+            f.write('    Same Manufacturer      %s\n' % bool(capture_info['mfrSame']))
+            f.write('    Full Network           %s\n' % bool(capture_info['fullNetwork']))
+            f.write('    Physical Changes       %s\n' % bool(capture_info['physicalChanges']))
             f.write('Action-based Capture:\t%s\n' % bool(capture_info['actionBased']))
             if capture_info['actionBased']:
                 f.write('    Action:\t%s\n' % capture_info['deviceAction'])

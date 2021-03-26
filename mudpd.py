@@ -41,6 +41,8 @@ field2db = BiDict({'File': 'fileName', 'Activity': 'activity', 'Notes (optional)
                    'Removal': 'removal',
                    'Internet': 'internet', 'Human Interaction': 'humanInteraction',
                    'Preferred DNS Enabled': 'preferredDNS', 'Isolated': 'isolated',
+                   'Controller/Hub': 'controllerHub', 'Same Manufacturer': 'mfrSame',
+                   'Full Network': 'fullNetwork', 'Notable Physical Changes': 'physicalChanges',
                    'Duration-based': 'durationBased', 'Duration': 'duration', 'Action-based': 'actionBased',
                    'Action': 'deviceAction',
                    'Date of Capture': 'capDate', 'Time of Capture': 'capTime',
@@ -52,10 +54,13 @@ field2db = BiDict({'File': 'fileName', 'Activity': 'activity', 'Notes (optional)
                    'Firmware Version': 'fw_ver', 'IP Address': 'ipv4_addr', 'IPv6 Address': 'ipv6_addr'})
 dbFields = 'host', 'database', 'user', 'passwd'
 dbNewFields = 'host', 'user', 'passwd', 'new database'
-APIFields = 'api_key'
+APIFields = 'api_key', "Don't show again"
 captureFields = 'File', 'Notes (optional)'
 lifecyclePhaseFields = 'Setup', 'Normal Operation', 'Removal'
-captureEnvFields = 'Internet', 'Human Interaction', 'Preferred DNS Enabled', 'Isolated'
+captureEnvFields = 'Internet', 'Preferred DNS Enabled', \
+                   'Isolated', 'Notable Physical Changes', \
+                   'Full Network', 'Controller/Hub', \
+                   'Same Manufacturer', 'Human Interaction'
 captureTypeFields = 'Duration-based', 'Duration', 'Action-based', 'Action'
 captureInfoFields = 'Date of Capture', 'Time of Capture'
 deviceFields = 'Manufacturer', 'Model', 'MAC', 'Internal Name', 'Category', 'Notes', 'Capabilities'
@@ -70,9 +75,6 @@ class MudCaptureApplication(tk.Frame):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
         self.parent.title("MUD-PD")
-        self.api_key = self.read_api_config()
-        if self.api_key is not None:
-            self.logger.info("Fingerbank API Key: %s", self.api_key)
         self.window_stack = []
         self.yield_focus(self.parent)
 
@@ -368,6 +370,22 @@ class MudCaptureApplication(tk.Frame):
         self.parent.grid_columnconfigure(0, weight=1)
         self.parent.grid_columnconfigure(1, weight=3)
 
+        # Check for Fingerbank API key
+        self.api_info = self.read_api_config()
+        if self.api_info is not None:
+            self.api_key = self.api_info['api_key']
+            self.logger.info("Fingerbank API Key: %s", self.api_key)
+            if self.api_key == "" and bool(self.api_info['prompt']):
+                self.logger.info("Prompting for Fingerbank API Key.")
+                self.popup_update_api_key()
+            else:
+                self.logger.info("Fingerbank API Key prompt is disabled.")
+        else:
+            self.logger.info("No Fingerbank API Key present.")
+            self.logger.info("Prompting for Fingerbank API Key.")
+            self.api_key = None
+            self.popup_update_api_key()
+
     def yield_focus(self, window=None):
         if len(self.window_stack) == 0:
             if window is None:
@@ -591,14 +609,15 @@ class MudCaptureApplication(tk.Frame):
     def make_form_api(self, fields):
         self.api_key_entries = list()
         row = tk.Frame(self.w_db_new)
-        lab = tk.Label(row, width=12, text=fields, anchor='w')
+        lab = tk.Label(row, width=12, text=fields[0], anchor='w')
         ent = tk.Entry(row)
-        ent.insert(10, self.api_key)
+        if self.api_key is not None:
+            ent.insert(10, self.api_key)
 
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
         lab.pack(side=tk.LEFT)
         ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
-        self.api_key_entries.append((fields, ent))
+        self.api_key_entries.append((fields[0], ent))
 
     def popup_update_api_key(self):
         self.w_db_new = tk.Toplevel()
@@ -607,6 +626,12 @@ class MudCaptureApplication(tk.Frame):
         self.make_form_api(APIFields)
 
         self.bind('<Return>', (lambda event: self.save_api_config))
+
+        if self.api_key is not None and self.api_key == "":
+            v_prompt = tk.BooleanVar()
+            cb = tk.Checkbutton(self.w_db_new, text=APIFields[1], variable=v_prompt, anchor='w')
+            cb.pack(side=tk.LEFT)
+            self.api_key_entries.append((APIFields[1], v_prompt))
 
         b_save = tk.Button(self.w_db_new, text='Save',
                            command=self.save_api_config)
@@ -621,13 +646,16 @@ class MudCaptureApplication(tk.Frame):
 
         self.yield_focus(self.w_db_new)
 
-    def save_api_config(self, filename='config.ini', section='API'):
+    def save_api_config(self, filename='config.ini', section='API_Fingerbank'):
         parser = ConfigParser()
         parser.read(filename)
         api_info = dict()
         for entry in self.api_key_entries:
             field = entry[0]
             text = entry[1].get()
+            if field == APIFields[1]:
+                field = "prompt"
+                text = not entry[1].get()
             api_info[field] = text
             parser[section] = api_info
         with open(filename, 'w') as configfile:
@@ -636,7 +664,7 @@ class MudCaptureApplication(tk.Frame):
         self.api_key = api_info['api_key']
         self.w_db_new.destroy()
 
-    def read_api_config(self, filename='config.ini', section='API'):
+    def read_api_config(self, filename='config.ini', section='API_Fingerbank'):
         parser = ConfigParser()
         parser.read(filename)
         api_info = dict()
@@ -645,9 +673,9 @@ class MudCaptureApplication(tk.Frame):
             for item in items:
                 api_info[item[0]] = item[1]
         else:
-            self.logger.info("No Fingerbank API Key Present")
+            self.logger.info("Section %s not present", section)
             return None
-        return api_info['api_key']
+        return api_info  # ['api_key']
 
     def popup_confirm_save(self):
         confirm = tk.messagebox.askyesno("MUD-PD: MUD Profiling Database",
@@ -801,6 +829,8 @@ class MudCaptureApplication(tk.Frame):
             if i % 2 == 0:
                 row = tk.Frame(self.w_cap)
                 row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+
+            if i < 2:
                 v_env = tk.IntVar(None, 1)
             else:
                 v_env = tk.IntVar()
@@ -1668,8 +1698,9 @@ class MudCaptureApplication(tk.Frame):
         # Get and insert all captures currently added to database
         caps_imported = self.db_handler.db.select_imported_captures()
         for (cap_i_id, fileName, fileLoc, fileHash, cap_date, capDuration, lifecyclePhase,
-             internet, humanInteraction, preferredDNS, isolated, durationBased,
-             duration, actionBased, deviceAction, details) in caps_imported:
+             internet, humanInteraction, preferredDNS, isolated,
+             controllerHub, mfrSame, fullNetwork, physicalChanges,
+             durationBased, duration, actionBased, deviceAction, details) in caps_imported:
             self.cap_list.append((cap_i_id, cap_date, fileName, deviceAction, capDuration, details, fileLoc))
 
         # Set focus on the first element
@@ -2106,8 +2137,9 @@ class MudCaptureApplication(tk.Frame):
 
         # TODO: check why cap_i_id appears twice in the append statement below (originally just id)
         for (cap_i_id, fileName, fileLoc, fileHash, cap_date, capDuration, lifecyclePhase,
-             internet, humanInteraction, preferredDNS, isolated, durationBased,
-             duration, actionBased, deviceAction, details) in caps_imported:
+             internet, humanInteraction, preferredDNS, isolated,
+             controllerHub, mfrSame, fullNetwork, physicalChanges,
+             durationBased, duration, actionBased, deviceAction, details) in caps_imported:
             self.report_pcap_list.append(
                 (cap_i_id, cap_date, fileName, deviceAction, duration, details, fileLoc, cap_i_id))  # for early stages
 
@@ -2161,8 +2193,9 @@ class MudCaptureApplication(tk.Frame):
 
                     # Need to add end_time and duration information to database
                     for (capture_id, fileName, fileLoc, fileHash, start_time, capDuration, lifecyclePhase,
-                         internet, humanInteraction, preferredDNS, isolated, durationBased,
-                         duration, actionBased, deviceAction, details) in pcap_info:
+                         internet, humanInteraction, preferredDNS, isolated,
+                         controllerHub, mfrSame, fullNetwork, physicalChanges,
+                         durationBased, duration, actionBased, deviceAction, details) in pcap_info:
                         capture_info = {'filename': fileName,
                                         'sha256': fileHash,
                                         # 'activity'         : activity,
@@ -2172,6 +2205,10 @@ class MudCaptureApplication(tk.Frame):
                                         'humanInteraction': humanInteraction,
                                         'preferredDNS': preferredDNS,
                                         'isolated': isolated,
+                                        'controllerHub': controllerHub,
+                                        'mfrSame': mfrSame,
+                                        'fullNetwork': fullNetwork,
+                                        'physicalChanges': physicalChanges,
                                         'actionBased': actionBased,
                                         'deviceAction': deviceAction,
                                         'durationBased': durationBased,
@@ -2204,8 +2241,9 @@ class MudCaptureApplication(tk.Frame):
                                                                              conditions=self.report_pcap_where)
 
                 for (capture_id, fileName, fileLoc, fileHash, start_time, capDuration, lifecyclePhase,
-                     internet, humanInteraction, preferredDNS, isolated, durationBased,
-                     duration, actionBased, deviceAction, details) in pcap_info:
+                     internet, humanInteraction, preferredDNS, isolated,
+                     controllerHub, mfrSame, fullNetwork, physicalChanges,
+                     durationBased, duration, actionBased, deviceAction, details) in pcap_info:
 
                     capture_info = {'filename': fileName,
                                     'sha256': fileHash,
@@ -2216,6 +2254,10 @@ class MudCaptureApplication(tk.Frame):
                                     'humanInteraction': humanInteraction,
                                     'preferredDNS': preferredDNS,
                                     'isolated': isolated,
+                                    'controllerHub': controllerHub,
+                                    'mfrSame': mfrSame,
+                                    'fullNetwork': fullNetwork,
+                                    'physicalChanges': physicalChanges,
                                     'actionBased': actionBased,
                                     'deviceAction': deviceAction,
                                     'durationBased': durationBased,

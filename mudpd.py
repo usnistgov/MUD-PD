@@ -2788,7 +2788,7 @@ class MUDWizard(tk.Toplevel):
 
         self.mud.make_mud()
 
-    def save_mud_file(self):
+    def save_mud_file(self, advanced=False):
         # TODO: rewrite using regex to make cleaner
         fpath = 'mudfiles/' + self.mud.support_info['mfg-name'].replace(' ', '_').replace(',', '').replace('.', '')
         if not os.path.isdir(fpath):
@@ -2797,12 +2797,22 @@ class MUDWizard(tk.Toplevel):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
         dest_path = fpath + "/" + self.mud.support_info['systeminfo'].replace(' ', '_') + "_" + timestamp + ".json"
 
-        # Save data to file
-        with open(dest_path, 'w') as fp:
-            json.dump(self.mud.mud_file, fp, indent=4)
+        if advanced.get():
+            # Save modified data to file
+            with open(dest_path, 'w') as fp:
+                json.dump(self.frames[MUDPage8Summary].st_summary.get('1.0', tk.END), fp, indent=4)
 
-        # Notify user of location of file
-        tk.messagebox.showinfo("MUD File Saved", "MUD file saved in " + dest_path)
+            # Notify user of location of file
+            self.logger.info("Modified MUD file saved to %s", dest_path)
+            tk.messagebox.showinfo("Modified MUD File Saved", "The modified MUD file saved in " + dest_path)
+        else:
+            # Save data to file
+            with open(dest_path, 'w') as fp:
+                json.dump(self.mud.mud_file, fp, indent=4)
+
+            # Notify user of location of file
+            self.logger.info("Modified MUD file saved to %s", dest_path)
+            tk.messagebox.showinfo("MUD File Saved", "MUD file saved in " + dest_path)
 
         self.__exit__()
 
@@ -3567,9 +3577,15 @@ class MUDPage8Summary(MUDPage0Select, tk.Frame):
         self.st_summary.grid(row=1, sticky="nsew")
 
         # Navigation Buttons
+        cb_v_advanced = tk.BooleanVar()
+        cb_v_advanced.set(False)
+        cb_advanced = tk.Checkbutton(self.navigationFrame, text="Advanced mode", bg="#eeeeee", variable=cb_v_advanced,
+                                     command=lambda a=cb_v_advanced: self.advanced_editing(a))
         b_back = tk.Button(self.navigationFrame, text="Back", command=lambda: self.controller.prev_page())
-        b_save = tk.Button(self.navigationFrame, text="Save", command=lambda: self.controller.save_mud_file())
+        b_save = tk.Button(self.navigationFrame, text="Save",
+                           command=lambda a=cb_v_advanced: self.controller.save_mud_file(a))
 
+        cb_advanced.grid(row=0, column=0, sticky="sw")
         b_back.grid(row=0, column=1, sticky="se")
         b_save.grid(row=0, column=2, sticky="se")
 
@@ -3593,12 +3609,23 @@ class MUDPage8Summary(MUDPage0Select, tk.Frame):
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        # TODO: considered not making this disabled, or provide an "ADVANCED" toggle to allow manual editing of the file
-        # self.st_summary.configure(state="disabled")
-
     def fill_summary(self):
+        self.st_summary.delete('1.0', tk.END)
         self.st_summary.insert(tk.INSERT, self.controller.sv_summary.get())
         self.st_summary.configure(state="disabled")
+
+    def advanced_editing(self, enable):
+        if enable.get():
+            self.controller.logger.info("Advanced MUD file editing mode enabled")
+            tk.messagebox.showwarning("Advanced editing mode enabled",
+                                      "This is a feature for advanced users only. Proceed with CAUTION!\n\n"
+                                      "The MUD file may now be edited manually.\n\n"
+                                      "To reset to the automatically generated file, go back to the previous page, "
+                                      "or uncheck the 'advanced mode' box.")
+            self.st_summary.configure(state="normal")
+        else:
+            self.controller.logger.info("Advanced MUD file editing mode disabled")
+            self.fill_summary()
 
 
 def epoch2datetime(epochtime):

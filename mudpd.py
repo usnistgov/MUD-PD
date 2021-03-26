@@ -49,7 +49,7 @@ field2db = BiDict({'File': 'fileName', 'Activity': 'activity', 'Notes (optional)
                    'Manufacturer': 'mfr', 'MAC': 'mac_addr', 'Model': 'model', 'Internal Name': 'internalName',
                    'Category': 'deviceCategory', 'Notes': 'notes',
                    'MUD': 'mudCapable', 'WiFi': 'wifi', 'Ethernet': 'ethernet', 'Bluetooth': 'bluetooth',
-                   'Zigbee': 'zigbee',
+                   'ZigBee': 'zigbee',
                    'ZWave': 'zwave', '3G': 'G3', '4G': 'G4', '5G': 'G5', 'Other': 'otherProtocols',
                    'Firmware Version': 'fw_ver', 'IP Address': 'ipv4_addr', 'IPv6 Address': 'ipv6_addr'})
 dbFields = 'host', 'database', 'user', 'passwd'
@@ -64,7 +64,7 @@ captureEnvFields = 'Internet', 'Preferred DNS Enabled', \
 captureTypeFields = 'Duration-based', 'Duration', 'Action-based', 'Action'
 captureInfoFields = 'Date of Capture', 'Time of Capture'
 deviceFields = 'Manufacturer', 'Model', 'MAC', 'Internal Name', 'Category', 'Notes', 'Capabilities'
-deviceOptions = 'MUD', 'WiFi', 'Ethernet', 'Bluetooth', 'Zigbee', 'ZWave', '3G', '4G', '5G', 'Other'
+deviceOptions = 'MUD', 'WiFi', 'Ethernet', 'Bluetooth', 'ZigBee', 'ZWave', '3G', '4G', '5G', 'Other'
 
 
 # GUI Class for the MUD Capture Analysis
@@ -1558,7 +1558,7 @@ class MudCaptureApplication(tk.Frame):
                                                  "please assign the device a different name" % format(value))
                             self.logger.error("Internal name %s already used", value)
                             return
-                elif field in ["Wifi", "Ethernet", "Bluetooth", "Zigbee", "ZWave", "3G", "4G", "5G", "Other"]:
+                elif field in ["Wifi", "Ethernet", "Bluetooth", "ZigBee", "ZWave", "3G", "4G", "5G", "Other"]:
                     network_interfaces += 1
 
                 self.logger.debug('field: %s value %s -> database field: %s', field, value, dbfield)

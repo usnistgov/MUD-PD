@@ -3683,18 +3683,6 @@ if __name__ == '__main__':
     # Setup Logger
     logging.config.fileConfig('logging.conf')
     logger = logging.getLogger('mudpd')
-    #logger = logging.getLogger(__name__)  # 'mudpd')
-    # create handler
-    #handler = TimedRotatingFileHandler(filename='runtime.log', when='D', interval=1,
-    #                                    backupCount=25, encoding='utf-8', delay=False)
-    # create formatter and add to handler
-    # formatter = logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    #                               datefmt='%m/%d/%Y %I:%M:%S %p')
-    # handler.setFormatter(formatter)
-    # # add the handler to named logger
-    # logger.addHandler(handler)
-    # # set the logging level
-    # logger.setLevel(logging.INFO)
 
     # Get environment information for log to debug
     # System Information

@@ -10,7 +10,7 @@ class ScrollableFrame(ttk.Frame):
         canvas.configure(background="white")
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
 
-        self.scrollable_frame = tk.Frame(canvas, bg="#ffffff")
+        self.scrollable_frame = tk.Frame(canvas, bg="#ffffff", relief="sunken")
 
         self.scrollable_frame.bind(
             "<Configure>",

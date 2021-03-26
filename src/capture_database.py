@@ -326,12 +326,12 @@ class CaptureDatabase:
         "SELECT * FROM dev_toi;"
     )
 
-    update_device_toi = (
-        "INSERT INTO dev_toi "
-        "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
-        "FROM device_state d "
-        "    INNER JOIN cap_toi c ON d.fileID = c.id "
-        "WHERE d.deviceID=%(deviceID)s;")
+    # update_device_toi = (
+    #     "INSERT INTO dev_toi "
+    #     "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
+    #     "FROM device_state d "
+    #     "    INNER JOIN cap_toi c ON d.fileID = c.id "
+    #     "WHERE d.deviceID=%(deviceID)s;")
 
     query_packet_toi = (
         "SELECT p.* \n"
@@ -436,9 +436,7 @@ class CaptureDatabase:
                     "%(dst_url)s, %(dst_port)s, %(notes)s);")
 
     # Queries
-    # TODO: CHECKS QUERY IS NECESSARY OR SHOULD BE REPLACED WITH FOLLOWING LINE
     query_unique_capture = "SELECT fileHash FROM capture;"
-    # query_unique_capture = ("SELECT id FROM capture;")
 
     query_imported_capture = "SELECT * FROM capture;"
 
@@ -497,17 +495,17 @@ class CaptureDatabase:
         "WHERE NOT ISNULL(internalName);")
 
     # TODO: See if this needs to exist
-    query_devices_imported_ignore_noIPs = (
-        "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
-        "FROM device "
-        "WHERE mac_addr!=%(ignored_deviceID)s AND NOT ISNULL(internalName);")
+    # query_devices_imported_ignore_noIPs = (
+    #     "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
+    #     "FROM device "
+    #     "WHERE mac_addr!=%(ignored_deviceID)s AND NOT ISNULL(internalName);")
 
     # TODO: See if this needs to exist
-    query_devices_imported_ignore_known = (
-        "SELECT DISTINCT d.id, d.mfr, d.model, d.mac_addr, d.internalName, d.deviceCategory, s.ipv4_addr, s.ipv6_addr "
-        "FROM device AS d "
-        "    INNER JOIN (SELECT * FROM device_state) AS s ON d.id=s.deviceID "
-        "WHERE d.id!=%(ignored_deviceID)s AND NOT ISNULL(d.internalName);")
+    # query_devices_imported_ignore_known = (
+    #     "SELECT DISTINCT d.id, d.mfr, d.model, d.mac_addr, d.internalName, d.deviceCategory, s.ipv4_addr, s.ipv6_addr "
+    #     "FROM device AS d "
+    #     "    INNER JOIN (SELECT * FROM device_state) AS s ON d.id=s.deviceID "
+    #     "WHERE d.id!=%(ignored_deviceID)s AND NOT ISNULL(d.internalName);")
 
     query_device_communication_info = (
         "SELECT DISTINCT deviceID, protocol, dst_ip_addr, ipv6, dst_port, src_port "
@@ -863,9 +861,9 @@ class CaptureDatabase:
         self.cnx.commit()
 
     # TODO: Determine if can be removed
-    def update_dev_toi(self, device_id):
-        self.cursor.execute(self.update_device_toi, device_id)
-        self.cnx.commit()
+    # def update_dev_toi(self, device_id):
+    #     self.cursor.execute(self.update_device_toi, device_id)
+    #     self.cnx.commit()
 
     # Packet table of interest
     def select_pkt_toi(self, ew, num_pkts):
@@ -1237,7 +1235,7 @@ class CaptureDigest:
                     "ip_ver": None,
                     "ip_src": None,
                     "ip_dst": None,
-                    "ew": True,  # TODO: Verify this works
+                    "ew": True,
                     "tlp": '',
                     "tlp_srcport": None,
                     "tlp_dstport": None,
@@ -1474,7 +1472,7 @@ class CaptureDigest:
             if pIP_dst not in self.uniqueIP_dst:
                 self.uniqueIP_dst.append(pIP_dst)
 
-    # TODO: Update this to pull necessary information from the Database rather than opening the file again
+    # Pull necessary information from the Database rather than opening the file again
     def load_from_db(self, db_handler: CaptureDatabase, file_id: int):
         self.id = file_id
 
@@ -1494,13 +1492,12 @@ class CaptureDigest:
         # Determine if necessary to get packet info
         self.pkt_info = []  # needs to be a list of dictionary
 
-        # TODO: Determine if this information needs to be autopopulated
         self.ip2mac = Mac2IP()
         self.uniqueMAC = []
         self.uniqueIP = []
         self.uniqueIPv6 = []
 
-        # TODO: Get device info
+        # Get device info
         self.labeledDev = []
         self.unlabeledDev = []
         device_info = db_handler.db.select_devices_from_caplist([file_id])

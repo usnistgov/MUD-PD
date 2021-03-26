@@ -721,7 +721,7 @@ class MudCaptureApplication(tk.Frame):
         filename = askopenfilename()
         sv_entry.set(filename)
 
-        # TODO: Check if selected file is the previously selected one
+        # Check if selected file is the previously selected one
         if filename != self.filename_prev:
             self.filename_prev = filename
 
@@ -1060,18 +1060,11 @@ class MudCaptureApplication(tk.Frame):
         start = datetime.now()
 
         if self.cap is None or (self.cap.fdir + "/" + self.cap.fname) != sel_cap_path:
-            # TODO: Complete the rest of this block
             start = datetime.now()
-            #self.cap = CaptureDigest(sel_cap_path)
 
-            #self.cap.id = self.cap_list.get_selected_row()[0]
-
-            # TODO: populate as much data from the database as possible
-            # TODO: Finish this rewrite
+            # Populate as much data from the database as possible
             file_id = self.cap_list.get_selected_row()[0]
             self.cap = CaptureDigest(api_key=self.api_key, db_handler=self.db_handler, file_id=file_id)
-
-            #self.cap.import_pkts()
 
             stop = datetime.now()
             self.logger.info("time to import capture devices: %s", (stop - start).total_seconds())
@@ -2424,13 +2417,12 @@ class MUDWizard(tk.Toplevel):
         self.frames = {}
         self.frame_list = list()
 
-        # TODO: See if this can be removed
         try:
             self.db_handler.db.insert_protocol_device()
             self.logger.info("Success! Labeled Device Info Updated")
-
         except AttributeError:
             messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
+            self.logger.error("Failure: Please make sure you are connected to a database and try again")
 
         for F in (MUDPage0Select, MUDPage1Description, MUDPage2Internet, MUDPage3Local, MUDPage4SameMan,
                   MUDPage5NamedMan, MUDPage6MyControl, MUDPage7Control, MUDPage8Summary):
@@ -2536,7 +2528,7 @@ class MUDWizard(tk.Toplevel):
                     self.hosts_local.append((i[1], i[2], i[4], i[5], i[3]))
         return self.hosts_local
 
-    def add_rule(self, frame, first_entry=False):
+    def add_rule(self, frame):
         frame.max_row += 1
         v_host = tk.StringVar()
         v_protocol = tk.StringVar()
@@ -2564,20 +2556,8 @@ class MUDWizard(tk.Toplevel):
                         lambda f=frame.contentFrame.scrollable_frame, r=frame.max_row: self.protocol_updated(f, r))
         self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
 
-        # TODO: Remove unnecessary code for the plus button
-        # Button to Add or Remove entry
-        v_modify = tk.StringVar()
-        if first_entry:
-            v_modify.set(" + ")
-            modify_command = self.add_rule
-            modify_args = False
-        else:
-            v_modify.set(" - ")
-            modify_command = self.remove_rule
-            modify_args = frame.max_row
-
-        b_modify = tk.Button(frame.contentFrame.scrollable_frame, textvariable=v_modify, command=lambda f=frame,
-                             a=modify_args: modify_command(f, a))
+        b_modify = tk.Button(frame.contentFrame.scrollable_frame, text=" - ", command=lambda f=frame,
+                             a=frame.max_row: self.remove_rule(f, a))
         b_modify.grid(row=frame.max_row, column=9, sticky='w')
         self.rules[frame.communication][frame.max_row]['remove_button'] = (b_modify,)
 

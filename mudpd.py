@@ -941,7 +941,7 @@ class MudCaptureApplication(tk.Frame):
                 # "Action" : entries[10][1].get()
             }
 
-            for i in range(3, 11):
+            for i in range(3, 15):
                 data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
                 self.logger.debug("%s %s %s",
                                   field2db[self.capture_entries[i][0]], i, self.capture_entries[i][1].get())
@@ -1023,7 +1023,7 @@ class MudCaptureApplication(tk.Frame):
                     field2db[lifecyclePhaseFields[self.capture_entries[2][1].get()]]
             }
 
-            for i in range(3, 11):
+            for i in range(3, 15):
                 data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
                 self.logger.debug("%s, %s, %s", field2db[self.capture_entries[i][0]],
                                   i, self.capture_entries[i][1].get())

@@ -179,8 +179,8 @@ class CaptureDatabase:
 
     add_capture = (
         "INSERT INTO capture "
-        "(fileName, fileLoc, fileHash,   capDate, capDuration, lifecyclePhase, internet, "
-        "    humanInteraction, preferredDNS, isolated, "
+        "(fileName, fileLoc, fileHash, capDate, capDuration, lifecyclePhase, "
+        "    internet, humanInteraction, preferredDNS, isolated, "
         "    controllerHub, mfrSame, fullNetwork, physicalChanges, "
         "    durationBased, duration, actionBased, deviceAction, details) "
         "VALUES (%(fileName)s, %(fileLoc)s, %(fileHash)s, %(capDate)s, %(capDuration)s, %(lifecyclePhase)s, "

@@ -46,6 +46,7 @@
 
 from datetime import datetime, timedelta
 import logging
+import os
 
 
 class ReportGenerator:
@@ -57,7 +58,11 @@ class ReportGenerator:
                       'that differs from the general procedure found in the main README.txt'
         self.date = datetime.today().date()
         self.device_info = device_info
-        self.file = 'reports/' + self.device_info['name'] + '_' + str(self.date) + '.txt'
+        dir_reports = 'reports/'
+        # Check if the reports directory exists
+        if not os.path.isdir(dir_reports):
+            os.mkdir(dir_reports)
+        self.file = dir_reports + self.device_info['name'] + '_' + str(self.date) + '.txt'
 
     def write_header(self):
         with open(self.file, 'w') as f:

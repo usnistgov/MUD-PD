@@ -2796,10 +2796,15 @@ class MUDWizard(tk.Toplevel):
 
         self.__exit__()
 
-    def cancel(self):
+    def exit_wizard(self):
         # TODO: Implement a confirmation Popup with the ability to not cancel
-        tk.messagebox.showinfo("Confirm Cancel", "Note this is just a placeholder")
-        self.__exit__()
+        confirm_exit = tk.messagebox.askyesno("Exit MUD Wizard?",
+                                              "Any and all manually inputted or modified data will be lost.\n\n"
+                                              "Are you sure you want to exit?", default="no")
+        if confirm_exit:
+            self.__exit__()
+        else:
+            return
 
     def __exit__(self):
         self.parent.b_main_mud_wizard.config(state='normal')
@@ -2837,10 +2842,10 @@ class MUDPage0Select(tk.Frame):
                                                sticky="nsew")
         self.mud_dev_list.bind("<<TreeviewSelect>>", self.retrieve_device_info)
 
-        b_cancel = tk.Button(self.navigationFrame, text="Cancel", command=lambda: self.controller.cancel())
+        b_exit = tk.Button(self.navigationFrame, text="Exit", command=lambda: self.controller.exit_wizard())
         b_next = tk.Button(self.navigationFrame, text="Next", command=lambda: self.next_page())
 
-        b_cancel.grid(row=0, column=0, sticky='nsw')
+        b_exit.grid(row=0, column=0, sticky='nsw')
         b_next.grid(row=0, column=1, sticky='nse')
 
         # Setup Device Selection Multi-column listbox

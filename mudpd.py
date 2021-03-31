@@ -313,12 +313,14 @@ class MudCaptureApplication(tk.Frame):
         self.comm_state = "any"
         self.b_ns = tk.Button(self.commFrame, text="N/S", command=(lambda s="ns": self.modify_comm_state(s)))
         self.b_ew = tk.Button(self.commFrame, text="E/W", command=(lambda s="ew": self.modify_comm_state(s)))
+        self.status_comm_state = "Communication direction: " + self.comm_state
 
         self.comm_dev_restriction = "none"
         self.b_between = tk.Button(self.commFrame, text="Between",
                                    command=(lambda r="between": self.modify_comm_dev_restriction(r)))
         self.b_either = tk.Button(self.commFrame, text="Either",
                                   command=(lambda r="either": self.modify_comm_dev_restriction(r)))
+        self.status_comm_restriction = "Communication restrictions: " + self.comm_dev_restriction
 
         self.b_pkt10 = tk.Button(self.commFrame, text="10", command=(lambda n=10: self.modify_comm_num_pkts(n)))
         self.b_pkt100 = tk.Button(self.commFrame, text="100", command=(lambda n=100: self.modify_comm_num_pkts(n)))
@@ -356,8 +358,9 @@ class MudCaptureApplication(tk.Frame):
 
         # *** Status Bar *** #
         self.statusFrame = tk.Frame(self.parent)
+        self.status_database = "No database_connected..."
         self.status_var = tk.StringVar()
-        self.status_var.set("No database connected...")
+        self.status_var.set(self.status_database)
         self.status = tk.Label(self.statusFrame, textvariable=self.status_var, bd=1, bg="#eeeeee", relief=tk.SUNKEN,
                                anchor=tk.W, padx=5)
         self.status.pack(fill="both", expand=True)
@@ -576,7 +579,8 @@ class MudCaptureApplication(tk.Frame):
 
         if db_handler_temp.connected:
             self.db_handler = db_handler_temp
-            self.status_var.set("Connected to " + self.db_handler.db_config.get("database", "none"))
+            self.status_database = "Connected to " + self.db_handler.db_config.get("database", "none")
+            self.status_var.set(self.status_database)
             self.populate_capture_list()
             if save_val:
                 self.popup_confirm_save()
@@ -593,8 +597,8 @@ class MudCaptureApplication(tk.Frame):
             self.b_main_inspect.config(state="disabled")
             self.b_ns.config(state='normal')
             self.b_ew.config(state='normal')
-            self.b_between.config(state='normal')
-            self.b_either.config(state='normal')
+            self.b_between.config(state='disabled')
+            self.b_either.config(state='disabled')
             self.b_pkt10.config(state='normal')
             self.b_pkt100.config(state='disabled')
             self.b_pkt1000.config(state='normal')
@@ -1757,6 +1761,24 @@ class MudCaptureApplication(tk.Frame):
         self.dev_list.selection_set(0)
 
     def update_comm_list(self, _):
+
+        if len(self.dev_list.selection()) == 2:
+            for dev in self.dev_list.selection():
+                if self.dev_list.get(dev)[1] == "All...":
+                    self.comm_dev_restriction = "none"
+                    self.b_either.config(state="disabled")
+                    self.b_between.config(state="disabled")
+                    self.populate_comm_list()
+                    return
+
+            self.comm_dev_restriction = "either"
+            self.b_either.config(state="disabled")
+            self.b_between.config(state="normal")
+        else:
+            self.comm_dev_restriction = "none"
+            self.b_either.config(state="disabled")
+            self.b_between.config(state="disabled")
+
         self.populate_comm_list()
 
     def import_packets(self, cap):
@@ -1898,6 +1920,11 @@ class MudCaptureApplication(tk.Frame):
             self.comm_list.append((pkt_id, fileID, pkt_datetime, mac_addr, ip_ver, ip_src, ip_dst, ew,
                                    protocol, tlp, tlp_srcport, tlp_dstport, pkt_length))
 
+        self.status_comm_state = "Communication direction: " + self.comm_state
+        self.status_comm_restriction = "Communication restrictions: " + self.comm_dev_restriction
+        self.status_var.set(self.status_database + "  |  " + self.status_comm_state + "  |  " +
+                            self.status_comm_restriction)
+
         self.comm_list.focus(0)
         self.comm_list.selection_set(0)
 
@@ -2007,16 +2034,16 @@ class MudCaptureApplication(tk.Frame):
 
         # Update the filter
         if self.comm_dev_restriction == "none":
-            self.b_between.config(fg="black")
-            self.b_either.config(fg="black")
+            self.b_between.config(state="disabled")
+            self.b_either.config(state="disabled")
             # update communication table view
         elif self.comm_dev_restriction == "between":
-            self.b_between.config(fg="green")
-            self.b_either.config(fg="red")
+            self.b_between.config(state="disabled")
+            self.b_either.config(state="normal")
             # update communication table view
         elif self.comm_dev_restriction == "either":
-            self.b_between.config(fg="red")
-            self.b_either.config(fg="green")
+            self.b_between.config(state="normal")
+            self.b_either.config(state="disabled")
             # update communication table view
         else:
             self.logger.error("Something went wrong with modifying the communication device restriction")

@@ -425,6 +425,7 @@ class MudCaptureApplication(tk.Frame):
             self.yield_focus()
 
     def popup_connect2database(self):
+        self.logger.info("popup_connect2database window opening")
         self.w_db = tk.Toplevel()
         self.w_db.wm_title("Connect to Database")
         self.make_form_database(dbFields)
@@ -468,6 +469,7 @@ class MudCaptureApplication(tk.Frame):
             self.db_cnx_entries.append((field, ent))
 
     def popup_create_new_database(self):
+        self.logger.info("popup_create_new_database window opening")
         self.w_db_new = tk.Toplevel()
         self.w_db_new.wm_title("Create New Database")
         self.make_form_new_database(dbNewFields)
@@ -609,6 +611,7 @@ class MudCaptureApplication(tk.Frame):
             self.db_cnx_entries.append((save_name, save_var))
 
     def popup_update_labeled_device_info(self):
+        self.logger.info("popup_update_labeled_device_info window opening")
         try:
             self.db_handler.db.insert_protocol_device()
             messagebox.showinfo("Success!", "Labeled Device Info Updated")
@@ -629,6 +632,7 @@ class MudCaptureApplication(tk.Frame):
         self.api_key_entries.append((fields[0], ent))
 
     def popup_update_api_key(self):
+        self.logger.info("popup_update_api_key window opening")
         self.w_db_new = tk.Toplevel()
         self.w_db_new.wm_title("Update Fingerbank API Key")
 
@@ -688,6 +692,7 @@ class MudCaptureApplication(tk.Frame):
         return api_info  # ['api_key']
 
     def popup_confirm_save(self):
+        self.logger.info("popup_confirm_save window opening")
         confirm = tk.messagebox.askyesno("MUD-PD: MUD Profiling Database",
                                          "Are you sure you want to save this configuration?\n\n" +
                                          "Any existing configuration will be OVERWRITTEN.",
@@ -700,6 +705,7 @@ class MudCaptureApplication(tk.Frame):
         return
 
     def popup_import_capture(self):
+        self.logger.info("popup_import_capture window opening")
         self.w_cap = tk.Toplevel()
         self.w_cap.wm_title("Import Packet Capture")
 
@@ -793,18 +799,18 @@ class MudCaptureApplication(tk.Frame):
                 messagebox.showerror("Error", "Capture file already imported into database")
                 return
 
-            # TODO: Kill any/all existing worker threads if a new file was selected
-            # self.q.put("kill")
-
+            # Todo: Figure out how to Kill any/all existing worker threads if a new file was selected.
+            #  Currently just drops keeping track of the thread
             for t in self.threads.get('capture_processing'):
-                t.raise_exception()
+                # t.raise_exception()
                 self.threads['capture_processing'].remove(t)
 
             def headstart(filename):
                 self.cap = CaptureDigest(filename, api_key=self.api_key)
                 self.logger.info("Finished importing capture file")
 
-            # TODO: Restart worker threads to process file
+            # Restart worker threads to process file
+            self.logger.info("Getting a headstart on processing capture: %s", filename)
             t = threading.Thread(target=headstart, args=(filename,))
             self.threads['capture_processing'].append(t)
             t.setDaemon(True)
@@ -961,11 +967,13 @@ class MudCaptureApplication(tk.Frame):
             t.start()
 
         for t in self.threads['capture_processing']:
-            t.join()
+            while t.is_alive():
+                time.sleep(0.1)
+            #t.join()
             self.threads['capture_processing'].remove(t)
         self.logger.info("Finished importing capture file")
 
-        # TODO: Determine how best to notify the user that processing is happening adn the tool is not
+        # TODO: Determine how best to notify the user that processing is happening and the tool is not
         #  necessarily stalled
         # messagebox.showinfo("Importing", "Please wait for the capture file to be processed")
 
@@ -1044,7 +1052,9 @@ class MudCaptureApplication(tk.Frame):
                             "Data is being pushed into the database.\n\n"
                             "Please be patient while this occurs")
         for t in self.threads['packet_processing']:
-            t.join()
+            while t.is_alive():
+                time.sleep(0.1)
+            # t.join()
             self.threads['packet_processing'].remove(t)
 
         self.logger.info("(F) populating comm_list")
@@ -1079,6 +1089,7 @@ class MudCaptureApplication(tk.Frame):
             self.logger.info("time to import capture devices: %s", (stop - start).total_seconds())
 
     def popup_import_capture_devices(self, cap=None):
+        self.logger.info("popup_import_capture_devices window opening")
         self.w_cap_dev = tk.Toplevel()
 
         if cap is None:
@@ -1172,9 +1183,9 @@ class MudCaptureApplication(tk.Frame):
             self.logger.info("(B1a) finished importing packets")
 
         if self.threads.get('packet_processing'):
-            self.logger.info("packet processing thread already running. Killing")
+            self.logger.info("packet processing thread already running. Abandoning thread")
             for t in self.threads['packet_processing']:
-                t.raise_excpetion()
+                # t.raise_exception()  # TODO: Figure out how to kill thread
                 self.threads['packet_processing'].remove(t)
 
         self.logger.info("Starting Packet processing thread")
@@ -1442,6 +1453,7 @@ class MudCaptureApplication(tk.Frame):
             self.capture_devices_entries.append((field, ent))
 
     def popup_import_device(self):
+        self.logger.info("popup_import_device window opening")
         self.w_dev = tk.Toplevel()
         self.w_dev.wm_title("Import Devices")
 
@@ -1633,6 +1645,7 @@ class MudCaptureApplication(tk.Frame):
         self.w_dev.destroy()
 
     def popup_update_device_state(self, device_state_data):
+        self.logger.info("popup_update_device_state window opening")
         self.w_dev_state = tk.Toplevel()
         self.w_dev_state.wm_title(device_state_data['internalName'])
 
@@ -2319,6 +2332,7 @@ class MudCaptureApplication(tk.Frame):
         messagebox.showinfo("Report Generation Complete", "The generated reports are in the 'reports' directory.")
 
     def popup_about(self):
+        self.logger.info("popup_about window opening")
         self.w_about = tk.Toplevel()
         self.w_about.wm_title("About")
 

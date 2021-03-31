@@ -2406,6 +2406,7 @@ class MUDWizard(tk.Toplevel):
 
         self.protocol_options = ('Any', 'TCP', 'UDP')
         self.init_direction_options = ('Either', 'Thing', 'Remote')
+        self.rule_copy_move_options = ('Copy to:', 'Move to:')
         self.rule_destination_options = ('Local', "Same Manufacturer", "Other Manufacturer", "My-Controller",
                                          "Controller")
 
@@ -2617,7 +2618,8 @@ class MUDWizard(tk.Toplevel):
         v_port_local = tk.StringVar()
         v_port_remote = tk.StringVar()
         v_initiation_direction = tk.StringVar()
-        v_move_rule = tk.StringVar()
+        v_copy_move = tk.StringVar()
+        v_rule_dest = tk.StringVar()
 
         # Host
         l_host = tk.Label(frame.contentFrame.scrollable_frame, text="Remote")  # "Host")
@@ -2677,20 +2679,25 @@ class MUDWizard(tk.Toplevel):
 
         # Move (for any traffic except internet)
         if frame.communication != "internet":
-            c_move_rule = None
-            l_move_rule = tk.Label(frame.contentFrame.scrollable_frame, text="Move to:")
-            l_move_rule.grid(row=frame.max_row, column=9, sticky='w')
-            self.rules[frame.communication][frame.max_row]["move_rule"] = (v_move_rule, l_move_rule, c_move_rule)
-            c_move_rule = self.create_combobox(frame, opt_type="move_rule")
-            c_move_rule.grid(row=frame.max_row, column=10, columnspan=2, sticky='w')
-            c_move_rule.bind("<<ComboboxSelected>>",
+            c_copy_move = None
+            c_copy_move_dest = None
+            #l_move_rule = tk.Label(frame.contentFrame.scrollable_frame, text="Move to:")
+            #l_move_rule.grid(row=frame.max_row, column=9, sticky='w')
+            self.rules[frame.communication][frame.max_row]["copy_move"] = (v_copy_move, c_copy_move,
+                                                                           v_rule_dest, c_copy_move_dest)
+            c_copy_move = self.create_combobox(frame, opt_type="copy_move")
+            c_copy_move.grid(row=frame.max_row, column=9, sticky='w')
+            c_copy_move_dest = self.create_combobox(frame, opt_type="rule_dest")
+            c_copy_move_dest.grid(row=frame.max_row, column=10, columnspan=2, sticky='w')
+            c_copy_move_dest.bind("<<ComboboxSelected>>",
                              lambda event, f=frame, r=frame.max_row: self.check_destination(f, r))
-            c_move_rule.set(frame.communication.capitalize())
+            c_copy_move_dest.set(frame.communication.capitalize())
             # lambda f=frame.contentFrame.scrollable_frame, r=frame.max_row: self.protocol_updated(f, r))
-            self.rules[frame.communication][frame.max_row]["move_rule"] = (v_move_rule, l_move_rule, c_move_rule)
+            self.rules[frame.communication][frame.max_row]["copy_move"] = (v_copy_move, c_copy_move,
+                                                                           v_rule_dest, c_copy_move_dest)
 
             b_move_rule = tk.Button(frame.contentFrame.scrollable_frame, text=">>>", state="disabled",
-                                    command=lambda f=frame, a=frame.max_row: self.move_rule(f, a))
+                                    command=lambda f=frame, a=frame.max_row: self.copy_move_rule(f, a))
             b_move_rule.grid(row=frame.max_row, column=12, sticky='w')
             self.rules[frame.communication][frame.max_row]["move_button"] = (b_move_rule,)
 
@@ -2698,12 +2705,28 @@ class MUDWizard(tk.Toplevel):
         # self.rules[frame.communication][frame.max_row]["initiation_direction"][1].see("end")
         # frame.contentFrame.scrollable_frame.see("end")
 
-    def move_rule(self, frame, row=None):
+    def copy_move_rule(self, frame, row=None):
         self.logger.debug("frame: %s", frame)
         self.logger.debug("row: %s", row)
         if row is None:
             row = frame.max_row
-        destination = self.rules[frame.communication][row]["move_rule"][2].get()
+        copy_or_move = self.rules[frame.communication][row]["copy_move"][1].get()
+
+        # check if "copy"
+        if copy_or_move == self.rule_copy_move_options[0]:
+            self.logger.info("Copying rule")
+            self.copy_rule(frame, row)
+        # Check if "move"
+        elif copy_or_move == self.rule_copy_move_options[1]:
+            self.logger.info("Moving rule")
+            self.move_rule(frame, row)
+
+    def copy_rule(self, frame, row=None):
+        self.logger.debug("frame: %s", frame)
+        self.logger.debug("row: %s", row)
+        if row is None:
+            row = frame.max_row
+        destination = self.rules[frame.communication][row]["copy_move"][3].get()
 
         # Look up destination frame
         if destination == "Local":
@@ -2730,10 +2753,18 @@ class MUDWizard(tk.Toplevel):
         val = self.rules[frame.communication][row-1][v_name][0].get()
         self.rules[dest_frame.communication][dest_frame.max_row-1][v_name][0].set(val)
 
-        for v_name in ["port_local", "port_remote", "initiation_direction", "move_rule"]:
+        for v_name in ["port_local", "port_remote", "initiation_direction"]:
             val = self.rules[frame.communication][row][v_name][0].get()
             self.rules[dest_frame.communication][dest_frame.max_row][v_name][0].set(val)
 
+        v_name = "copy_move"
+        val = self.rules[frame.communication][row][v_name][3].get()
+        self.rules[dest_frame.communication][dest_frame.max_row][v_name][3].set(val)
+
+
+    def move_rule(self, frame, row=None):
+        # Copy data over to new location
+        self.copy_rule(frame, row)
         # Remove rule from the current/previous location
         self.remove_rule(frame, row-1)
 
@@ -2742,7 +2773,7 @@ class MUDWizard(tk.Toplevel):
         self.logger.debug("row: %s", row)
         if row is None:
             row = frame.max_row
-        if self.rules[frame.communication][row]["move_rule"][2].get() == frame.communication:
+        if self.rules[frame.communication][row]["copy_move"][1].get() == frame.communication:
             self.rules[frame.communication][row]["move_button"][0].config(state="disabled")
         else:
             self.rules[frame.communication][row]["move_button"][0].config(state="normal")
@@ -2774,12 +2805,20 @@ class MUDWizard(tk.Toplevel):
         if opt_type == "protocol":
             values = self.protocol_options
             width = 6
+            index = 0
         elif opt_type == "initiation_direction":
             values = self.init_direction_options
             width = 6
-        elif opt_type == "move_rule":
+            index = 0
+        elif opt_type == "copy_move":
+            values = self.rule_copy_move_options
+            width = 6
+            index = 0
+        elif opt_type == "rule_dest":
+            opt_type = "copy_move"
             values = self.rule_destination_options
             width = 14
+            index = 2
         # TODO: Pull Hosts?
         # elif opt_type == "host":
         #     values = ('Host A', 'Host B', 'Host B')
@@ -2788,9 +2827,9 @@ class MUDWizard(tk.Toplevel):
             return
 
         if row is None:
-            combo_options = self.rules[frame.communication][frame.max_row][opt_type][0]
+            combo_options = self.rules[frame.communication][frame.max_row][opt_type][index]
         else:
-            combo_options = self.rules[frame.communication][frame.row][opt_type][0]
+            combo_options = self.rules[frame.communication][frame.row][opt_type][index]
 
         combobox = ttk.Combobox(frame.contentFrame.scrollable_frame, width=width, textvariable=combo_options,
                                 state="readonly")

@@ -19,16 +19,19 @@ Certain commercial products or company names are identified here to describe the
 See LICENSE.TXT
 
 ## Key Updates
-2021-03-12: Final planned feature push - PcapNg files now supported (read/write capture environment details from/to 
+2021-03-31: Final planned feature push - Data processing threaded separately from GUI, improving the feel and 
+responsiveness. MUD Wizard updated to allow rules to be copied or moved between communication types
+
+2021-03-12: PcapNg files now supported (read/write capture environment details from/to 
 the comment field). MUD files are now generated through a newly designed wizard that requires "muddy" *see prerequisites
 
 2020-07-24: Local caching of device details
 
 2020-06-25: Fingerbank integration to assist in device identification
 
-2020-06-25: Multiprocessing of PCAP files enabled (4+ threads recommended)
+2020-06-25: Multiprocessing of PCAP files enabled (4+ cores/threads recommended)
 
-2019-10-22: Generation of human readable reports enabled
+2019-10-22: Generation of human-readable reports enabled
 
 # Prerequisites and Use
 

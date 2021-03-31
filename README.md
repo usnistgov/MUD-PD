@@ -30,7 +30,7 @@ the comment field). MUD files are now generated through a newly designed wizard 
 
 2019-10-22: Generation of human readable reports enabled
 
-# Prerequisites and use
+# Prerequisites and Use
 
 MUD-PD has been built and tested on Apple (macOS 10.14) and Linux (Ubuntu 18+) computers.  MUD-PD is currently 
 untested on Windows.
@@ -178,6 +178,16 @@ necessarily between both</li>
 
 2. Import PCAP files:
    ![Import PCAP files](./data/images/mudpd_main_import.png)
+   
+## Troubleshooting
+
+1. Update all packages and software are up-to-date:
+   
+    a. Run `shell> pip3 install -r requirements.txt`
+   
+    b. Verify that all prerequisite versions have been met (see "Prerequisites and Use" above)
+
+    c. If the above steps don't solve the issue, please "Contact Us" (see below)
 
 ## Contact Us
 These programs were developed by Paul Watrobski and Joshua Klosterman. Questions and bug reports may be directed to

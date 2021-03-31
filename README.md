@@ -112,7 +112,13 @@ System specifications used for development and testing:
    shell> sudo apt-get install python3-tk
    ```
 
-5. Libpcap
+5. Wireshark (tshark) 3.4.4+
+   
+   Used to process and import packet captures. Can also be used to generate packet capture files
+   * Download from: https://www.wireshark.org/download.html
+   
+
+6. Libpcap
 
    Used for generating packet captures to import into the database and tool 
    * Linux:
@@ -121,11 +127,7 @@ System specifications used for development and testing:
    ```
    * macOS: readily available by default
    * Windows: follow instructions at https://nmap.org/npcap/
-
-***Important note about Wireshark:***
-
-   If Wireshark is installed, one of the required Python libraries may conflict with the application. Thus, it is best to ensure that the version of Wireshark installed is 3.2.5 or later.
-
+    
 ## Installation
 
 1. Install MUD-PD:

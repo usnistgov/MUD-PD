@@ -14,6 +14,7 @@ from muddy.muddy.mud import MUD
 from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
 
 # External Modules
+import asyncio
 from configparser import ConfigParser
 from datetime import datetime, timedelta
 import getversion
@@ -821,6 +822,7 @@ class MudCaptureApplication(tk.Frame):
             # self.p_file = mp.Process(target=self.import_and_close_proc, args=(self.q))
 
     def headstart(self, filename):
+        asyncio.set_event_loop(asyncio.new_event_loop())
         self.cap = CaptureDigest(filename, api_key=self.api_key)
         self.logger.info("Finished importing capture file")
 
@@ -1054,6 +1056,7 @@ class MudCaptureApplication(tk.Frame):
 
         # Packet Processing (Threading)
         def process_packets():
+            asyncio.set_event_loop(asyncio.new_event_loop())
             self.logger.info("(E1) import_packets")
             self.import_packets(self.cap)
             self.logger.info("(E1a) finished importing packets")

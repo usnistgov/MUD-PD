@@ -19,6 +19,8 @@ import os
 import pyshark
 import re
 import subprocess
+#from tornado.platform import asyncio
+#from tornado.platform.asyncio import AnyThreadEventLoopPolicy
 
 
 class CaptureDatabase:
@@ -1187,6 +1189,8 @@ class CaptureDigest:
                                     addr_ip_src_set[i], addr_ip_dst_set[i],
                                     addr_ipv6_src_set[i], addr_ipv6_dst_set[i], ip2mac_m[i]))
 
+            # Attmepting to avoid errors in Linux
+            # asyncio.set_event_loop_policy(AnyThreadEventLoopPolicy())
             with Pool(self.numProcesses) as p:
                 # p.starmap_async(self.process_pkts_mp, import_args)
                 p.starmap(self.process_pkts_mp, import_args)

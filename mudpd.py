@@ -30,6 +30,7 @@ import os
 from PIL import ImageTk, Image
 import pyshark
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -3932,6 +3933,10 @@ if __name__ == '__main__':
     logger.info("\tSystem Platform: %s", sys.platform)
     logger.info("\tCPU Cores: %s", os.cpu_count())
     logger.info("\tPython Version: %s", sys.version.split()[0])
+
+    # Wireshark / tshark Version
+    tshark_version = subprocess.check_output('tshark -v', stderr=subprocess.STDOUT,shell=True).decode('ascii').split()
+    logger.info("\t%s %s %s %s", tshark_version[0], tshark_version[1], tshark_version[2], tshark_version[3])
 
     # Installed package info
     logger.info("Installed Python Packages:")

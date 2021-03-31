@@ -805,18 +805,23 @@ class MudCaptureApplication(tk.Frame):
                 # t.raise_exception()
                 self.threads['capture_processing'].remove(t)
 
-            def headstart(filename):
-                self.cap = CaptureDigest(filename, api_key=self.api_key)
-                self.logger.info("Finished importing capture file")
+            # def headstart(filename):
+            #     self.cap = CaptureDigest(filename, api_key=self.api_key)
+            #     self.logger.info("Finished importing capture file")
 
             # Restart worker threads to process file
             self.logger.info("Getting a headstart on processing capture: %s", filename)
-            t = threading.Thread(target=headstart, args=(filename,))
+            # t = threading.Thread(target=headstart, args=(filename,))
+            t = threading.Thread(target=self.headstart, args=(filename,))
             self.threads['capture_processing'].append(t)
             t.setDaemon(True)
             t.start()
 
             # self.p_file = mp.Process(target=self.import_and_close_proc, args=(self.q))
+
+    def headstart(self, filename):
+        self.cap = CaptureDigest(filename, api_key=self.api_key)
+        self.logger.info("Finished importing capture file")
 
     def make_form_capture(self, fields_general, fields_phase, fields_env, fields_type):
         self.capture_entries = list()
@@ -950,21 +955,36 @@ class MudCaptureApplication(tk.Frame):
         else:
             return False
 
+    def process_capture(self):
+        self.logger.info("Initiating capture processing from button press")
+        file_path = self.capture_entries[0][1].get()
+        self.cap = CaptureDigest(file_path, api_key=self.api_key)
+        self.logger.info("Finished importing capture file")
+
     def import_and_close(self):
 
-        def process_capture():
-            self.logger.info("Initiating capture processing from button press")
-            file_path = self.capture_entries[0][1].get()
-            self.cap = CaptureDigest(file_path, api_key=self.api_key)
-            self.logger.info("Finished importing capture file")
+        # def process_capture():
+        #     self.logger.info("Initiating capture processing from button press")
+        #     file_path = self.capture_entries[0][1].get()
+        #     self.cap = CaptureDigest(file_path, api_key=self.api_key)
+        #     self.logger.info("Finished importing capture file")
 
         if self.threads.get('capture_processing'):
             self.logger.info("Capture processing already running. Waiting to finish")
         else:
-            t = threading.Thread(target=process_capture)
+            # t = threading.Thread(target=process_capture)
+            t = threading.Thread(target=self.process_capture)
             self.threads['capture_processing'].append(t)
             t.setDaemon(True)
             t.start()
+
+        if self.threads['capture_processing'][-1].is_alive():
+            tk.messagebox.showinfo("Processing Packet Capture",
+                                   "The capture file is being processed. Depending on the file size, it may take a "
+                                   "while. Please hold...\n\n"
+                                   "If it takes a few minutes, it may be stuck. If this happens, you may need to close "
+                                   "MUD-PD and try again.\n\n"
+                                   "It may be worth splitting the file into a few smaller pieces first.")
 
         for t in self.threads['capture_processing']:
             while t.is_alive():
@@ -1037,7 +1057,7 @@ class MudCaptureApplication(tk.Frame):
             self.import_packets(self.cap)
             self.logger.info("(E1a) finished importing packets")
 
-        # Check if the packet processign thread is running and wait for it to finish if so
+        # Check if the packet processing thread is running and wait for it to finish if so
         if self.threads.get('packet_processing'):
             self.logger.info("Packet processing thread already running")
         else:
@@ -1047,10 +1067,12 @@ class MudCaptureApplication(tk.Frame):
             t.setDaemon(True)
             t.start()
 
-        self.logger.info("(E2) Non-blocking message that data is being pushed into the database")
-        messagebox.showinfo("Pushing data into database",
-                            "Data is being pushed into the database.\n\n"
-                            "Please be patient while this occurs")
+        if self.threads['packet_processing'][-1].is_alive():
+            self.logger.info("(E2) Non-blocking message that data is being pushed into the database")
+            messagebox.showinfo("Pushing data into database",
+                                "Data is being pushed into the database.\n\n"
+                                "Please be patient while this occurs")
+
         for t in self.threads['packet_processing']:
             while t.is_alive():
                 time.sleep(0.1)

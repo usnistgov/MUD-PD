@@ -32,8 +32,8 @@ the comment field). MUD files are now generated through a newly designed wizard 
 
 # Prerequisites and Use
 
-MUD-PD has been built and tested on Apple (macOS 10.14) and Linux (Ubuntu 18+) computers.  MUD-PD is currently 
-untested on Windows.
+MUD-PD has been built and tested on Apple (macOS 10.14) and Linux (Ubuntu 18+) computers. If using Ubuntu, version 
+20.04 LTS is recommended. MUD-PD is currently untested and unlikely to work on Windows.
 
 System specifications used for development and testing:
 
@@ -46,7 +46,7 @@ System specifications used for development and testing:
 0. Git
      * macOS: easiest through an installer such as the one found at: https://www.atlassian.com/git/tutorials/install-git
 
-     * Linux:
+     * Linux (Ubuntu 20.04+):
      ```sh
      shell> sudo apt-get install git
      ```

@@ -12,7 +12,7 @@ from functools import partial
 from IPy import IP
 import logging
 import math
-from multiprocessing import Pool, Manager
+from multiprocessing import Pool, Manager, cpu_count
 import mysql.connector
 from mysql.connector import Error
 import os
@@ -1005,7 +1005,10 @@ class CaptureDigest:
 
             # Get available CPU cores. Don't use all of them to avoid potential slowdowns to entire system
             # Originally: os.cpu_count() - 2 to allow One thread for the GUI and One thread to handle the I/O Queueing
-            self.numProcesses = os.cpu_count() - 1
+            self.numProcesses = os.cpu_count()# - 1
+            if cpu_count() > self.numProcesses:
+                self.numProcesses = cpu_count()
+
             self.logger.debug("Attempted numProcesses: %s", self.numProcesses)
             if self.numProcesses > 1:
 
@@ -1076,7 +1079,8 @@ class CaptureDigest:
                 self.logger.info("Time to split file: %s", stop - start)
 
             else:
-                self.logger.info("cpu_count is only %i. Need 4+ for multiprocessing the pcap files", os.cpu_count())
+                self.logger.info("cpu_count is only %i. It is ideal to have 4+ for multiprocessing the pcap files",
+                                 os.cpu_count())
                 self.numProcesses = 1
                 self.files = [self.fpath]
 

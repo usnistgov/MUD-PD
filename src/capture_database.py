@@ -1561,9 +1561,9 @@ class CaptureDigest:
                     if output.get("name") is not None:
                         self.logger.debug("Fingerprint Result: %s", output.get("name"))
                         self.modellookup.update({mac: output.get("name")})
-            else:
-                self.logger.info("No Fingerbank API Key Present")
-        self.logger.info("End Fingerprint Extraction")
+            self.logger.info("End Fingerprint Extraction")
+        else:
+            self.logger.info("No Fingerbank API Key Present")
 
     # Write the metadata to the pcapng
     def embed_meta(self, capture_data):

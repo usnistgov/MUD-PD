@@ -941,11 +941,6 @@ class MudCaptureApplication(tk.Frame):
             return False
 
     def import_and_close(self):
-        # Check if capture is already in database (using sha256)
-        # file_path = self.capture_entries[0][1].get()
-        # filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
-        # captures = self.db_handler.db.select_unique_captures()
-        #
 
         def process_capture():
             self.logger.info("Initiating capture processing from button press")
@@ -953,15 +948,8 @@ class MudCaptureApplication(tk.Frame):
             self.cap = CaptureDigest(file_path, api_key=self.api_key)
             self.logger.info("Finished importing capture file")
 
-        # if any(filehash in cap_hash for cap_hash in captures):
         if self.threads.get('capture_processing'):
             self.logger.info("Capture processing already running. Waiting to finish")
-            # for t in self.threads['capture_processing']:
-            #     t.join()
-            # self.logger.info("Finished importing capture file")
-        # if self.check_hash():
-        #     tk.Tk().withdraw()
-        #     messagebox.showerror("Error", "Capture file already imported into database")
         else:
             t = threading.Thread(target=process_capture)
             self.threads['capture_processing'].append(t)
@@ -973,9 +961,6 @@ class MudCaptureApplication(tk.Frame):
             self.threads['capture_processing'].remove(t)
         self.logger.info("Finished importing capture file")
 
-        # file_path = self.capture_entries[0][1].get()
-        # self.cap = CaptureDigest(file_path, api_key=self.api_key)
-        # self.logger.info("Finished importing capture file")
         # TODO: Determine how best to notify the user that processing is happening adn the tool is not
         #  necessarily stalled
         # messagebox.showinfo("Importing", "Please wait for the capture file to be processed")
@@ -1024,10 +1009,7 @@ class MudCaptureApplication(tk.Frame):
 
         self.cap.embed_meta(self.cap_envi_metadata)
 
-        # Potentially threadable code
-
         # Popup window
-        # self.yield_focus(self.w_cap)
         self.logger.info("(B) popup_import_capture_devices")
         self.popup_import_capture_devices(self.cap)
 
@@ -1037,12 +1019,13 @@ class MudCaptureApplication(tk.Frame):
         self.logger.info("(D) populate_capture_list")
         self.populate_capture_list()
 
-        # Packet Processing
+        # Packet Processing (Threading)
         def process_packets():
             self.logger.info("(E1) import_packets")
             self.import_packets(self.cap)
             self.logger.info("(E1a) finished importing packets")
 
+        # Check if the packet processign thread is running and wait for it to finish if so
         if self.threads.get('packet_processing'):
             self.logger.info("Packet processing thread already running")
         else:

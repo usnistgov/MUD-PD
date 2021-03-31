@@ -608,12 +608,13 @@ class CaptureDatabase:
         self.logger.info("mysqldb version: %s", self.cursor.fetchone()[0])
 
         # Check if need to migrate capture table
-        self.cursor.execute(self.new_capture_check + db_config['database'] + "';")
-        self.cnx.commit()
-        if self.cursor.fetchone()[0] == 'Not Exist':
-            self.logger.info("Migrating capture table to updated version")
-            self.cursor.execute(self.migrate_capture)
+        if db_config.get("database"):
+            self.cursor.execute(self.new_capture_check + db_config['database'] + "';")
             self.cnx.commit()
+            if self.cursor.fetchone()[0] == 'Not Exist':
+                self.logger.info("Migrating capture table to updated version")
+                self.cursor.execute(self.migrate_capture)
+                self.cnx.commit()
 
         self.capture_id_list = []
         self.device_id_list = []

@@ -31,6 +31,7 @@ from PIL import ImageTk, Image
 import pyshark
 import socket
 import sys
+import threading
 import time
 import tkinter as tk
 from tkinter import messagebox, scrolledtext, ttk
@@ -83,6 +84,8 @@ class MudCaptureApplication(tk.Frame):
         self.m = mp.Manager()
         self.q = self.m.Queue()
         self.filename_prev = ""
+        self.threads = {"capture_processing": list(),
+                        "packet_processing": list()}
 
         # ** Initialize class variables ** #
         # TODO: Handle these variables better
@@ -778,10 +781,31 @@ class MudCaptureApplication(tk.Frame):
             else:
                 self.cap_envi_metadata = dict()
 
+            # Check if the file has already been imported (putting this after the autofill to allow the user to view
+            # the inluded metadata
+            if self.check_hash():
+                tk.Tk().withdraw()
+                self.logger.error("Capture file already imported into database")
+                messagebox.showerror("Error", "Capture file already imported into database")
+                return
+
             # TODO: Kill any/all existing worker threads if a new file was selected
             # self.q.put("kill")
 
+            for t in self.threads.get('capture_processing'):
+                t.raise_exception()
+                self.threads['capture_processing'].remove(t)
+
+            def headstart(filename):
+                self.cap = CaptureDigest(filename, api_key=self.api_key)
+                self.logger.info("Finished importing capture file")
+
             # TODO: Restart worker threads to process file
+            t = threading.Thread(target=headstart, args=(filename,))
+            self.threads['capture_processing'].append(t)
+            t.setDaemon(True)
+            t.start()
+
             # self.p_file = mp.Process(target=self.import_and_close_proc, args=(self.q))
 
     def make_form_capture(self, fields_general, fields_phase, fields_env, fields_type):
@@ -904,155 +928,147 @@ class MudCaptureApplication(tk.Frame):
         e_act.config(state='disabled')
         self.capture_entries.append((fields_type[i], sv_act))
 
+
+    def check_hash(self):
+        # Check if capture is already in database (using sha256)
+        file_path = self.capture_entries[0][1].get()
+        filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
+        captures = self.db_handler.db.select_unique_captures()
+
+        if any(filehash in cap_hash for cap_hash in captures):
+            return True
+        else:
+            return False
+
     def import_and_close(self):
         # Check if capture is already in database (using sha256)
-        file_path = self.capture_entries[0][1].get()
-        filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
-        captures = self.db_handler.db.select_unique_captures()
+        # file_path = self.capture_entries[0][1].get()
+        # filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
+        # captures = self.db_handler.db.select_unique_captures()
+        #
 
-        if any(filehash in cap_hash for cap_hash in captures):
-            tk.Tk().withdraw()
-            messagebox.showerror("Error", "Capture file already imported into database")
-        else:
+        def process_capture():
+            self.logger.info("Initiating capture processing from button press")
+            file_path = self.capture_entries[0][1].get()
             self.cap = CaptureDigest(file_path, api_key=self.api_key)
             self.logger.info("Finished importing capture file")
-            # TODO: Determine how best to notify the user that processing is happening adn the tool is not
-            #  necessarily stalled
-            # messagebox.showinfo("Importing", "Please wait for the capture file to be processed")
 
-            data_capture = {
-                "fileName": self.cap.fname,
-                "fileLoc": self.cap.fdir,
-                "fileHash": self.cap.fileHash,
-                "capDate": epoch2datetime(float(self.cap.cap_timestamp)),  # epoch2datetime(float(self.cap.cap_date)),
-                "capDuration": self.cap.capDuration,
-                # "details": entries[1][1].get(),
-                # field2db[entries[2][0].cget('text')]: field2db[lifecyclePhaseFields[entries[2][1].get()]]
-                "details": self.capture_entries[1][1].get(),
-                field2db[self.capture_entries[2][0].cget('text')]:
-                    field2db[lifecyclePhaseFields[self.capture_entries[2][1].get()]]
-                # "Internet" : entries[3][1].get(),
-                # "Human Interaction" : entries[4][1].get(),
-                # "Preferred DNS Enabled" : entries[5][1].get(),
-                # "Isolated" : entries[6][1].get(),
-                # "Duration-based" : entries[7][1].get(),
-                # "Duration" : entries[8][1].get(),
-                # "Action-based" : entries[9][1].get(),
-                # "Action" : entries[10][1].get()
-            }
-
-            for i in range(3, 15):
-                data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
-                self.logger.debug("%s %s %s",
-                                  field2db[self.capture_entries[i][0]], i, self.capture_entries[i][1].get())
-
-            self.logger.debug("data_capture: %s", data_capture)
-
-            self.logger.info("(A) inserting capture file into database")
-            self.db_handler.db.insert_capture(data_capture)
-            temp_file_id = self.db_handler.db.select_last_insert_id()
-            self.cap.id = temp_file_id[0]
-
-            # Embed capture environment metadata into pcapng file
-            for i, (x, y) in enumerate(self.capture_entries):
-                # Skip first entry
-                if i:
-                    if i == 2:
-                        if y.get() == 0:
-                            self.cap_envi_metadata[field2db[x.cget("text")]] = "setup"
-                        elif y.get() == 1:
-                            self.cap_envi_metadata[field2db[x.cget("text")]] = "normal operation"
-                        elif y.get() == 2:
-                            self.cap_envi_metadata[field2db[x.cget("text")]] = "removal"
-                    else:
-                        if type(y) == tk.IntVar:
-                            self.cap_envi_metadata[field2db[x]] = str(bool(y.get()))
-                        elif type(y) == tk.StringVar:
-                            self.cap_envi_metadata[field2db[x]] = y.get()
-                        else:
-                            self.logger.warning("import_and_close: unexpected variable type %s, %s, %s", type(y), y, x)
-
-            self.cap.embed_meta(self.cap_envi_metadata)
-
-            # Potentially threadable code
-
-            # Popup window
-            # self.yield_focus(self.w_cap)
-            self.logger.info("(B) popup_import_capture_devices")
-            self.popup_import_capture_devices(self.cap)
-
-            self.logger.info("(C) populate_capture_list")
-            self.populate_capture_list()
-
-            self.logger.info("(D) import_packets")
-            self.import_packets(self.cap)
-
-            self.logger.info("(E) insert_protocol_device: Updating Device Protocol Table")
-            try:
-                self.db_handler.db.insert_protocol_device()
-                messagebox.showinfo("Success!", "Labeled Device Info Updated")
-            except AttributeError:
-                messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
-
-            self.logger.info("(F) destroying import capture window")
-            self.w_cap.destroy()
-
-    # TODO: Determine if this should be removed
-    def import_and_close_proc(self):  # , q):
-
-        # Check if capture is already in database (using sha256)
-        file_path = self.capture_entries[0][1].get()
-        filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
-        captures = self.db_handler.db.select_unique_captures()
-
-        if any(filehash in cap_hash for cap_hash in captures):
-            tk.Tk().withdraw()
-            messagebox.showerror("Error", "Capture file already imported into database")
+        # if any(filehash in cap_hash for cap_hash in captures):
+        if self.threads.get('capture_processing'):
+            self.logger.info("Capture processing already running. Waiting to finish")
+            # for t in self.threads['capture_processing']:
+            #     t.join()
+            # self.logger.info("Finished importing capture file")
+        # if self.check_hash():
+        #     tk.Tk().withdraw()
+        #     messagebox.showerror("Error", "Capture file already imported into database")
         else:
-            self.cap = CaptureDigest(file_path, api_key=self.api_key, mp=True)  # , q=q)
-            self.logger.info("Finished importing packets from packet capture")
+            t = threading.Thread(target=process_capture)
+            self.threads['capture_processing'].append(t)
+            t.setDaemon(True)
+            t.start()
 
-            data_capture = {
-                "fileName": self.cap.fname,
-                "fileLoc": self.cap.fdir,
-                "fileHash": self.cap.fileHash,
-                "capDate": epoch2datetime(float(self.cap.cap_timestamp)),  # epoch2datetime(float(self.cap.cap_date)),
-                "capDuration": self.cap.capDuration,
-                "details": self.capture_entries[1][1].get(),
-                field2db[self.capture_entries[2][0].cget('text')]:
-                    field2db[lifecyclePhaseFields[self.capture_entries[2][1].get()]]
-            }
+        for t in self.threads['capture_processing']:
+            t.join()
+            self.threads['capture_processing'].remove(t)
+        self.logger.info("Finished importing capture file")
 
-            for i in range(3, 15):
-                data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
-                self.logger.debug("%s, %s, %s", field2db[self.capture_entries[i][0]],
-                                  i, self.capture_entries[i][1].get())
+        # file_path = self.capture_entries[0][1].get()
+        # self.cap = CaptureDigest(file_path, api_key=self.api_key)
+        # self.logger.info("Finished importing capture file")
+        # TODO: Determine how best to notify the user that processing is happening adn the tool is not
+        #  necessarily stalled
+        # messagebox.showinfo("Importing", "Please wait for the capture file to be processed")
 
-            self.logger.debug('data_capture: %s', data_capture)
+        data_capture = {
+            "fileName": self.cap.fname,
+            "fileLoc": self.cap.fdir,
+            "fileHash": self.cap.fileHash,
+            "capDate": epoch2datetime(float(self.cap.cap_timestamp)),
+            "capDuration": self.cap.capDuration,
+            "details": self.capture_entries[1][1].get(),
+            field2db[self.capture_entries[2][0].cget('text')]:
+                field2db[lifecyclePhaseFields[self.capture_entries[2][1].get()]]
+        }
 
-            self.logger.info("(A) inserting capture file into database")
-            self.db_handler.db.insert_capture(data_capture)
-            temp_file_id = self.db_handler.db.select_last_insert_id()
-            self.cap.id = temp_file_id[0]
+        for i in range(3, 15):
+            data_capture[field2db[self.capture_entries[i][0]]] = self.capture_entries[i][1].get()
+            self.logger.debug("%s %s %s",
+                              field2db[self.capture_entries[i][0]], i, self.capture_entries[i][1].get())
 
-            # Embed capture environment metadata into pcapng file
-            self.cap.embed_meta(data_capture)
+        self.logger.debug("data_capture: %s", data_capture)
 
-            # Potentially threadable code
+        self.logger.info("(A) inserting capture file into database")
+        self.db_handler.db.insert_capture(data_capture)
+        temp_file_id = self.db_handler.db.select_last_insert_id()
+        self.cap.id = temp_file_id[0]
 
-            # Popup window
-            # self.yield_focus(self.w_cap)
-            self.logger.info("(B) popup_import_capture_devices")
-            self.popup_import_capture_devices(self.cap)
+        # Embed capture environment metadata into pcapng file
+        for i, (x, y) in enumerate(self.capture_entries):
+            # Skip first entry
+            if i:
+                if i == 2:
+                    if y.get() == 0:
+                        self.cap_envi_metadata[field2db[x.cget("text")]] = "setup"
+                    elif y.get() == 1:
+                        self.cap_envi_metadata[field2db[x.cget("text")]] = "normal operation"
+                    elif y.get() == 2:
+                        self.cap_envi_metadata[field2db[x.cget("text")]] = "removal"
+                else:
+                    if type(y) == tk.IntVar:
+                        self.cap_envi_metadata[field2db[x]] = str(bool(y.get()))
+                    elif type(y) == tk.StringVar:
+                        self.cap_envi_metadata[field2db[x]] = y.get()
+                    else:
+                        self.logger.warning("import_and_close: unexpected variable type %s, %s, %s", type(y), y, x)
 
-            self.logger.info("(C) populate_capture_list")
-            self.populate_capture_list()
+        self.cap.embed_meta(self.cap_envi_metadata)
 
-            self.logger.info("(D) import_packets")
+        # Potentially threadable code
+
+        # Popup window
+        # self.yield_focus(self.w_cap)
+        self.logger.info("(B) popup_import_capture_devices")
+        self.popup_import_capture_devices(self.cap)
+
+        self.logger.info("(C) destroying import capture window")
+        self.w_cap.destroy()
+
+        self.logger.info("(D) populate_capture_list")
+        self.populate_capture_list()
+
+        # Packet Processing
+        def process_packets():
+            self.logger.info("(E1) import_packets")
             self.import_packets(self.cap)
+            self.logger.info("(E1a) finished importing packets")
 
-            self.logger.info("(E) destroying import capture window")
-            self.w_cap.destroy()
+        if self.threads.get('packet_processing'):
+            self.logger.info("Packet processing thread already running")
+        else:
+            self.logger.info("Starting Packet processing thread")
+            t = threading.Thread(target=process_packets)
+            self.threads['packet_processing'].append(t)
+            t.setDaemon(True)
+            t.start()
+
+        self.logger.info("(E2) Non-blocking message that data is being pushed into the database")
+        messagebox.showinfo("Pushing data into database",
+                            "Data is being pushed into the database.\n\n"
+                            "Please be patient while this occurs")
+        for t in self.threads['packet_processing']:
+            t.join()
+            self.threads['packet_processing'].remove(t)
+
+        self.logger.info("(F) populating comm_list")
+        self.populate_comm_list()
+
+        self.logger.info("(G) insert_protocol_device: Updating Device Protocol Table")
+        try:
+            self.db_handler.db.insert_protocol_device()
+            messagebox.showinfo("Success!", "Labeled Device Info Updated")
+        except AttributeError:
+            messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
 
     def pre_popup_import_capture_devices(self):
         sel_cap_path = self.cap_list.get_selected_row()[6] + "/" + self.cap_list.get_selected_row()[2]
@@ -1161,6 +1177,24 @@ class MudCaptureApplication(tk.Frame):
         self.unlabeled_dev_list.selection_set(0)
         self.labeled_dev_list.focus(0)
         self.labeled_dev_list.selection_set(0)
+
+        # Packet Processing
+        def process_packets():
+            self.logger.info("(B1) import_packets")
+            self.import_packets(self.cap)
+            self.logger.info("(B1a) finished importing packets")
+
+        if self.threads.get('packet_processing'):
+            self.logger.info("packet processing thread already running. Killing")
+            for t in self.threads['packet_processing']:
+                t.raise_excpetion()
+                self.threads['packet_processing'].remove(t)
+
+        self.logger.info("Starting Packet processing thread")
+        t = threading.Thread(target=process_packets)
+        self.threads['packet_processing'].append(t)
+        t.setDaemon(True)
+        t.start()
 
         self.yield_focus(self.w_cap_dev)
 
@@ -1767,7 +1801,7 @@ class MudCaptureApplication(tk.Frame):
         stop = datetime.now()
         self.logger.info("time to import packets: %s", (stop - start).total_seconds())
 
-        self.populate_comm_list()
+        # self.populate_comm_list()
 
     def populate_comm_list(self, append=False):
         # Clear previous list

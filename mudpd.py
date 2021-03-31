@@ -2080,7 +2080,7 @@ class MudCaptureApplication(tk.Frame):
         # ** Top Device Frame ** #
         # Title
         self.report_dev_title_var = tk.StringVar()
-        self.report_dev_title_var.set("Device to Profile:")
+        self.report_dev_title_var.set("Device for Report:")
         self.report_dev_title = tk.Label(self.topReportDevFrame, textvariable=self.report_dev_title_var, bg="#eeeeee",
                                          bd=1, relief="flat")
         self.report_dev_title.pack(side="top", fill=tk.X)
@@ -2370,6 +2370,8 @@ class MUDWizard(tk.Toplevel):
 
         self.protocol_options = ('Any', 'TCP', 'UDP')
         self.init_direction_options = ('Either', 'Thing', 'Remote')
+        self.rule_destination_options = ('Local', "Same Manufacturer", "Other Manufacturer", "My-Controller",
+                                         "Controller")
 
         self.current_page = 0
         self.sv_device = tk.StringVar()
@@ -2579,30 +2581,31 @@ class MUDWizard(tk.Toplevel):
         v_port_local = tk.StringVar()
         v_port_remote = tk.StringVar()
         v_initiation_direction = tk.StringVar()
+        v_move_rule = tk.StringVar()
 
         # Host
-        l_host = tk.Label(frame.contentFrame.scrollable_frame, text="Host")
+        l_host = tk.Label(frame.contentFrame.scrollable_frame, text="Remote")  # "Host")
         l_host.grid(row=frame.max_row, column=0, sticky='w')
         # TODO: Change this to a combobox entry with each entry being observed destination (dst) hosts
         e_host = tk.Entry(frame.contentFrame.scrollable_frame, width=40, textvariable=v_host)
-        e_host.grid(row=frame.max_row, column=1, columnspan=6, sticky="ew")
+        e_host.grid(row=frame.max_row, column=1, columnspan=8, sticky="ew")
 
         self.rules[frame.communication][frame.max_row] = {"host": (v_host, l_host, e_host)}
 
         # Protocol
         c_protocol = None
         l_protocol = tk.Label(frame.contentFrame.scrollable_frame, text="Protocol")
-        l_protocol.grid(row=frame.max_row, column=7, sticky='w')
+        l_protocol.grid(row=frame.max_row, column=9, sticky='w')
         self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
         c_protocol = self.create_combobox(frame)
-        c_protocol.grid(row=frame.max_row, column=8, sticky='w')
+        c_protocol.grid(row=frame.max_row, column=10, sticky='w')
         c_protocol.bind("<<ComboboxSelected>>",
                         lambda f=frame.contentFrame.scrollable_frame, r=frame.max_row: self.protocol_updated(f, r))
         self.rules[frame.communication][frame.max_row]["protocol"] = (v_protocol, l_protocol, c_protocol)
 
         b_modify = tk.Button(frame.contentFrame.scrollable_frame, text=" - ", command=lambda f=frame,
                              a=frame.max_row: self.remove_rule(f, a))
-        b_modify.grid(row=frame.max_row, column=9, sticky='w')
+        b_modify.grid(row=frame.max_row, column=11, sticky='w')
         self.rules[frame.communication][frame.max_row]['remove_button'] = (b_modify,)
 
         frame.max_row += 1
@@ -2636,9 +2639,78 @@ class MUDWizard(tk.Toplevel):
                                                                                   l_initiation_direction,
                                                                                   c_initiation_direction)
 
+        # Move (for any traffic except internet)
+        if frame.communication != "internet":
+            c_move_rule = None
+            l_move_rule = tk.Label(frame.contentFrame.scrollable_frame, text="Move to:")
+            l_move_rule.grid(row=frame.max_row, column=9, sticky='w')
+            self.rules[frame.communication][frame.max_row]["move_rule"] = (v_move_rule, l_move_rule, c_move_rule)
+            c_move_rule = self.create_combobox(frame, opt_type="move_rule")
+            c_move_rule.grid(row=frame.max_row, column=10, columnspan=2, sticky='w')
+            c_move_rule.bind("<<ComboboxSelected>>",
+                             lambda event, f=frame, r=frame.max_row: self.check_destination(f, r))
+            c_move_rule.set(frame.communication.capitalize())
+            # lambda f=frame.contentFrame.scrollable_frame, r=frame.max_row: self.protocol_updated(f, r))
+            self.rules[frame.communication][frame.max_row]["move_rule"] = (v_move_rule, l_move_rule, c_move_rule)
+
+            b_move_rule = tk.Button(frame.contentFrame.scrollable_frame, text=">>>", state="disabled",
+                                    command=lambda f=frame, a=frame.max_row: self.move_rule(f, a))
+            b_move_rule.grid(row=frame.max_row, column=12, sticky='w')
+            self.rules[frame.communication][frame.max_row]["move_button"] = (b_move_rule,)
+
         # TODO: See if there is a way to scroll to the bottom
         # self.rules[frame.communication][frame.max_row]["initiation_direction"][1].see("end")
         # frame.contentFrame.scrollable_frame.see("end")
+
+    def move_rule(self, frame, row=None):
+        self.logger.debug("frame: %s", frame)
+        self.logger.debug("row: %s", row)
+        if row is None:
+            row = frame.max_row
+        destination = self.rules[frame.communication][row]["move_rule"][2].get()
+
+        # Look up destination frame
+        if destination == "Local":
+            dest_frame = self.frames[MUDPage3Local]
+        elif destination == "Same Manufacturer":
+            dest_frame = self.frames[MUDPage4SameMan]
+        elif destination == "Other Manufacturer":
+            dest_frame = self.frames[MUDPage5NamedMan]
+        elif destination == "My-Controller":
+            dest_frame = self.frames[MUDPage6MyControl]
+        elif destination == "Controller":
+            dest_frame = self.frames[MUDPage7Control]
+
+        # Add rule to new location and copy data
+        self.add_rule(dest_frame)
+        # Handle host differently
+        v_name = "host"
+        val = self.rules[frame.communication][row-1][v_name][0].get()
+        self.rules[dest_frame.communication][dest_frame.max_row-1][v_name][0].set(val)  # delete(0,tk.END)
+        # self.rules[dest_frame.communication][dest_frame.max_row-1][v_name][0].insert(0,val)
+
+        # Handle the different row numbers
+        v_name = "protocol"
+        val = self.rules[frame.communication][row-1][v_name][0].get()
+        self.rules[dest_frame.communication][dest_frame.max_row-1][v_name][0].set(val)
+
+        for v_name in ["port_local", "port_remote", "initiation_direction", "move_rule"]:
+            val = self.rules[frame.communication][row][v_name][0].get()
+            self.rules[dest_frame.communication][dest_frame.max_row][v_name][0].set(val)
+
+        # Remove rule from the current/previous location
+        self.remove_rule(frame, row-1)
+
+    def check_destination(self, frame, row=None):
+        self.logger.debug("frame: %s", frame)
+        self.logger.debug("row: %s", row)
+        if row is None:
+            row = frame.max_row
+        if self.rules[frame.communication][row]["move_rule"][2].get() == frame.communication:
+            self.rules[frame.communication][row]["move_button"][0].config(state="disabled")
+        else:
+            self.rules[frame.communication][row]["move_button"][0].config(state="normal")
+        #self.rule_destination_options
 
     def remove_rule(self, frame, row=None):
         if row is None:
@@ -2665,8 +2737,13 @@ class MUDWizard(tk.Toplevel):
     def create_combobox(self, frame, opt_type="protocol", row=None):
         if opt_type == "protocol":
             values = self.protocol_options
+            width = 6
         elif opt_type == "initiation_direction":
             values = self.init_direction_options
+            width = 6
+        elif opt_type == "move_rule":
+            values = self.rule_destination_options
+            width = 14
         # TODO: Pull Hosts?
         # elif opt_type == "host":
         #     values = ('Host A', 'Host B', 'Host B')
@@ -2679,7 +2756,7 @@ class MUDWizard(tk.Toplevel):
         else:
             combo_options = self.rules[frame.communication][frame.row][opt_type][0]
 
-        combobox = ttk.Combobox(frame.contentFrame.scrollable_frame, width=6, textvariable=combo_options,
+        combobox = ttk.Combobox(frame.contentFrame.scrollable_frame, width=width, textvariable=combo_options,
                                 state="readonly")
 
         combobox['values'] = values
@@ -3093,38 +3170,43 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         # Remote/Internet Hosts
         v_internet = tk.BooleanVar()
         self.controller.cb_v_list.append(v_internet)
-        cb_internet = tk.Checkbutton(self.contentFrame, text="Internet", variable=v_internet)
+        cb_internet = tk.Checkbutton(self.contentFrame, text="Internet", variable=v_internet,
+                                     command=self.update_comm_types)
         cb_internet.grid(row=7, columnspan=6, sticky="w")
 
         # Local Hosts
         v_local = tk.BooleanVar()
         self.controller.cb_v_list.append(v_local)
-        cb_local = tk.Checkbutton(self.contentFrame, text="Local", variable=v_local)
+        cb_local = tk.Checkbutton(self.contentFrame, text="Local", variable=v_local,
+                                  command=self.update_comm_types)
         cb_local.grid(row=8, columnspan=6, sticky="w")
 
         # Same Manufacturer
         v_mfr_same = tk.BooleanVar()
         self.controller.cb_v_list.append(v_mfr_same)
-        cb_mfr_same = tk.Checkbutton(self.contentFrame, text="Same Manufacturer", variable=v_mfr_same)
+        cb_mfr_same = tk.Checkbutton(self.contentFrame, text="Same Manufacturer", variable=v_mfr_same,
+                                     command=self.update_comm_types)
         cb_mfr_same.grid(row=9, columnspan=6, sticky="w")
 
         # Other Named Manufacturers
         v_mfr_other = tk.BooleanVar()
         self.controller.cb_v_list.append(v_mfr_other)
-        cb_mfr_other = tk.Checkbutton(self.contentFrame, text="Other Named Manufacturers", variable=v_mfr_other)
+        cb_mfr_other = tk.Checkbutton(self.contentFrame, text="Other Manufacturer", variable=v_mfr_other,
+                                      command=self.update_comm_types)
         cb_mfr_other.grid(row=10, columnspan=6, sticky="w")
 
         # My-Controller class of devices
         v_controller_my = tk.BooleanVar()
         self.controller.cb_v_list.append(v_controller_my)
-        cb_controller_my = tk.Checkbutton(self.contentFrame, text="Network-Defined Controller",
-                                          variable=v_controller_my)
+        cb_controller_my = tk.Checkbutton(self.contentFrame, text="My-Controller",variable=v_controller_my,
+                                          command=self.update_comm_types)
         cb_controller_my.grid(row=11, columnspan=6, sticky="w")
 
         # Controllers
         v_controller = tk.BooleanVar()
         self.controller.cb_v_list.append(v_controller)
-        cb_controller = tk.Checkbutton(self.contentFrame, text="Controller", variable=v_controller)
+        cb_controller = tk.Checkbutton(self.contentFrame, text="Controller", variable=v_controller,
+                                       command=self.update_comm_types)
         cb_controller.grid(row=12, columnspan=6, sticky="w")
 
         # Navigation Buttons
@@ -3160,17 +3242,46 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         # Best guess: more open (use mostly "any")
         # Best guess: more closed (use mostly specific protocols and ports)
 
-    def cb_toggle(self):
-        toggle = False
+    def cb_toggle(self, toggle=False):
         for i, cb in enumerate(self.controller.cb_v_list):
             if not i:
-                toggle = cb.get()
-                if toggle:
-                    self.sv_toggle.set("None")
+                if not toggle:
+                    toggle = cb.get()
+                    if toggle:
+                        self.sv_toggle.set("None")
+                    else:
+                        self.sv_toggle.set("All")
                 else:
-                    self.sv_toggle.set("All")
+                    if toggle:
+                        self.sv_toggle.set("None")
+                        cb.set(True)
+                    else:
+                        self.sv_toggle.set("All")
+                        cb.set(False)
             else:
                 cb.set(toggle)
+
+    def update_comm_types(self):
+        all_types = ["All", "Internet",
+                     "Local", "Same Manufacturer", "Other Manufacturer", "My-Controller", "Controller"]
+        comm_types = []
+        for (i, comm_type) in enumerate(self.controller.cb_v_list):
+            if not i:
+                if comm_type.get():
+                    comm_types = all_types[1:]
+                    break
+            elif i > 1:
+                if comm_type.get():
+                    comm_types.append(all_types[i])
+
+        if comm_types == all_types[2:] and self.controller.cb_v_list[1].get():
+            self.cb_toggle(True)
+            comm_types = all_types[2:]
+        else:
+            self.controller.cb_v_list[0].set(False)
+            self.sv_toggle.set("All")
+
+        self.rule_destination_options = tuple(comm_types)
 
     @staticmethod
     def comm_help():
@@ -3200,7 +3311,7 @@ class MUDPage1Description(MUDPage0Select, tk.Frame):
         pass
 
 
-# TODO: Internet
+# Internet
 class MUDPage2Internet(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
@@ -3262,7 +3373,7 @@ class MUDPage2Internet(MUDPage0Select, tk.Frame):
         tk.messagebox.showinfo("Warning", self.controller.help_info_internet)
 
 
-# TODO: Local
+# Local
 class MUDPage3Local(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
@@ -3323,7 +3434,7 @@ class MUDPage3Local(MUDPage0Select, tk.Frame):
         tk.messagebox.showinfo("Warning", self.controller.help_info_local)
 
 
-# TODO: Same Manufacturers
+# Same Manufacturers
 class MUDPage4SameMan(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
@@ -3374,7 +3485,7 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
         self.grid_columnconfigure(0, weight=1)
 
         # Load up 1 instance to fill in at launch
-        self.add_same_mfr()
+        #self.add_same_mfr()
 
     # In case anything else should occur beyond the add_rule method
     def add_same_mfr(self):
@@ -3389,7 +3500,7 @@ class MUDPage4SameMan(MUDPage0Select, tk.Frame):
         tk.messagebox.showinfo("Warning", self.controller.help_info_same_man)
 
 
-# TODO: Named Manufacturers
+# Named Manufacturers
 class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
@@ -3405,7 +3516,7 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
         self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
         # Header
-        label = tk.Label(self.headerFrame, text="Other Named Manufacturer(s)", bg="#eeeeee", bd=1, relief="flat")
+        label = tk.Label(self.headerFrame, text="Other Manufacturers", bg="#eeeeee", bd=1, relief="flat")
         label.grid(row=0, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
@@ -3440,7 +3551,7 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
         self.grid_columnconfigure(0, weight=1)
 
         # Load up 1 instance to fill in at launch
-        self.add_named_mfr()
+        #self.add_named_mfr()
 
     # In case anything else should occur beyond the add_rule method
     def add_named_mfr(self):
@@ -3453,7 +3564,7 @@ class MUDPage5NamedMan(MUDPage0Select, tk.Frame):
         tk.messagebox.showinfo("Warning", self.controller.help_info_named_man)
 
 
-# TODO: My-Controller
+# My-Controller
 class MUDPage6MyControl(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
@@ -3469,9 +3580,9 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
         self.navigationFrame = tk.Frame(self, bg="#eeeeee")
 
         # Header
-        title = tk.Label(self.headerFrame, text="Network-Specific Controllers", bg="#eeeeee", bd=1, relief="flat")
+        title = tk.Label(self.headerFrame, text="My-Controller", bg="#eeeeee", bd=1, relief="flat")
         title.grid(row=0, columnspan=6, sticky='new')
-        subtitle = tk.Label(self.headerFrame, text="(my-controller)", bg="#eeeeee", bd=1, relief="flat")
+        subtitle = tk.Label(self.headerFrame, text="(network-specific controllers)", bg="#eeeeee", bd=1, relief="flat")
         subtitle.grid(row=1, columnspan=6, sticky='new')
 
         # Button for adding entries/rules
@@ -3506,7 +3617,7 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
         self.grid_columnconfigure(0, weight=1)
 
         # Load up 1 instance to fill in at launch
-        self.add_my_controller()
+        #self.add_my_controller()
 
     def add_my_controller(self):
         self.controller.add_rule(self)
@@ -3520,7 +3631,7 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
         tk.messagebox.showinfo("Warning", self.controller.help_info_controller_my)
 
 
-# TODO: Controllers
+# Controllers
 class MUDPage7Control(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):
@@ -3571,7 +3682,7 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
         self.grid_columnconfigure(0, weight=1)
 
         # Load up 1 instance to fill in at launch
-        self.add_controller()
+        #self.add_controller()
 
     # In case anything else should occur beyond the add_rule method
     def add_controller(self):
@@ -3584,7 +3695,7 @@ class MUDPage7Control(MUDPage0Select, tk.Frame):
         tk.messagebox.showinfo("Warning", self.controller.help_info_controller)
 
 
-# TODO: Generate MUD File
+# Generate MUD File
 class MUDPage8Summary(MUDPage0Select, tk.Frame):
 
     def __init__(self, parent, controller):

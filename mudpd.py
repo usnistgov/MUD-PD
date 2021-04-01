@@ -1617,7 +1617,7 @@ class MudCaptureApplication(tk.Frame):
                                                  "please assign the device a different name" % format(value))
                             self.logger.error("Internal name %s already used", value)
                             return
-                elif field in ["Wifi", "Ethernet", "Bluetooth", "ZigBee", "ZWave", "3G", "4G", "5G", "Other"]:
+                elif field in ["WiFi", "Ethernet", "Bluetooth", "ZigBee", "ZWave", "3G", "4G", "5G", "Other"]:
                     network_interfaces += 1
 
                 self.logger.debug('field: %s value %s -> database field: %s', field, value, dbfield)

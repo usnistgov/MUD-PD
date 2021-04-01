@@ -829,19 +829,24 @@ class MudCaptureApplication(tk.Frame):
     def make_form_capture(self, fields_general, fields_phase, fields_env, fields_type):
         self.capture_entries = list()
         for i, field in enumerate(fields_general):
-            row = tk.Frame(self.w_cap)
-            lab = tk.Label(row, width=15, text=field, anchor='w')
-            sv_ent = tk.StringVar()
-            ent = tk.Entry(row, textvariable=sv_ent)
-
             if i == 0:
+                row = tk.Frame(self.w_cap)
+                lab = tk.Label(row, width=4, text=field, anchor='w')
+                sv_ent = tk.StringVar()
+                ent = tk.Entry(row, textvariable=sv_ent)
+
                 b_open = tk.Button(row, text='...',
                                    command=(lambda e=sv_ent: self.open_file_callback(e)))
                 row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
                 lab.pack(side=tk.LEFT)
-                ent.pack(side=tk.LEFT, fill=tk.X)
-                b_open.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
+                ent.pack(side=tk.LEFT, expand=tk.YES, fill=tk.X)
+                b_open.pack(side=tk.RIGHT, expand=tk.NO, fill=tk.X)
             else:
+                row = tk.Frame(self.w_cap)
+                lab = tk.Label(row, width=15, text=field, anchor='w')
+                sv_ent = tk.StringVar()
+                ent = tk.Entry(row, textvariable=sv_ent)
+
                 row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
                 lab.pack(side=tk.LEFT)
                 ent.pack(side=tk.RIGHT, expand=tk.YES, fill=tk.X)
@@ -851,25 +856,29 @@ class MudCaptureApplication(tk.Frame):
         # Device Phase (Setup, Normal Operation, Removal)
         # lifecyclePhaseFields = 'Setup', 'Normal Operation', 'Removal'
         row = tk.Frame(self.w_cap)
-        lab = tk.Label(row, width=15, text="Lifecycle Phase", anchor='w')
+        lab = tk.Label(row, width=15, text="Lifecycle Phase", font="Helvetica 14 bold")#, anchor='w')
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-        lab.pack(side=tk.LEFT)
+        lab.pack(side=tk.TOP)#LEFT)
 
         row = tk.Frame(self.w_cap)
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
         v_phz = tk.IntVar(None, 1)
         for i, field in enumerate(fields_phase):
-            b_phz = tk.Radiobutton(row, text=field, variable=v_phz, value=i)
-            b_phz.pack(side=tk.LEFT, fill=tk.X, padx=5, pady=5, anchor=tk.W)
+            if i == 1:
+                width = 16
+            else:
+                width = 10
+            b_phz = tk.Radiobutton(row, text=field, variable=v_phz, value=i, width=width)
+            b_phz.pack(side=tk.LEFT, fill=tk.X, padx=5, pady=5, anchor=tk.W)  # , anchor=tk.W)
 
         self.capture_entries.append((lab, v_phz))
 
         # Environment Variables (Internet, Human Interaction, Preferred DNS Enabled, Isolated
         # captureEnvFields = 'Internet', 'Human Interaction', 'Preferred DNS Enabled','Isolated'
         row = tk.Frame(self.w_cap)
-        lab = tk.Label(row, width=20, text="Environmental Variables", anchor='w')
+        lab = tk.Label(row, width=20, text="Environmental Variables", font="Helvetica 14 bold") #, anchor='w')
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-        lab.pack(side=tk.LEFT)
+        lab.pack(side=tk.TOP)#LEFT
         for i, field in enumerate(fields_env):
             if i % 2 == 0:
                 row = tk.Frame(self.w_cap)
@@ -888,9 +897,9 @@ class MudCaptureApplication(tk.Frame):
         # Capture Type (Duration-based, Duration, Action-based, Action)
         # captureTypeFields = 'Duration-based', 'Duration', 'Action-based', 'Action'
         row = tk.Frame(self.w_cap)
-        lab = tk.Label(row, width=15, text="Capture Type", anchor='w')
+        lab = tk.Label(row, width=15, text="Capture Type", font="Helvetica 14 bold") #anchor='w')
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-        lab.pack(side=tk.LEFT)
+        lab.pack(side=tk.TOP)#LEFT)
 
         def activate_check_duration():
             if v_dur.get() == 1:  # whenever checked
@@ -911,7 +920,7 @@ class MudCaptureApplication(tk.Frame):
         i += 1
         row = tk.Frame(self.w_cap)
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-        lab = tk.Label(row, padx=5, width=9, text=fields_type[i], anchor='w')
+        lab = tk.Label(row, padx=5, width=6, text=fields_type[i], anchor='w')
         lab.pack(side=tk.LEFT)
         sv_dur = tk.StringVar()
         e_dur = tk.Entry(row, textvariable=sv_dur)
@@ -938,7 +947,7 @@ class MudCaptureApplication(tk.Frame):
         i += 1
         row = tk.Frame(self.w_cap)
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
-        lab = tk.Label(row, padx=5, width=9, text=fields_type[i], anchor='w')
+        lab = tk.Label(row, padx=5, width=6, text=fields_type[i], anchor='w')
         lab.pack(side=tk.LEFT)
         sv_act = tk.StringVar()
         e_act = tk.Entry(row, textvariable=sv_act)
@@ -2172,8 +2181,14 @@ class MudCaptureApplication(tk.Frame):
         self.topReportDevFrame.grid(row=0, column=0, sticky="nsew")
         self.botReportPCAPFrame.grid(row=1, column=0, sticky="nsew")
 
+        self.topReportDevFrame.grid_propagate(0)
+        self.botReportPCAPFrame.grid_propagate(0)
+
+        self.w_gen_report.geometry("900x600")
+
         self.w_gen_report.grid_rowconfigure(0, weight=1)
         self.w_gen_report.grid_rowconfigure(1, weight=1)
+        self.w_gen_report.grid_columnconfigure(0, weight=1)
 
         # Buttons #
         self.b_report_generate = tk.Button(self.botReportPCAPFrame, text='Generate', state='disabled',
@@ -2546,28 +2561,44 @@ class MUDWizard(tk.Toplevel):
     def show_frame(self, cont):
         frame = self.frames[cont]
 
-        # time.sleep(0.25)
-        if cont == MUDPage2Internet and not self.help_info_shown:
-            # TODO: Check if page contains any IP addresses, and show message if so
-            # Warning about hostnames needing to be domain names, not IP addresses
-            tk.messagebox.showinfo("Warning", self.help_info_internet)
-            self.help_info_shown = True
-        elif cont == MUDPage3Local and not self.help_info_shown:
-            tk.messagebox.showinfo("Warning", self.help_info_local)
-            self.help_info_shown = True
-        elif cont == MUDPage4SameMan and not self.help_info_shown:
-            tk.messagebox.showinfo("Warning", self.help_info_same_man)
-            self.help_info_shown = True
-        elif cont == MUDPage5NamedMan and not self.help_info_shown:
-            tk.messagebox.showinfo("Warning", self.help_info_named_man)
-            self.help_info_shown = True
-        elif cont == MUDPage6MyControl and not self.help_info_shown:
-            tk.messagebox.showinfo("Warning", self.help_info_controller_my)
-            self.help_info_shown = True
-        elif cont == MUDPage7Control and not self.help_info_shown:
-            tk.messagebox.showinfo("Warning", self.help_info_controller)
-            self.help_info_shown = True
-
+        if cont == MUDPage0Select:
+            self.geometry("720x360")
+        elif cont == MUDPage1Description:
+            self.geometry("540x360")
+        elif cont == MUDPage2Internet:
+            self.geometry("630x360")
+            if not self.help_info_shown:
+                # TODO: Check if page contains any IP addresses, and show message if so
+                # Warning about hostnames needing to be domain names, not IP addresses
+                tk.messagebox.showinfo("Warning", self.help_info_internet)
+                self.help_info_shown = True
+        elif cont == MUDPage3Local:
+            self.geometry("720x360")
+            if not self.help_info_shown:
+                tk.messagebox.showinfo("Warning", self.help_info_local)
+                self.help_info_shown = True
+        elif cont == MUDPage4SameMan:
+            self.geometry("720x360")
+            if not self.help_info_shown:
+                tk.messagebox.showinfo("Warning", self.help_info_same_man)
+                self.help_info_shown = True
+        elif cont == MUDPage5NamedMan:
+            self.geometry("720x360")
+            if not self.help_info_shown:
+                tk.messagebox.showinfo("Warning", self.help_info_named_man)
+                self.help_info_shown = True
+        elif cont == MUDPage6MyControl:
+            self.geometry("720x360")
+            if not self.help_info_shown:
+                tk.messagebox.showinfo("Warning", self.help_info_controller_my)
+                self.help_info_shown = True
+        elif cont == MUDPage7Control:
+            self.geometry("720x360")
+            if not self.help_info_shown:
+                tk.messagebox.showinfo("Warning", self.help_info_controller)
+                self.help_info_shown = True
+        elif cont == MUDPage8Summary:
+            self.geometry("720x360")
         frame.tkraise()
 
     def next_page(self):
@@ -2721,7 +2752,7 @@ class MUDWizard(tk.Toplevel):
             self.rules[frame.communication][frame.max_row]["copy_move"] = (v_copy_move, c_copy_move,
                                                                            v_rule_dest, c_copy_move_dest)
 
-            b_move_rule = tk.Button(frame.contentFrame.scrollable_frame, text=">>>", state="disabled",
+            b_move_rule = tk.Button(frame.contentFrame.scrollable_frame, text=">>", state="disabled",
                                     command=lambda f=frame, a=frame.max_row: self.copy_move_rule(f, a))
             b_move_rule.grid(row=frame.max_row, column=12, sticky='w')
             self.rules[frame.communication][frame.max_row]["move_button"] = (b_move_rule,)
@@ -3937,17 +3968,20 @@ class DatabaseHandler:
 
 
 class StreamToLogger(object):
-   """
-   Fake file-like stream object that redirects writes to a logger instance.
-   """
-   def __init__(self, logger, log_level=logging.INFO):
-      self.logger = logger
-      self.log_level = log_level
-      self.linebuf = ''
+    """
+    Fake file-like stream object that redirects writes to a logger instance.
+    """
+    def __init__(self, logger, log_level=logging.INFO):
+        self.logger = logger
+        self.log_level = log_level
+        self.linebuf = ''
 
-   def write(self, buf):
-      for line in buf.rstrip().splitlines():
-         self.logger.log(self.log_level, line.rstrip())
+    def write(self, buf):
+        for line in buf.rstrip().splitlines():
+            self.logger.log(self.log_level, line.rstrip())
+
+    def flush(self):
+        pass
 
 
 if __name__ == '__main__':
@@ -3982,10 +4016,12 @@ if __name__ == '__main__':
     logger.info("\ttime:\t%s", getversion.get_module_version(time)[0])
     logger.info("\ttkinter:\t%s", getversion.get_module_version(tk)[0])
 
+    # Setup Error Logger
     errLogger = logging.getLogger('stderr')
     sl = StreamToLogger(errLogger, logging.CRITICAL)
     stderr_old = sys.stderr
     sys.stderr = sl
+
     # Startup TK
     root = tk.Tk()
     gui = MudCaptureApplication(root)
@@ -4004,4 +4040,5 @@ if __name__ == '__main__':
 
     root.mainloop()
 
+    # Reset stderr
     sys.stderr = stderr_old

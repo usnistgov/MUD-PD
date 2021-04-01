@@ -36,7 +36,7 @@ import sys
 import threading
 import time
 import tkinter as tk
-from tkinter import messagebox, scrolledtext, ttk
+from tkinter import font, messagebox, scrolledtext, ttk
 from tkinter.filedialog import askopenfilename
 
 field2db = BiDict({'File': 'fileName', 'Activity': 'activity', 'Notes (optional)': 'details',
@@ -1530,8 +1530,12 @@ class MudCaptureApplication(tk.Frame):
             row = tk.Frame(self.w_dev)
             row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-            lab = tk.Label(row, width=15, text=field, anchor='w')
-            lab.pack(side=tk.LEFT)
+            if i == len(fields) - 1:
+                lab = tk.Label(row, width=15, text=field, font="Helvetica 14 bold")  #tk.font.BOLD)
+                lab.pack(side=tk.TOP)
+            else:
+                lab = tk.Label(row, width=15, text=field, anchor='w')
+                lab.pack(side=tk.LEFT)
 
             if i < len(fields) - 1:
                 if field == 'MAC':
@@ -1557,7 +1561,7 @@ class MudCaptureApplication(tk.Frame):
         for i, option in enumerate(options):
             if i == len(options) - 1:
                 row = tk.Frame(self.w_dev)
-                lab = tk.Label(row, width=10, text=option, anchor='w')
+                lab = tk.Label(row, width=6, text=option, anchor='w')
                 ent = tk.Entry(row)
 
                 row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
@@ -1567,14 +1571,32 @@ class MudCaptureApplication(tk.Frame):
                 if cache_data:
                     ent.insert(30, cache_data[0][i + 1])
                 self.device_entries.append((option, ent))
+            elif i == 0:
+                row = tk.Frame(self.w_dev)
+                row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+
+                checkvar = tk.IntVar()
+                ckb = tk.Checkbutton(row, text=option, width=10, justify=tk.LEFT, variable=checkvar, anchor='w')
+                ckb.pack(side=tk.LEFT, anchor="w")
+
+                if cache_data:
+                    if cache_data[0][i + 1] == 1:
+                        checkvar.set(True)
+
+                self.device_entries.append((option, checkvar))
+
+                row = tk.Frame(self.w_dev)
+                row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+                lab = tk.Label(row, width=20, text="Network Interfaces", justify=tk.LEFT, anchor='w')
+                lab.pack(side=tk.LEFT, anchor="w")
             else:
-                if i % 5 == 0:
+                if (i-1) % 4 == 0:
                     row = tk.Frame(self.w_dev)
                     row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
                 checkvar = tk.IntVar()
                 if row is not None:
-                    ckb = tk.Checkbutton(row, text=option, width=10, justify=tk.LEFT, variable=checkvar)
+                    ckb = tk.Checkbutton(row, text=option, width=10, justify=tk.LEFT, variable=checkvar, anchor="w")
                     ckb.pack(side=tk.LEFT, anchor="w")
 
                 if cache_data:
@@ -2141,7 +2163,7 @@ class MudCaptureApplication(tk.Frame):
 
         # Listbox
         self.report_pcap_header = ["id", "Date", "Capture Name", "Activity", "Duration (seconds)", "Details",
-                                   "Capture File Location", "ID"]
+                                   "Capture File Location", "Hash"]
         self.report_pcap_list = MultiColumnListbox(parent=self.botReportPCAPFrame, header=self.report_pcap_header,
                                                    input_list=list(), keep_first=True, exclusion_list=["id"])
         self.report_pcap_list.bind("<<TreeviewSelect>>", self.select_report_pcaps)
@@ -2214,13 +2236,12 @@ class MudCaptureApplication(tk.Frame):
         else:
             caps_imported = self.db_handler.db.select_imported_captures_with_device({"deviceID": self.device_id})
 
-        # TODO: check why cap_i_id appears twice in the append statement below (originally just id)
         for (cap_i_id, fileName, fileLoc, fileHash, cap_date, capDuration, lifecyclePhase,
              internet, humanInteraction, preferredDNS, isolated,
              controllerHub, mfrSame, fullNetwork, physicalChanges,
              durationBased, duration, actionBased, deviceAction, details) in caps_imported:
             self.report_pcap_list.append(
-                (cap_i_id, cap_date, fileName, deviceAction, duration, details, fileLoc, cap_i_id))  # for early stages
+                (cap_i_id, cap_date, fileName, deviceAction, duration, details, fileLoc, fileHash))
 
         # Set focus on the first element
         self.report_pcap_list.focus(0)

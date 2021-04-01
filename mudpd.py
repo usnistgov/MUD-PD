@@ -2970,8 +2970,12 @@ class MUDWizard(tk.Toplevel):
 
     def save_mud_file(self, advanced=False):
         # TODO: rewrite using regex to make cleaner
-        fpath = 'mudfiles/' + self.mud.support_info['mfg-name'].replace(' ', '_').replace(',', '').replace('.', '')
-        if not os.path.isdir(fpath):
+        mud_path = 'mudfiles/'
+        fpath = mud_path + self.mud.support_info['mfg-name'].replace(' ', '_').replace(',', '').replace('.', '')
+        if not os.path.isdir(mud_path):
+            os.mkdir(mud_path)
+            os.mkdir(fpath)
+        elif not os.path.isdir(fpath):
             os.mkdir(fpath)
 
         timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")

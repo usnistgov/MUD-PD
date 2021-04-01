@@ -11,12 +11,10 @@ import src.pcapng_comment as capMeta
 
 # Muddy Modules
 try:
-    print("Trying absolute import of muddy")
     from muddy.muddy.mud import MUD
     from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
 except ImportError:
     try:
-        print("Trying relative import of muddy")
         from .muddy.muddy.mud import MUD
         from .muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
     except ImportError:
@@ -1191,12 +1189,19 @@ class MudCaptureApplication(tk.Frame):
         self.labeledDevFrame.grid(row=1, column=1, sticky="nsew")
 
         # Grid configuration #
+        self.unlabeledDevFrame.grid_rowconfigure(1, weight=1)
+        self.labeledDevFrame.grid_rowconfigure(1, weight=1)
+
         self.botDevFrame.grid_rowconfigure(1, weight=1)
         self.botDevFrame.grid_columnconfigure(0, weight=1)
-        self.botDevFrame.grid_columnconfigure(1, weight=1)
+        self.botDevFrame.grid_columnconfigure(1, weight=3)
 
+        self.w_cap_dev.grid_rowconfigure(0, weight=0)
         self.w_cap_dev.grid_rowconfigure(1, weight=1)
         self.w_cap_dev.grid_columnconfigure(0, weight=1)
+        self.w_cap_dev.grid_columnconfigure(1, weight=1)
+
+        self.w_cap_dev.geometry("1200x400")
 
         # Buttons #
         self.b_cap_dev_close = tk.Button(self.unlabeledDevFrame, text='Close',

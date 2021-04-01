@@ -10,8 +10,18 @@ from src.scrollable_frame import ScrollableFrame
 import src.pcapng_comment as capMeta
 
 # Muddy Modules
-from muddy.muddy.mud import MUD
-from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
+try:
+    print("Trying absolute import of muddy")
+    from muddy.muddy.mud import MUD
+    from muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
+except ImportError:
+    try:
+        print("Trying relative import of muddy")
+        from .muddy.muddy.mud import MUD
+        from .muddy.muddy.models import Direction, IPVersion, Protocol, MatchType
+    except ImportError:
+        print("Cannot import muddy. Please be sure it has been installed within the MUD-PD directory")
+        exit(1)
 
 # External Modules
 import asyncio

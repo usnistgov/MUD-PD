@@ -1,3 +1,23 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents:**
+
+- [MUD-PD](#mud-pd)
+  - [NIST Disclaimers](#nist-disclaimers)
+  - [NIST Software License](#nist-software-license)
+  - [General Disclaimer](#general-disclaimers)
+  - [Key Updates](#key-updates)
+  - [Prerequisites and Use](#prerequisites-and-use)
+  - [Installation](#installation)
+  - [Running MUD-PD](#running-mud-pd)
+  - [First Steps](#first-steps)
+  - [Troubleshooting](#troubleshooting)
+  - [Contact Us](#contact-us)
+  - [Citation Instructions](#these-scripts-should-be-cited-as)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # MUD-PD
 
 MUD-PD is designed to help internet of things (IoT) manufacturers, developers, and researchers to implement the
@@ -17,6 +37,12 @@ Certain commercial products or company names are identified here to describe the
 
 ## NIST Software License
 See LICENSE.TXT
+
+## General Disclaimer
+It is expected that any data generated from MUD-PD, particularly MUD files, are validated by the user of the tool. 
+MUD-PD is not intended as production-ready software in its present form, but as a research tool. Thus, it is 
+expected that the user either take proper security precautions or acknowledge the aforementioned warnings. Any 
+risks or damages resulting from use of MUD-PD are wholly the responsibility of the user.
 
 ## Key Updates
 2021-03-31: Final planned feature push - Data processing threaded separately from GUI, improving the feel and 
@@ -53,7 +79,7 @@ System specifications used for development and testing:
      ```sh
      shell> sudo apt-get install git
      ```
-1. Python 3.7.2+
+1. Python 3.8.4+
 
    * Check version
      ```sh
@@ -69,11 +95,11 @@ System specifications used for development and testing:
 
      * Linux
      ```sh
-     shell> sudo apt-get install python3.7
+     shell> sudo apt-get install python3.8
      ```
      or
      ```sh
-     shell> sudo apt-get install python3.8
+     shell> sudo apt-get install python3.9
      ```
 
 2. MySQL
@@ -119,6 +145,10 @@ System specifications used for development and testing:
    
    Used to process and import packet captures. Can also be used to generate packet capture files
    * Download from: https://www.wireshark.org/download.html
+   * Linux:
+   ```sh
+   shell> sudo apt-get install tshark
+   ```
    
 
 6. Libpcap

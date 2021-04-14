@@ -214,13 +214,19 @@ necessarily between both</li>
    
 ## Troubleshooting
 
-1. Update all packages and software are up-to-date:
+1. Functional Issues:
    
     a. Run `shell> pip3 install -r requirements.txt`
    
     b. Verify that all prerequisite versions have been met (see "Prerequisites and Use" above)
-
+   
     c. If the above steps don't solve the issue, please "Contact Us" (see below)
+
+2. Visual issues:
+
+    a. On Ubuntu, scaling may not work correctly for some buttons. Try a different scale percentage.
+   
+    b. On macOS, Dark Mode may modify the colors of some text and background. Try selecting Light Mode.
 
 ## Contact Us
 These programs were developed by Paul Watrobski and Joshua Klosterman. Questions and bug reports may be directed to

@@ -703,15 +703,16 @@ class MudCaptureApplication(tk.Frame):
 
     def popup_confirm_save(self):
         self.logger.info("popup_confirm_save window opening")
-        confirm = tk.messagebox.askyesno("MUD-PD: MUD Profiling Database",
+        confirm = tk.messagebox.askyesno("MUD-PD: Save Configuration",
                                          "Are you sure you want to save this configuration?\n\n" +
-                                         "Any existing configuration will be OVERWRITTEN.",
+                                         "Any existing configuration will be OVERWRITTEN.\n\n" +
+                                         "For security purposes, the password will NOT be saved.",
                                          default='no')
-        save_pwd = tk.messagebox.askyesno("WARNING",
-                                          "Password will be saved in plaintext.\n\nSave password anyway?",
-                                          default='no')
+        # save_pwd = tk.messagebox.askyesno("WARNING",
+        #                                   "Password will be saved in plaintext.\n\nSave password anyway?",
+        #                                   default='no')
         if confirm:
-            self.db_handler.save_db_config(save_pwd=save_pwd)
+            self.db_handler.save_db_config()  # save_pwd=save_pwd)
         return
 
     def popup_import_capture(self):
@@ -3948,14 +3949,14 @@ class DatabaseHandler:
 
         return db
 
-    def save_db_config(self, filename='config.ini', section='mysql', save_pwd=False):
+    def save_db_config(self, filename='config.ini', section='mysql'):  # , save_pwd=False):
         parser = ConfigParser()
         parser.read(filename)
         info = {}
         for entry in self.db_config:
             field = entry
             text = self.db_config[entry]
-            if save_pwd or field != "passwd":
+            if field != "passwd":
                 info[field] = text
             else:
                 info[field] = ""

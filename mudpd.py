@@ -1165,7 +1165,8 @@ class MudCaptureApplication(tk.Frame):
 
         self.unlabeled_dev_header = ["id", "Manufacturer", "MAC", "IPv4", "IPv6"]
         self.unlabeled_dev_list = MultiColumnListbox(parent=self.unlabeledDevFrame, header=self.unlabeled_dev_header,
-                                                     input_list=list(), select_mode="browse", exclusion_list=["id"])
+                                                     input_list=list(), select_mode="browse", exclusion_list=["id"],
+                                                     sticky="nsew")
         self.unlabeled_dev_list.bind("<<TreeviewSelect>>", self.update_unlabeled_list_selection)
 
         # ** Right (Labeled) Dev Frame ** #
@@ -1179,7 +1180,8 @@ class MudCaptureApplication(tk.Frame):
 
         self.labeled_dev_header = ["id", "Manufacturer", "Model", "Internal Name", "Category", "MAC", "IPv4", "IPv6"]
         self.labeled_dev_list = MultiColumnListbox(parent=self.labeledDevFrame, header=self.labeled_dev_header,
-                                                   input_list=list(), select_mode="browse", exclusion_list=["id"])
+                                                   input_list=list(), select_mode="browse", exclusion_list=["id"],
+                                                   sticky="nsew")
         self.labeled_dev_list.bind("<<TreeviewSelect>>", self.update_identified_list_selection)
 
         # Grid placements #
@@ -1506,7 +1508,7 @@ class MudCaptureApplication(tk.Frame):
     def popup_import_device(self):
         self.logger.info("popup_import_device window opening")
         self.w_dev = tk.Toplevel()
-        self.w_dev.wm_title("Import Devices")
+        self.w_dev.wm_title("Label Device")
 
         device_id = self.unlabeled_dev_list_sel[0]
         mfr = self.unlabeled_dev_list_sel[1]
@@ -2573,6 +2575,8 @@ class MUDWizard(tk.Toplevel):
         self.show_frame(MUDPage0Select)
 
         self.parent.yield_focus(self)
+
+        self.protocol("WM_DELETE_WINDOW", self.__exit__())
 
     def show_frame(self, cont):
         frame = self.frames[cont]

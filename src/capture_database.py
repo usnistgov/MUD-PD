@@ -1012,6 +1012,10 @@ class CaptureDigest:
                 self.numProcesses = cpu_count()
 
             self.logger.debug("Attempted numProcesses: %s", self.numProcesses)
+            if self.numProcesses > 8:
+                self.numProcesses = 8
+                self.logger.warning("Number of processes exceeds 8, thus for temporary development and debug, "
+                                    "cutting down to 8.")
             if self.numProcesses > 1:
 
                 self.tempDir = './.temp/'

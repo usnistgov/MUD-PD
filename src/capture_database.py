@@ -1075,6 +1075,8 @@ class CaptureDigest:
                                         "processes, so it may not be optimal in its efficiency.",
                                         len(self.files), self.numProcesses, len(self.files))
                     self.numProcesses = len(self.files)
+                else: # Number of files equals number of processes
+                    self.logger.info("Multiprocessing: Success splitting capture files")
 
                 stop = datetime.now()
 
@@ -1189,8 +1191,10 @@ class CaptureDigest:
                                     addr_ip_src_set[i], addr_ip_dst_set[i],
                                     addr_ipv6_src_set[i], addr_ipv6_dst_set[i], ip2mac_m[i]))
 
-            # Attmepting to avoid errors in Linux
+            # Attempting to avoid errors in Linux
             # asyncio.set_event_loop_policy(AnyThreadEventLoopPolicy())
+            self.logger.info(import_args)
+
             with Pool(self.numProcesses) as p:
                 # p.starmap_async(self.process_pkts_mp, import_args)
                 p.starmap(self.process_pkts_mp, import_args)

@@ -40,9 +40,9 @@ See LICENSE.TXT
 
 ## General Disclaimer
 It is expected that any data generated from MUD-PD, particularly MUD files, are validated by the user of the tool. 
-MUD-PD is not intended as production-ready software in its present form, but as a research tool. Thus, it is 
-expected that the user either take proper security precautions or acknowledge the aforementioned warnings. Any 
-risks or damages resulting from use of MUD-PD are wholly the responsibility of the user.
+MUD-PD is intended as a research tool, used in a controlled setting. Thus, it is expected that the user either take 
+proper security precautions or accept the risks of using on a mission-critical system. Any risks or damages resulting 
+from use of MUD-PD are wholly the responsibility of the user.
 
 ## Key Updates
 2021-03-31: Final planned feature push - Data processing threaded separately from GUI, improving the feel and 

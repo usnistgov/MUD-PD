@@ -171,9 +171,9 @@ System specifications used for development and testing:
    ```
 
 2. Install muddy: (for MUD file generation)
-   * Follow instructions at: https://github.com/upaulnight/muddy
+   * Follow instructions at: https://github.com/usnistgov/muddy
    * IMPORTANT:
-      * Latest verified compatible commit: c498ea9b159c5881ffbaacc2e4064c2cf9081775 (2021-03-12)
+      * Latest verified compatible commit: 1434c380cdd49077b273c9aafdb2c7e0ef733636 (2021-04-05)
       * Verified to work when muddy is installed within the root directory of the MUD-PD repository
 
 ## Running MUD-PD

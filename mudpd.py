@@ -3980,6 +3980,9 @@ class DatabaseHandler:
             self.db = CaptureDatabase(self.db_config)
         except mysql.connector.Error:
             self.connected = False
+# Catches incorrect database credentials
+        except AttributeError:
+            self.connected = False
         else:
             self.connected = True
 

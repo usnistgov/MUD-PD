@@ -1037,7 +1037,7 @@ class CaptureDigest:
                 if capMeta.is_pcapng(self.fpath):
                     # Convert the pcapng file to pcap
                     capfile = self.tempDir + "full_cap/temp_cap.pcap"
-                    subprocess.call('tshark -F pcap -r ' + self.fpath + ' -w ' + capfile, stderr=subprocess.PIPE,
+                    subprocess.call('tshark -F pcap -r ' + '\'' + self.fpath + '\'' + ' -w ' + capfile, stderr=subprocess.PIPE,
                                     shell=True)
                     fsize = os.path.getsize(capfile)
 

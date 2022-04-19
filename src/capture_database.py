@@ -1592,42 +1592,42 @@ class CaptureDigest:
 
 
 # Database Main (for testing purposes)
-if __name__ == "__main__":
+#if __name__ == "__main__":
+#
+#    mysql.connector.connect()
+#
+#    fname = "/Users/ptw/Documents/GRA-MITRE-DDoS/captures/ecobee/ecobeeThermostat_iphone_setup.pcap"
+#    capture = CaptureDigest(fname)
+#    capture.print_init()
+#    print("Unique IP addresses:")
 
-    mysql.connector.connect()
+#    print(*capture.uniqueIP, sep="\n")
+#    print("\n\nUnique IPv6 addresses:")
+#    print(*capture.uniqueIPv6, sep="\n")
+#    print("\n")
 
-    fname = "/Users/ptw/Documents/GRA-MITRE-DDoS/captures/ecobee/ecobeeThermostat_iphone_setup.pcap"
-    capture = CaptureDigest(fname)
-    capture.print_init()
-    print("Unique IP addresses:")
+#    for mac in capture.uniqueMAC:
+#        lookup_mac(mac)
+#        print(mac + "\r\n")
+#        break
 
-    print(*capture.uniqueIP, sep="\n")
-    print("\n\nUnique IPv6 addresses:")
-    print(*capture.uniqueIPv6, sep="\n")
-    print("\n")
+#    print("Unique DST IP addresses:")
+#    for ip in capture.uniqueIP_dst:
+#        lookup_hostname(ip)
+#        print(ip + "\n")
+#        break
 
-    for mac in capture.uniqueMAC:
-        lookup_mac(mac)
-        print(mac + "\r\n")
-        break
+#    print("\n\nUnique DST IPv6 addresses:")
+#    for ipv6 in capture.uniqueIPv6_dst:
+#        lookup_hostname(ipv6)
+#        print(ipv6 + "\n")
+#        break
 
-    print("Unique DST IP addresses:")
-    for ip in capture.uniqueIP_dst:
-        lookup_hostname(ip)
-        print(ip + "\n")
-        break
+#    mac = "BC:92:6B:A0:00:01"
+#    company = lookup_mac(mac)
 
-    print("\n\nUnique DST IPv6 addresses:")
-    for ipv6 in capture.uniqueIPv6_dst:
-        lookup_hostname(ipv6)
-        print(ipv6 + "\n")
-        break
-
-    mac = "BC:92:6B:A0:00:01"
-    company = lookup_mac(mac)
-
-    ip_addr = "216.220.61.236"
-    lookup_hostname(ip_addr)
+#    ip_addr = "216.220.61.236"
+#    lookup_hostname(ip_addr)
 
 # Adding capture things items:
 # fileName

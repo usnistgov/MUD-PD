@@ -626,7 +626,7 @@ class MudCaptureApplication(tk.Frame):
         self.logger.info("popup_update_labeled_device_info window opening")
         try:
             self.db_handler.db.insert_protocol_device()
-            messagebox.showinfo("Success!", "Labeled Device Info Updated")
+            # messagebox.showinfo("Success!", "Labeled Device Info Updated")
         except AttributeError:
             messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
 
@@ -1227,7 +1227,7 @@ class MudCaptureApplication(tk.Frame):
         self.w_cap_dev.geometry("1200x400")
 
         # Buttons #
-        self.b_cap_dev_close = tk.Button(self.unlabeledDevFrame, text='Close',
+        self.b_cap_dev_close = tk.Button(self.unlabeledDevFrame, text='Save',
                                          command=(lambda c=self.cap.id: self.close_w_cap_dev(c)))
 
         self.b_cap_dev_label = tk.Button(self.unlabeledDevFrame, text='Label Device', state='disabled',

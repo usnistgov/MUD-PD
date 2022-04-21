@@ -109,6 +109,8 @@ class MudCaptureApplication(tk.Frame):
         self.w_dev_state = None
         self.w_gen_mud = None
         self.w_gen_report = None
+        self.w_progress = None
+        self.w_progress_pb = None
 
         # Buttons for future windows
         self.b_cap_dev_close = None
@@ -624,7 +626,7 @@ class MudCaptureApplication(tk.Frame):
         self.logger.info("popup_update_labeled_device_info window opening")
         try:
             self.db_handler.db.insert_protocol_device()
-            messagebox.showinfo("Success!", "Labeled Device Info Updated")
+            # messagebox.showinfo("Success!", "Labeled Device Info Updated")
         except AttributeError:
             messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
 
@@ -982,6 +984,7 @@ class MudCaptureApplication(tk.Frame):
         self.cap = CaptureDigest(file_path, api_key=self.api_key)
         self.logger.info("Finished importing capture file")
 
+    # Importing the user's pcap/pcap-ng file
     def import_and_close(self):
 
         # def process_capture():
@@ -1007,17 +1010,21 @@ class MudCaptureApplication(tk.Frame):
                                    "MUD-PD and try again.\n\n"
                                    "It may be worth splitting the file into a few smaller pieces first.")
 
+            # Starts progress bar
+            self.progress_bar()
         for t in self.threads['capture_processing']:
             while t.is_alive():
+                self.w_progress_pb.update()
                 time.sleep(0.1)
-            #t.join()
+            # t.join()
             self.threads['capture_processing'].remove(t)
         self.logger.info("Finished importing capture file")
 
-        # TODO: Determine how best to notify the user that processing is happening and the tool is not
-        #  necessarily stalled
-        # messagebox.showinfo("Importing", "Please wait for the capture file to be processed")
+        # Destroys the progress bar once the import is complete
+        self.w_progress.destroy()
+        self.logger.info("Progress bar destroyed")
 
+        # Capture the data fields from the pcap file
         data_capture = {
             "fileName": self.cap.fname,
             "fileLoc": self.cap.fdir,
@@ -1110,6 +1117,19 @@ class MudCaptureApplication(tk.Frame):
             messagebox.showinfo("Success!", "Labeled Device Info Updated")
         except AttributeError:
             messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
+
+    # Configure Tkinter popup window for the progress bar
+    def progress_bar(self):
+        self.w_progress = tk.Toplevel()
+        self.w_progress.wm_title("Processing Packet Capture")
+        self.w_progress.transient()
+
+        self.w_progress_pb = tk.ttk.Progressbar(self.w_progress, orient='horizontal', mode='indeterminate', length=280)
+        self.w_progress_pb.grid(column=0, row=0, columnspan=2, padx=10, pady=20)
+
+        # Starts the progress bar
+        self.w_progress_pb.start()
+        self.logger.info("Progress bar launched")
 
     def pre_popup_import_capture_devices(self):
         sel_cap_path = self.cap_list.get_selected_row()[6] + "/" + self.cap_list.get_selected_row()[2]
@@ -1207,7 +1227,7 @@ class MudCaptureApplication(tk.Frame):
         self.w_cap_dev.geometry("1200x400")
 
         # Buttons #
-        self.b_cap_dev_close = tk.Button(self.unlabeledDevFrame, text='Close',
+        self.b_cap_dev_close = tk.Button(self.unlabeledDevFrame, text='Save',
                                          command=(lambda c=self.cap.id: self.close_w_cap_dev(c)))
 
         self.b_cap_dev_label = tk.Button(self.unlabeledDevFrame, text='Label Device', state='disabled',
@@ -3979,6 +3999,9 @@ class DatabaseHandler:
         try:
             self.db = CaptureDatabase(self.db_config)
         except mysql.connector.Error:
+            self.connected = False
+# Catches incorrect database credentials
+        except AttributeError:
             self.connected = False
         else:
             self.connected = True

@@ -19,8 +19,8 @@ import os
 import pyshark
 import re
 import subprocess
-#from tornado.platform import asyncio
-#from tornado.platform.asyncio import AnyThreadEventLoopPolicy
+import tkinter as tk
+
 
 
 class CaptureDatabase:
@@ -1066,7 +1066,7 @@ class CaptureDigest:
                     self.logger.warning("Multiprocessing Error: No split capture files found. Running in "
                                         "single-process mode with one processor and the original file")
                     self.files = [capfile]
-                    self.numProcesses = 1
+                    # self.numProcesses = 1
                 elif len(self.files) > self.numProcesses:
                     self.logger.warning("Multiprocessing Error: The capture file has been split into more pieces (%s) "
                                         "than processors (%s). Capture file processing will continue with %s, but may "

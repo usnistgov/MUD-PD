@@ -1097,47 +1097,6 @@ class CaptureDigest:
             stop1 = datetime.now()
             self.logger.info("Time to process file: %s", stop1 - start1)
             self.logger.info("Time for full process: %s", stop1 - start)
-        else:
-            ew_filter_start = datetime.now()
-            # ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ' \
-            #                'ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
-            # ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or ' \
-            #                '!ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
-            # ew_ipv6_filter = 'ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8}'
-            # ns_ipv6_filter = '!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8}'
-
-            ew_filter = '(ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ' \
-                        'ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or ' \
-                        '(ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})'
-
-            # ns_filter = ['(', ns_ip_filter, ') and (', ns_ipv6_filter, ')']
-
-            self.ew_index = []
-            cap_ew = pyshark.FileCapture(self.fpath, display_filter=ew_filter, keep_packets=False)
-            for p in cap_ew:
-                self.ew_index += p.number
-
-            ew_filter_stop = datetime.now()
-            self.logger.info("time to filter ew: %s", ew_filter_stop - ew_filter_start)
-
-            # start = datetime.now()
-            self.cap = pyshark.FileCapture(self.fpath, keep_packets=False)
-
-            self.cap_timestamp = self.cap[0].sniff_timestamp
-
-            # TODO CHANGE capDuration format from seconds to days, hours, minutes, seconds
-            self.capDuration = 0
-
-            self.uniqueIP = []
-            self.uniqueIPv6 = []
-            self.uniqueMAC = []
-            self.uniqueMAC_dst = []
-
-            # TODO Check if this is now broken
-            self.ip2mac = {}
-
-            self.uniqueIP_dst = []
-            self.uniqueIPv6_dst = []
 
         self.dhcp_pkts = pyshark.FileCapture(self.fpath, display_filter='dhcp')
         self.modellookup = {}

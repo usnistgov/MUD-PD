@@ -3756,9 +3756,6 @@ class MUDPage6MyControl(MUDPage0Select, tk.Frame):
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        # Load up 1 instance to fill in at launch
-        # self.add_my_controller()
-
     def add_my_controller(self):
         self.controller.add_rule(self)
         self.controller.rules[self.communication][self.max_row - 1]["host"][0].set("(filled in by local admin)")

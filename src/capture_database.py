@@ -19,7 +19,6 @@ import os
 import pyshark
 import re
 import subprocess
-import tkinter as tk
 
 
 
@@ -1066,6 +1065,7 @@ class CaptureDigest:
                     self.logger.warning("Multiprocessing Error: No split capture files found. Running in "
                                         "single-process mode with one processor and the original file")
                     self.files = [capfile]
+                    # Uncomment this to test single processing
                     # self.numProcesses = 1
                 elif len(self.files) > self.numProcesses:
                     self.logger.warning("Multiprocessing Error: The capture file has been split into more pieces (%s) "

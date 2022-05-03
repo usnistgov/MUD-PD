@@ -1179,7 +1179,11 @@ class CaptureDigest:
 
     def process_pkts_mp(self, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
                         addr_ipv6_src, addr_ipv6_dst, ip2mac):
-        cap = pyshark.FileCapture(file, keep_packets=False)
+        cap = pyshark.FileCapture(file, keep_packets=False, display_filter='!ip.version==9 && !ip.version==8 '  
+                                                                           '&& !ip.version==7 && !ip.version==6 ' 
+                                                                           '&& !ip.version==5 && !ip.version==3 ' 
+                                                                           '&& !ip.version==2 && !ip.version==1 ' 
+                                                                           '&& !ip.version==0')
 
         addr_mac_src_set = set()
         addr_mac_dst_set = set()
@@ -1461,7 +1465,11 @@ class CaptureDigest:
         self.cap_date = cap_datetime.date().strftime('%Y-%m-%d')
         self.cap_time = cap_datetime.time().strftime('%H:%M:%S')
 
-        self.cap = pyshark.FileCapture(self.fpath)
+        self.cap = pyshark.FileCapture(self.fpath, display_filter='!ip.version==9 && !ip.version==8 '  
+                                                                  '&& !ip.version==7 && !ip.version==6 ' 
+                                                                  '&& !ip.version==5 && !ip.version==3 ' 
+                                                                  '&& !ip.version==2 && !ip.version==1 ' 
+                                                                  '&& !ip.version==0')
         # Determine if this line should be uncommented or removed
         self.pkt = []
 

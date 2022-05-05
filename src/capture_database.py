@@ -495,19 +495,6 @@ class CaptureDatabase:
         "FROM device "
         "WHERE NOT ISNULL(internalName);")
 
-    # TODO: See if this needs to exist
-    # query_devices_imported_ignore_noIPs = (
-    #     "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
-    #     "FROM device "
-    #     "WHERE mac_addr!=%(ignored_deviceID)s AND NOT ISNULL(internalName);")
-
-    # TODO: See if this needs to exist
-    # query_devices_imported_ignore_known = (
-    #     "SELECT DISTINCT d.id, d.mfr, d.model, d.mac_addr, d.internalName, d.deviceCategory, s.ipv4_addr, s.ipv6_addr "
-    #     "FROM device AS d "
-    #     "    INNER JOIN (SELECT * FROM device_state) AS s ON d.id=s.deviceID "
-    #     "WHERE d.id!=%(ignored_deviceID)s AND NOT ISNULL(d.internalName);")
-
     query_device_communication_info = (
         "SELECT DISTINCT deviceID, protocol, dst_ip_addr, ipv6, dst_port, src_port "
         "FROM protocol "
@@ -849,23 +836,10 @@ class CaptureDatabase:
         self.cursor.execute(self.drop_device_toi)
         self.cnx.commit()
 
-    # TODO: Determine if can be removed
-    # def create_dev_toi(self, device_id=None):
-    #     if device_id is None:
-    #         self.cursor.execute(self.create_device_toi_all)
-    #     else:
-    #         self.cursor.execute(self.create_device_toi, device_id)
-    #     self.cnx.commit()
-
     def create_dev_toi_from_file_id_list(self):
         format_strings = ",".join(['%s'] * len(self.capture_id_list))
         self.cursor.execute(self.create_device_toi_from_capture_id_list % format_strings, tuple(self.capture_id_list))
         self.cnx.commit()
-
-    # TODO: Determine if can be removed
-    # def update_dev_toi(self, device_id):
-    #     self.cursor.execute(self.update_device_toi, device_id)
-    #     self.cnx.commit()
 
     # Packet table of interest
     def select_pkt_toi(self, ew, num_pkts):
@@ -986,7 +960,7 @@ class CaptureDigest:
         self.id = file_id
 
         self.pkt = []
-        self.pkt_info = []  # needs to be a list of dictionary
+        self.pkt_info = []  # TODO: needs to be a list of dictionary items
 
         self.cap_date = None
         self.cap_time = None
@@ -1103,9 +1077,6 @@ class CaptureDigest:
         if self.api_key is not None:
             self.extract_fingerprint()
             self.logger.debug("Identified devices for this capture: %s", self.modellookup)
-
-        # TODO: VERIFY REMOVAL
-        # self.cap_timestamp = self.cap[0].sniff_timestamp
 
         if self.cap_date is None or self.cap_time is None:
             (self.cap_date, self.cap_time) = datetime.utcfromtimestamp(

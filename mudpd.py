@@ -3034,7 +3034,11 @@ class MUDWizard(tk.Toplevel):
     def save_mud_file(self, advanced=False):
         # TODO: rewrite using regex to make cleaner
         mud_path = 'mudfiles/'
+        self.mud.support_info['mfg-name'] = str(self.mud.support_info['mfg-name'])
+        self.mud.support_info['systeminfo'] = str(self.mud.support_info['systeminfo'])
+
         fpath = mud_path + self.mud.support_info['mfg-name'].replace(' ', '_').replace(',', '').replace('.', '')
+
         if not os.path.isdir(mud_path):
             os.mkdir(mud_path)
             os.mkdir(fpath)

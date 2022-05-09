@@ -302,19 +302,6 @@ class CaptureDatabase:
         "DROP TEMPORARY TABLE IF EXISTS dev_toi_copy;"
     )
 
-    # create_device_toi_all = (
-    #     "CREATE TEMPORARY TABLE dev_toi "
-    #     "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
-    #     "FROM device_state d "
-    #     "    INNER JOIN cap_toi c ON d.fileID = c.id;")
-
-    # create_device_toi = (
-    #     "CREATE TEMPORARY TABLE dev_toi "
-    #     "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
-    #     "FROM device_state d "
-    #     "    INNER JOIN cap_toi c ON d.fileID = c.id "
-    #     "WHERE d.deviceID=%(deviceID)s;")
-
     create_device_toi_from_capture_id_list = (
         "CREATE TEMPORARY TABLE dev_toi "
         "SELECT ds.fileID, ds.deviceID, d.mac_addr, ds.ipv4_addr, ds.ipv6_addr "
@@ -367,10 +354,10 @@ class CaptureDatabase:
         "    p.ip_dst   = d1.ipv4_addr OR "
         "    p.ip_dst   = d1.ipv6_addr) "
         "WHERE "
-	    "    (p.ip_src=d0.ipv4_addr AND p.ip_dst=d1.ipv4_addr) OR "
-        "    (p.ip_src=d1.ipv4_addr AND p.ip_dst=d0.ipv4_addr) OR "
-	    "    (p.ip_src=d0.ipv6_addr AND p.ip_dst=d1.ipv6_addr) OR "
-        "    (p.ip_src=d1.ipv6_addr AND p.ip_dst=d0.ipv6_addr) "
+        "(p.ip_src=d0.ipv4_addr AND p.ip_dst=d1.ipv4_addr) OR "
+        "(p.ip_src=d1.ipv4_addr AND p.ip_dst=d0.ipv4_addr) OR "
+        "(p.ip_src=d0.ipv6_addr AND p.ip_dst=d1.ipv6_addr) OR "
+        "(p.ip_src=d1.ipv6_addr AND p.ip_dst=d0.ipv6_addr) "
         "LIMIT %(num_pkts)s;")
 
     drop_packet_toi = (

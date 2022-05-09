@@ -710,9 +710,7 @@ class MudCaptureApplication(tk.Frame):
                                          "Any existing configuration will be OVERWRITTEN.\n\n" +
                                          "For security purposes, the password will NOT be saved.",
                                          default='no')
-        # save_pwd = tk.messagebox.askyesno("WARNING",
-        #                                   "Password will be saved in plaintext.\n\nSave password anyway?",
-        #                                   default='no')
+
         if confirm:
             self.db_handler.save_db_config()  # save_pwd=save_pwd)
         return
@@ -1099,7 +1097,7 @@ class MudCaptureApplication(tk.Frame):
         self.logger.info("(G) insert_protocol_device: Updating Device Protocol Table")
         try:
             self.db_handler.db.insert_protocol_device()
-            messagebox.showinfo("Success!", "Labeled Device Info Updated")
+            # messagebox.showinfo("Success!", "Labeled Device Info Updated")
         except AttributeError:
             messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
 

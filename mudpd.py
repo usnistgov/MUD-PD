@@ -803,7 +803,7 @@ class MudCaptureApplication(tk.Frame):
                 self.cap_envi_metadata = dict()
 
             # Check if the file has already been imported (putting this after the autofill to allow the user to view
-            # the inluded metadata
+            # the included metadata
             if self.check_hash():
                 tk.Tk().withdraw()
                 self.logger.error("Capture file already imported into database")

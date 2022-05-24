@@ -1135,6 +1135,9 @@ class CaptureDigest:
         stop = datetime.now()
         self.logger.info("Time for full multi-process: %s", stop - start)
 
+'''This function allows multi-processing of the packet captures. All packets other than IPv4 will be filtered out. 
+Wireshark uses ipv6.addr for IPv6.'''
+
     def process_pkts_mp(self, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
                         addr_ipv6_src, addr_ipv6_dst, ip2mac):
         cap = pyshark.FileCapture(file, keep_packets=False, display_filter='!ip.version==9 && !ip.version==8 '  

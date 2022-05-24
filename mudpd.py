@@ -626,7 +626,6 @@ class MudCaptureApplication(tk.Frame):
         self.logger.info("popup_update_labeled_device_info window opening")
         try:
             self.db_handler.db.insert_protocol_device()
-            # messagebox.showinfo("Success!", "Labeled Device Info Updated")
         except AttributeError:
             messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
 
@@ -823,6 +822,8 @@ class MudCaptureApplication(tk.Frame):
             t.setDaemon(True)
             t.start()
 
+'''This headstart function speeds up the processing of the packet capture by beginning to import the packet capture
+as soon as the file name is selected by the user.'''
     def headstart(self, filename):
         asyncio.set_event_loop(asyncio.new_event_loop())
         self.cap = CaptureDigest(filename, api_key=self.api_key)
@@ -956,9 +957,8 @@ class MudCaptureApplication(tk.Frame):
         e_act.config(state='disabled')
         self.capture_entries.append((fields_type[i], sv_act))
 
-
+'''Check if capture is already in database (using sha256)'''
     def check_hash(self):
-        # Check if capture is already in database (using sha256)
         file_path = self.capture_entries[0][1].get()
         filehash = hashlib.sha256(open(file_path, 'rb').read()).hexdigest()
         captures = self.db_handler.db.select_unique_captures()
@@ -974,7 +974,7 @@ class MudCaptureApplication(tk.Frame):
         self.cap = CaptureDigest(file_path, api_key=self.api_key)
         self.logger.info("Finished importing capture file")
 
-    # Importing the user's pcap/pcap-ng file
+ '''This function imports the user's pcap/pcap-ng file'''
     def import_and_close(self):
 
         if self.threads.get('capture_processing'):
@@ -1097,7 +1097,6 @@ class MudCaptureApplication(tk.Frame):
         self.logger.info("(G) insert_protocol_device: Updating Device Protocol Table")
         try:
             self.db_handler.db.insert_protocol_device()
-            # messagebox.showinfo("Success!", "Labeled Device Info Updated")
         except AttributeError:
             messagebox.showinfo("Failure", "Please make sure you are connected to a database and try again")
 
@@ -1884,7 +1883,6 @@ class MudCaptureApplication(tk.Frame):
         stop = datetime.now()
         self.logger.info("time to import packets: %s", (stop - start).total_seconds())
 
-        # self.populate_comm_list()
 
     def populate_comm_list(self, append=False):
         # Clear previous list
@@ -2437,7 +2435,10 @@ class MudCaptureApplication(tk.Frame):
         self.logger.info("Cleaned up on exit")
         self.parent.quit()
 
-
+'''The MUD Wizard requires more user input and involves more steps than generating the device report.
+First, the user is prompted to select a device to generate a MUD file. Next the user fills in the support URL, 
+documentation URL, and device description. The user may also select which types of communication to define 
+in the MUD file (internet, local, same manufacturer, etc.)'''
 class MUDWizard(tk.Toplevel):
 
     def __init__(self, parent, *args, **kwargs):

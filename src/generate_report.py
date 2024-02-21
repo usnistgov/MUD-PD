@@ -71,7 +71,7 @@ class ReportGenerator:
             f.write('Device:\t%s\n' % self.device_info['name'])
             f.write('MAC:\t%s\n' % self.device_info['mac'])
 
-    #TODO add modifiers, end time, and duration to database
+    # TODO: add modifiers, end time, and duration to database
     def write_capture_info(self, capture_info):
         with open(self.file, 'a') as f:
             f.write('\n')

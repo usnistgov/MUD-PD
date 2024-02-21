@@ -77,29 +77,29 @@ System specifications used for development and testing:
 
      * Linux (Ubuntu 20.04+):
      ```sh
-     shell> sudo apt-get install git
+     sudo apt-get install git
      ```
 1. Python 3.8.4+
 
    * Check version
      ```sh
-     shell> python3 --version
+     python3 --version
      ```
    * Instructions for updating/installing python3 can be found at: https://www.python.org/downloads/
 
      You can also try the following commands
      * macOS:
      ```sh
-     shell> brew install python3
+     brew install python3
      ```
 
      * Linux
      ```sh
-     shell> sudo apt-get install python3.8
+     sudo apt-get install python3.8
      ```
      or
      ```sh
-     shell> sudo apt-get install python3.9
+     sudo apt-get install python3.9
      ```
 
 2. MySQL
@@ -124,13 +124,13 @@ System specifications used for development and testing:
 3. pip (may already be installed)
    * macOS:
    ```sh
-   shell> curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-   shell> python3 get-pip.py
+   curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+   python3 get-pip.py
    ```
 
    * Linux:
    ```sh
-   shell> sudo apt-get install python3-pip
+   sudo apt-get install python3-pip
    ```
 
 4. TkInter for Python3 (may already be installed)
@@ -138,7 +138,7 @@ System specifications used for development and testing:
 
    * Linux:
    ```sh
-   shell> sudo apt-get install python3-tk
+   sudo apt-get install python3-tk
    ```
 
 5. Wireshark (tshark) 3.4.4+
@@ -147,7 +147,7 @@ System specifications used for development and testing:
    * Download from: https://www.wireshark.org/download.html
    * Linux:
    ```sh
-   shell> sudo apt-get install tshark
+   sudo apt-get install tshark
    ```
    
 
@@ -156,7 +156,7 @@ System specifications used for development and testing:
    Used for generating packet captures to import into the database and tool 
    * Linux:
    ```sh
-   shell> sudo apt-get install tcpdump
+   sudo apt-get install tcpdump
    ```
    * macOS: readily available by default
    * Windows: follow instructions at https://nmap.org/npcap/
@@ -165,9 +165,9 @@ System specifications used for development and testing:
 
 1. Install MUD-PD:
    ```sh
-   shell> git clone https://github.com/usnistgov/MUD-PD.git
-   shell> cd MUD-PD
-   shell> pip3 install -r requirements.txt
+   git clone https://github.com/usnistgov/MUD-PD.git
+   cd MUD-PD
+   pip3 install -r requirements.txt
    ```
 
 2. Install muddy: (for MUD file generation)
@@ -178,7 +178,7 @@ System specifications used for development and testing:
 
 ## Running MUD-PD
 ```sh
-shell> python3 mudpd.py
+python3 mudpd.py
 ```
 
 ## First Steps

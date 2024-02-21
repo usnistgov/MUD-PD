@@ -1141,7 +1141,7 @@ Wireshark uses ipv6.addr for IPv6.'''
     def process_pkts_mp(self, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
                         addr_ipv6_src, addr_ipv6_dst, ip2mac):
         cap = pyshark.FileCapture(file, keep_packets=False, display_filter='!ip.version==9 && !ip.version==8 '  
-                                                                           '&& !ip.version==7 && !ip.version==6 ' 
+                                                                           '&& !ip.version==7 ' 
                                                                            '&& !ip.version==5 && !ip.version==3 ' 
                                                                            '&& !ip.version==2 && !ip.version==1 ' 
                                                                            '&& !ip.version==0')
@@ -1427,7 +1427,7 @@ Wireshark uses ipv6.addr for IPv6.'''
         self.cap_time = cap_datetime.time().strftime('%H:%M:%S')
 
         self.cap = pyshark.FileCapture(self.fpath, display_filter='!ip.version==9 && !ip.version==8 '  
-                                                                  '&& !ip.version==7 && !ip.version==6 ' 
+                                                                  '&& !ip.version==7 ' 
                                                                   '&& !ip.version==5 && !ip.version==3 ' 
                                                                   '&& !ip.version==2 && !ip.version==1 ' 
                                                                   '&& !ip.version==0')

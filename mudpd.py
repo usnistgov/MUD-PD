@@ -878,7 +878,7 @@ as soon as the file name is selected by the user.'''
         # Environment Variables (Internet, Human Interaction, Preferred DNS Enabled, Isolated
         # captureEnvFields = 'Internet', 'Human Interaction', 'Preferred DNS Enabled','Isolated'
         row = tk.Frame(self.w_cap)
-        lab = tk.Label(row, width=20, text="Environmental Variables", font="Helvetica 14 bold")  # , anchor='w')
+        lab = tk.Label(row, width=20, text="Environmental Variables", font="Helvetica 14 bold")  # , anchor='w'
         row.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
         lab.pack(side=tk.TOP)  # LEFT
         for i, field in enumerate(fields_env):

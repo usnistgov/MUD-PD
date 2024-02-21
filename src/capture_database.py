@@ -19,8 +19,7 @@ import os
 import pyshark
 import re
 import subprocess
-#from tornado.platform import asyncio
-#from tornado.platform.asyncio import AnyThreadEventLoopPolicy
+
 
 
 class CaptureDatabase:
@@ -303,19 +302,6 @@ class CaptureDatabase:
         "DROP TEMPORARY TABLE IF EXISTS dev_toi_copy;"
     )
 
-    # create_device_toi_all = (
-    #     "CREATE TEMPORARY TABLE dev_toi "
-    #     "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
-    #     "FROM device_state d "
-    #     "    INNER JOIN cap_toi c ON d.fileID = c.id;")
-
-    # create_device_toi = (
-    #     "CREATE TEMPORARY TABLE dev_toi "
-    #     "SELECT d.fileID, d.deviceID, d.ipv4_addr, d.ipv6_addr "
-    #     "FROM device_state d "
-    #     "    INNER JOIN cap_toi c ON d.fileID = c.id "
-    #     "WHERE d.deviceID=%(deviceID)s;")
-
     create_device_toi_from_capture_id_list = (
         "CREATE TEMPORARY TABLE dev_toi "
         "SELECT ds.fileID, ds.deviceID, d.mac_addr, ds.ipv4_addr, ds.ipv6_addr "
@@ -368,10 +354,10 @@ class CaptureDatabase:
         "    p.ip_dst   = d1.ipv4_addr OR "
         "    p.ip_dst   = d1.ipv6_addr) "
         "WHERE "
-	    "    (p.ip_src=d0.ipv4_addr AND p.ip_dst=d1.ipv4_addr) OR "
-        "    (p.ip_src=d1.ipv4_addr AND p.ip_dst=d0.ipv4_addr) OR "
-	    "    (p.ip_src=d0.ipv6_addr AND p.ip_dst=d1.ipv6_addr) OR "
-        "    (p.ip_src=d1.ipv6_addr AND p.ip_dst=d0.ipv6_addr) "
+        "(p.ip_src=d0.ipv4_addr AND p.ip_dst=d1.ipv4_addr) OR "
+        "(p.ip_src=d1.ipv4_addr AND p.ip_dst=d0.ipv4_addr) OR "
+        "(p.ip_src=d0.ipv6_addr AND p.ip_dst=d1.ipv6_addr) OR "
+        "(p.ip_src=d1.ipv6_addr AND p.ip_dst=d0.ipv6_addr) "
         "LIMIT %(num_pkts)s;")
 
     drop_packet_toi = (
@@ -495,19 +481,6 @@ class CaptureDatabase:
         "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
         "FROM device "
         "WHERE NOT ISNULL(internalName);")
-
-    # TODO: See if this needs to exist
-    # query_devices_imported_ignore_noIPs = (
-    #     "SELECT id, mfr, model, mac_addr, internalName, deviceCategory "
-    #     "FROM device "
-    #     "WHERE mac_addr!=%(ignored_deviceID)s AND NOT ISNULL(internalName);")
-
-    # TODO: See if this needs to exist
-    # query_devices_imported_ignore_known = (
-    #     "SELECT DISTINCT d.id, d.mfr, d.model, d.mac_addr, d.internalName, d.deviceCategory, s.ipv4_addr, s.ipv6_addr "
-    #     "FROM device AS d "
-    #     "    INNER JOIN (SELECT * FROM device_state) AS s ON d.id=s.deviceID "
-    #     "WHERE d.id!=%(ignored_deviceID)s AND NOT ISNULL(d.internalName);")
 
     query_device_communication_info = (
         "SELECT DISTINCT deviceID, protocol, dst_ip_addr, ipv6, dst_port, src_port "
@@ -850,23 +823,10 @@ class CaptureDatabase:
         self.cursor.execute(self.drop_device_toi)
         self.cnx.commit()
 
-    # TODO: Determine if can be removed
-    # def create_dev_toi(self, device_id=None):
-    #     if device_id is None:
-    #         self.cursor.execute(self.create_device_toi_all)
-    #     else:
-    #         self.cursor.execute(self.create_device_toi, device_id)
-    #     self.cnx.commit()
-
     def create_dev_toi_from_file_id_list(self):
         format_strings = ",".join(['%s'] * len(self.capture_id_list))
         self.cursor.execute(self.create_device_toi_from_capture_id_list % format_strings, tuple(self.capture_id_list))
         self.cnx.commit()
-
-    # TODO: Determine if can be removed
-    # def update_dev_toi(self, device_id):
-    #     self.cursor.execute(self.update_device_toi, device_id)
-    #     self.cnx.commit()
 
     # Packet table of interest
     def select_pkt_toi(self, ew, num_pkts):
@@ -987,7 +947,7 @@ class CaptureDigest:
         self.id = file_id
 
         self.pkt = []
-        self.pkt_info = []  # needs to be a list of dictionary
+        self.pkt_info = []  # TODO: needs to be a list of dictionary items
 
         self.cap_date = None
         self.cap_time = None
@@ -1066,7 +1026,8 @@ class CaptureDigest:
                     self.logger.warning("Multiprocessing Error: No split capture files found. Running in "
                                         "single-process mode with one processor and the original file")
                     self.files = [capfile]
-                    self.numProcesses = 1
+                    # Uncomment this to test single processing
+                    # self.numProcesses = 1
                 elif len(self.files) > self.numProcesses:
                     self.logger.warning("Multiprocessing Error: The capture file has been split into more pieces (%s) "
                                         "than processors (%s). Capture file processing will continue with %s, but may "
@@ -1097,56 +1058,12 @@ class CaptureDigest:
             stop1 = datetime.now()
             self.logger.info("Time to process file: %s", stop1 - start1)
             self.logger.info("Time for full process: %s", stop1 - start)
-        else:
-            ew_filter_start = datetime.now()
-            # ew_ip_filter = 'ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ' \
-            #                'ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
-            # ns_ip_filter = '!ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} or ' \
-            #                '!ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}'
-            # ew_ipv6_filter = 'ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8}'
-            # ns_ipv6_filter = '!ipv6.src in {fd00::/8} or !ipv6.dst in {fd00::/8}'
-
-            ew_filter = '(ip.src in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8} and ' \
-                        'ip.dst in {192.168.0.0/16 172.16.0.0/12 10.0.0.0/8}) or ' \
-                        '(ipv6.src in {fd00::/8} and ipv6.dst in {fd00::/8})'
-
-            # ns_filter = ['(', ns_ip_filter, ') and (', ns_ipv6_filter, ')']
-
-            self.ew_index = []
-            cap_ew = pyshark.FileCapture(self.fpath, display_filter=ew_filter, keep_packets=False)
-            for p in cap_ew:
-                self.ew_index += p.number
-
-            ew_filter_stop = datetime.now()
-            self.logger.info("time to filter ew: %s", ew_filter_stop - ew_filter_start)
-
-            # start = datetime.now()
-            self.cap = pyshark.FileCapture(self.fpath, keep_packets=False)
-
-            self.cap_timestamp = self.cap[0].sniff_timestamp
-
-            # TODO CHANGE capDuration format from seconds to days, hours, minutes, seconds
-            self.capDuration = 0
-
-            self.uniqueIP = []
-            self.uniqueIPv6 = []
-            self.uniqueMAC = []
-            self.uniqueMAC_dst = []
-
-            # TODO Check if this is now broken
-            self.ip2mac = {}
-
-            self.uniqueIP_dst = []
-            self.uniqueIPv6_dst = []
 
         self.dhcp_pkts = pyshark.FileCapture(self.fpath, display_filter='dhcp')
         self.modellookup = {}
         if self.api_key is not None:
             self.extract_fingerprint()
             self.logger.debug("Identified devices for this capture: %s", self.modellookup)
-
-        # TODO: VERIFY REMOVAL
-        # self.cap_timestamp = self.cap[0].sniff_timestamp
 
         if self.cap_date is None or self.cap_time is None:
             (self.cap_date, self.cap_time) = datetime.utcfromtimestamp(
@@ -1218,9 +1135,16 @@ class CaptureDigest:
         stop = datetime.now()
         self.logger.info("Time for full multi-process: %s", stop - start)
 
+'''This function allows multi-processing of the packet captures. All packets other than IPv4 will be filtered out. 
+Wireshark uses ipv6.addr for IPv6.'''
+
     def process_pkts_mp(self, file, pkts_info, addr_mac_src, addr_mac_dst, addr_ip_src, addr_ip_dst,
                         addr_ipv6_src, addr_ipv6_dst, ip2mac):
-        cap = pyshark.FileCapture(file, keep_packets=False)
+        cap = pyshark.FileCapture(file, keep_packets=False, display_filter='!ip.version==9 && !ip.version==8 '  
+                                                                           '&& !ip.version==7 ' 
+                                                                           '&& !ip.version==5 && !ip.version==3 ' 
+                                                                           '&& !ip.version==2 && !ip.version==1 ' 
+                                                                           '&& !ip.version==0')
 
         addr_mac_src_set = set()
         addr_mac_dst_set = set()
@@ -1502,7 +1426,11 @@ class CaptureDigest:
         self.cap_date = cap_datetime.date().strftime('%Y-%m-%d')
         self.cap_time = cap_datetime.time().strftime('%H:%M:%S')
 
-        self.cap = pyshark.FileCapture(self.fpath)
+        self.cap = pyshark.FileCapture(self.fpath, display_filter='!ip.version==9 && !ip.version==8 '  
+                                                                  '&& !ip.version==7 ' 
+                                                                  '&& !ip.version==5 && !ip.version==3 ' 
+                                                                  '&& !ip.version==2 && !ip.version==1 ' 
+                                                                  '&& !ip.version==0')
         # Determine if this line should be uncommented or removed
         self.pkt = []
 
@@ -1589,84 +1517,3 @@ class CaptureDigest:
     def __exit__(self):
         self.cap.close()
         self.dhcp_pkts.close()
-
-
-# Database Main (for testing purposes)
-#if __name__ == "__main__":
-#
-#    mysql.connector.connect()
-#
-#    fname = "/Users/ptw/Documents/GRA-MITRE-DDoS/captures/ecobee/ecobeeThermostat_iphone_setup.pcap"
-#    capture = CaptureDigest(fname)
-#    capture.print_init()
-#    print("Unique IP addresses:")
-
-#    print(*capture.uniqueIP, sep="\n")
-#    print("\n\nUnique IPv6 addresses:")
-#    print(*capture.uniqueIPv6, sep="\n")
-#    print("\n")
-
-#    for mac in capture.uniqueMAC:
-#        lookup_mac(mac)
-#        print(mac + "\r\n")
-#        break
-
-#    print("Unique DST IP addresses:")
-#    for ip in capture.uniqueIP_dst:
-#        lookup_hostname(ip)
-#        print(ip + "\n")
-#        break
-
-#    print("\n\nUnique DST IPv6 addresses:")
-#    for ipv6 in capture.uniqueIPv6_dst:
-#        lookup_hostname(ipv6)
-#        print(ipv6 + "\n")
-#        break
-
-#    mac = "BC:92:6B:A0:00:01"
-#    company = lookup_mac(mac)
-
-#    ip_addr = "216.220.61.236"
-#    lookup_hostname(ip_addr)
-
-# Adding capture things items:
-# fileName
-# fileLoc - manually input to generate filename, md5, and cap_date
-# md5
-# cap_date
-# Activity - manual
-# Details - manual
-
-# Adding device items:
-# Mfr - attempt to generate from MAC
-# Model - manual
-# MAC_addr - Can be located in MAC address
-# internalName - manual
-# Device category - manual
-# MUD capable - may be able to generate this, but manual for now
-# wifi #if MAC found, then wifi is set to YES
-# bluetooth - manual
-# zigbee - manual
-# zwave - manual
-# 4G - manual
-# 5G - manual
-# other protocols - manual
-# notes - manual
-
-# Adding Device State items:
-# md5 - generated from input fileLoc
-# MAC address - identified from file
-# internal name (previously given)
-# fw_ver - manual
-# ipv4_addr - generated from file
-# ipv6_addr - generated from file
-
-# Adding Protocol items:
-# md5 - generated from input fileLoc
-# MAC address - generated from file
-# src_port - generated from input file
-# dst_ip_addr - generated from file
-# ipv6 (bool) - generated from file
-# dst_url - generated from file
-# dst_port - generated from file
-# notes - generated

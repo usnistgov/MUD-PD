@@ -166,8 +166,7 @@ def extract_comment(filename, option_type=1, json_only=True):
 def is_pcapng(file):
     ret = subprocess.run('file ' + file, shell=True, capture_output=True)
 
-    # TODO: Make sure this isn't macOS specific
-    if b': pcap-ng capture file ' in ret.stdout:
+    if b': pcap-ng capture file ' or b': pcapng capture file ' in ret.stdout:
         return True
     else:
         return False
@@ -176,8 +175,7 @@ def is_pcapng(file):
 def is_pcap(file):
     ret = subprocess.run('file ' + file, shell=True, capture_output=True)
 
-    # TODO: Make sure this isn't OS-specific
-    if b': tcpdump capture file' in ret.stdout:
+    if b': tcpdump capture file' or b': pcap capture file' in ret.stdout:
         return True
     else:
         return False

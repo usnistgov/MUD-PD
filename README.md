@@ -3,7 +3,7 @@
 
 # ⛔️ UNMAINTAINED ⛔️
 
-This project is no longer in active development and will not be maintained due to resource contraints. 
+Scoped work on the MUD-PD tool has concluded, but members of the community are encouraged to continue development of enhancements and additional features for the tool. 
 
 **Table of Contents:**
 
